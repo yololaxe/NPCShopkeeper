@@ -1,0 +1,13 @@
+{
+  "gui.npcshopkeeper.create_trade.label_empty3": "-",
+  "gui.npcshopkeeper.create_trade.label_create_trade": "Create trade:",
+  "gui.npcshopkeeper.create_trade.trade_name": "name",
+  "gui.npcshopkeeper.create_trade.label_empty1": "-",
+  "gui.npcshopkeeper.create_trade.label_empty2": "-",
+  "gui.npcshopkeeper.create_trade.label_good": "Good !",
+  "gui.npcshopkeeper.create_trade.label_coins": "coins",
+  "gui.npcshopkeeper.create_trade.label_category": "Category:",
+  "gui.npcshopkeeper.create_trade.label_item": "item",
+  "gui.npcshopkeeper.create_trade.label_empty": "-",
+  "gui.npcshopkeeper.create_trade.label_xp": "xp"
+}
