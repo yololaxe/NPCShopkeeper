@@ -2,6 +2,12 @@ package fr.renblood.npcshopkeeper;
 
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
 import fr.renblood.npcshopkeeper.world.WorldEventHandler;
+import fr.renblood.npcshopkeeper.world.inventory.TradeMenu;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraftforge.common.extensions.IForgeMenuType;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
@@ -29,12 +35,18 @@ import java.util.Collection;
 import java.util.ArrayList;
 import java.util.AbstractMap;
 
+import static fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus.REGISTRY;
+
 // The value here should match an entry in the META-INF/mods.toml file
 
 @Mod("npcshopkeeper")
 public class Npcshopkeeper {
     public static final Logger LOGGER = LogManager.getLogger(Npcshopkeeper.class);
     public static final String MODID = "npcshopkeeper";
+    public static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
+
+
+
 
     public Npcshopkeeper() {
         // Start of user code block mod constructor
@@ -46,6 +58,7 @@ public class Npcshopkeeper {
         NpcshopkeeperModMenus.REGISTRY.register(bus);
         // Start of user code block mod init
         // End of user code block mod init
+
     }
 
     // Start of user code block mod methods

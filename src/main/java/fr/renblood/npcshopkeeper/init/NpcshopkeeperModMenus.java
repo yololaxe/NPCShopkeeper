@@ -5,6 +5,7 @@ package fr.renblood.npcshopkeeper.init;
 
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.world.inventory.CreateTradeMenu;
 import net.minecraftforge.registries.RegistryObject;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.DeferredRegister;
@@ -12,7 +13,6 @@ import net.minecraftforge.common.extensions.IForgeMenuType;
 
 import net.minecraft.world.inventory.MenuType;
 import fr.renblood.npcshopkeeper.world.inventory.TradeMenu;
-import net.mcreator.npcshopkeeper.world.inventory.CreateTradeMenu;
 
 
 public class NpcshopkeeperModMenus {

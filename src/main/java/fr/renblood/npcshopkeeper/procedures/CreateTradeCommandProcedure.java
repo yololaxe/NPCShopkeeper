@@ -1,5 +1,6 @@
 package fr.renblood.npcshopkeeper.procedures;
 
+import fr.renblood.npcshopkeeper.world.inventory.CreateTradeMenu;
 import net.minecraftforge.network.NetworkHooks;
 
 import net.minecraft.world.level.LevelAccessor;
@@ -13,7 +14,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.core.BlockPos;
 
-import net.mcreator.npcshopkeeper.world.inventory.CreateTradeMenu;
+
 
 import io.netty.buffer.Unpooled;
 

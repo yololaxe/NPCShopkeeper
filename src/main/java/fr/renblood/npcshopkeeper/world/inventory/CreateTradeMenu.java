@@ -1,5 +1,5 @@
 
-package net.mcreator.npcshopkeeper.world.inventory;
+package fr.renblood.npcshopkeeper.world.inventory;
 
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
 import net.minecraftforge.items.SlotItemHandler;

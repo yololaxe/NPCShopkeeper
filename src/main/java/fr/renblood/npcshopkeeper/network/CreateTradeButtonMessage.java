@@ -3,6 +3,7 @@ package fr.renblood.npcshopkeeper.network;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.procedures.CreateTradeValidationProcedure;
+import fr.renblood.npcshopkeeper.world.inventory.CreateTradeMenu;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -13,7 +14,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.core.BlockPos;
 
-import net.mcreator.npcshopkeeper.world.inventory.CreateTradeMenu;
+
 
 
 import java.util.function.Supplier;

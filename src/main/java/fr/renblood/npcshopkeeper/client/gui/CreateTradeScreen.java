@@ -3,6 +3,7 @@ package fr.renblood.npcshopkeeper.client.gui;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 
 import fr.renblood.npcshopkeeper.network.CreateTradeButtonMessage;
+import fr.renblood.npcshopkeeper.world.inventory.CreateTradeMenu;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.Inventory;
@@ -14,7 +15,6 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.Minecraft;
 
-import net.mcreator.npcshopkeeper.world.inventory.CreateTradeMenu;
 
 import java.util.HashMap;
 

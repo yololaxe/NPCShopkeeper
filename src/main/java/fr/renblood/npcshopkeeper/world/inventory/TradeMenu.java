@@ -228,7 +228,7 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 				this.addSlot(new Slot(inv, sj + (si + 1) * 9, 12 + 8 + sj * 18, 0 + 84 + si * 18));
 		for (int si = 0; si < 9; ++si)
 			this.addSlot(new Slot(inv, si, 12 + 8 + si * 18, 0 + 142));
-		TradePrepareProcedure.execute(entity);
+
 	}
 
 	@Override
