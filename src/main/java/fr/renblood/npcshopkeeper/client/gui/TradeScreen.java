@@ -1,6 +1,9 @@
 package fr.renblood.npcshopkeeper.client.gui;
 
+import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.network.TradeButtonMessage;
 import fr.renblood.npcshopkeeper.world.inventory.TradeMenu;
+import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.Inventory;
@@ -19,6 +22,7 @@ public class TradeScreen extends AbstractContainerScreen<TradeMenu> {
 	private final Level world;
 	private final int x, y, z;
 	private final Player entity;
+	ImageButton imagebutton_check;
 
 	public TradeScreen(TradeMenu container, Inventory inventory, Component text) {
 		super(container, inventory, text);
@@ -65,5 +69,13 @@ public class TradeScreen extends AbstractContainerScreen<TradeMenu> {
 	@Override
 	public void init() {
 		super.init();
+		imagebutton_check = new ImageButton(this.leftPos + 209, this.topPos + 65, 51, 34, 0, 0, 34, new ResourceLocation("npcshopkeeper:textures/screens/atlas/imagebutton_check.png"), 51, 68, e -> {
+			if (true) {
+				Npcshopkeeper.PACKET_HANDLER.sendToServer(new TradeButtonMessage(0, x, y, z));
+				TradeButtonMessage.handleButtonAction(entity, 0, x, y, z);
+			}
+		});
+		guistate.put("button:imagebutton_check", imagebutton_check);
+		this.addRenderableWidget(imagebutton_check);
 	}
 }

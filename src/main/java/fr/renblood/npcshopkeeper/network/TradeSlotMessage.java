@@ -2,7 +2,7 @@
 package fr.renblood.npcshopkeeper.network;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
-import fr.renblood.npcshopkeeper.procedures.TradeProcedure;
+import fr.renblood.npcshopkeeper.procedures.FinalTradeProcedure;
 import fr.renblood.npcshopkeeper.world.inventory.TradeMenu;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -13,7 +13,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.core.BlockPos;
-
 
 
 import java.util.function.Supplier;
@@ -71,37 +70,41 @@ public class TradeSlotMessage {
 		// security measure to prevent arbitrary chunk generation
 		if (!world.hasChunkAt(new BlockPos(x, y, z)))
 			return;
-		if (slot == 1 && changeType == 0) {
+		if (slot == 8 && changeType == 1) {
 
-			TradeProcedure.execute(entity);
+			FinalTradeProcedure.execute(entity);
 		}
-		if (slot == 3 && changeType == 0) {
+		if (slot == 8 && changeType == 2) {
+			int amount = meta;
 
-			TradeProcedure.execute(entity);
+			FinalTradeProcedure.execute(entity);
 		}
-		if (slot == 5 && changeType == 0) {
+		if (slot == 9 && changeType == 1) {
 
-			TradeProcedure.execute(entity);
+			FinalTradeProcedure.execute(entity);
 		}
-		if (slot == 7 && changeType == 0) {
+		if (slot == 9 && changeType == 2) {
+			int amount = meta;
 
-			TradeProcedure.execute(entity);
+			FinalTradeProcedure.execute(entity);
 		}
-		if (slot == 8 && changeType == 0) {
+		if (slot == 10 && changeType == 1) {
 
-			TradeProcedure.execute(entity);
+			FinalTradeProcedure.execute(entity);
 		}
-		if (slot == 9 && changeType == 0) {
+		if (slot == 10 && changeType == 2) {
+			int amount = meta;
 
-			TradeProcedure.execute(entity);
+			FinalTradeProcedure.execute(entity);
 		}
-		if (slot == 10 && changeType == 0) {
+		if (slot == 11 && changeType == 1) {
 
-			TradeProcedure.execute(entity);
+			FinalTradeProcedure.execute(entity);
 		}
-		if (slot == 11 && changeType == 0) {
+		if (slot == 11 && changeType == 2) {
+			int amount = meta;
 
-			TradeProcedure.execute(entity);
+			FinalTradeProcedure.execute(entity);
 		}
 	}
 

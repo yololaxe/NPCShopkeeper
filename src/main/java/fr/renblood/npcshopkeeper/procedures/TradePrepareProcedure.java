@@ -20,15 +20,15 @@ public class TradePrepareProcedure {
 
 		// Check if the entity is a player
 		if (entity instanceof Player _player) {
-			_player.displayClientMessage(Component.literal("Entity is a Player"), false);
+			//_player.displayClientMessage(Component.literal("Entity is a Player"), false);
 
 			// Check if the containerMenu exists
 			if (_player.containerMenu != null) {
-				_player.displayClientMessage(Component.literal("containerMenu exists, Type: " + _player.containerMenu.slots), false);
+				//_player.displayClientMessage(Component.literal("containerMenu exists, Type: " + _player.containerMenu.slots), false);
 
 				// Check if containerMenu is an instance of TradeMenu or any expected class
 				if (_player.containerMenu instanceof Supplier _current && _current.get() instanceof Map _slots) {
-					_player.displayClientMessage(Component.literal("containerMenu is an instance of TradeMenu"), false);
+					//_player.displayClientMessage(Component.literal("containerMenu is an instance of TradeMenu"), false);
 
 
 					// Perform the logic for setting up the slot

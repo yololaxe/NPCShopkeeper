@@ -27,6 +27,7 @@ import java.util.function.Supplier;
 import java.util.Map;
 import java.util.HashMap;
 
+
 public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Integer, Slot>> {
 	public final static HashMap<String, Object> guistate = new HashMap<>();
 	public final Level world;
@@ -94,12 +95,6 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 		}));
 		this.customSlots.put(1, this.addSlot(new SlotItemHandler(internal, 1, 44, 19) {
 			private final int slot = 1;
-
-			@Override
-			public void setChanged() {
-				super.setChanged();
-				slotChanged(1, 0, 0);
-			}
 		}));
 		this.customSlots.put(2, this.addSlot(new SlotItemHandler(internal, 2, 14, 49) {
 			private final int slot = 2;
@@ -116,12 +111,6 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 		}));
 		this.customSlots.put(3, this.addSlot(new SlotItemHandler(internal, 3, 44, 49) {
 			private final int slot = 3;
-
-			@Override
-			public void setChanged() {
-				super.setChanged();
-				slotChanged(3, 0, 0);
-			}
 		}));
 		this.customSlots.put(4, this.addSlot(new SlotItemHandler(internal, 4, 80, 19) {
 			private final int slot = 4;
@@ -138,12 +127,6 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 		}));
 		this.customSlots.put(5, this.addSlot(new SlotItemHandler(internal, 5, 110, 19) {
 			private final int slot = 5;
-
-			@Override
-			public void setChanged() {
-				super.setChanged();
-				slotChanged(5, 0, 0);
-			}
 		}));
 		this.customSlots.put(6, this.addSlot(new SlotItemHandler(internal, 6, 80, 49) {
 			private final int slot = 6;
@@ -160,20 +143,20 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 		}));
 		this.customSlots.put(7, this.addSlot(new SlotItemHandler(internal, 7, 110, 49) {
 			private final int slot = 7;
-
-			@Override
-			public void setChanged() {
-				super.setChanged();
-				slotChanged(7, 0, 0);
-			}
 		}));
 		this.customSlots.put(8, this.addSlot(new SlotItemHandler(internal, 8, 146, 9) {
 			private final int slot = 8;
 
 			@Override
-			public void setChanged() {
-				super.setChanged();
-				slotChanged(8, 0, 0);
+			public void onTake(Player entity, ItemStack stack) {
+				super.onTake(entity, stack);
+				slotChanged(8, 1, 0);
+			}
+
+			@Override
+			public void onQuickCraft(ItemStack a, ItemStack b) {
+				super.onQuickCraft(a, b);
+				slotChanged(8, 2, b.getCount() - a.getCount());
 			}
 
 			@Override
@@ -185,9 +168,15 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 			private final int slot = 9;
 
 			@Override
-			public void setChanged() {
-				super.setChanged();
-				slotChanged(9, 0, 0);
+			public void onTake(Player entity, ItemStack stack) {
+				super.onTake(entity, stack);
+				slotChanged(9, 1, 0);
+			}
+
+			@Override
+			public void onQuickCraft(ItemStack a, ItemStack b) {
+				super.onQuickCraft(a, b);
+				slotChanged(9, 2, b.getCount() - a.getCount());
 			}
 
 			@Override
@@ -199,9 +188,15 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 			private final int slot = 10;
 
 			@Override
-			public void setChanged() {
-				super.setChanged();
-				slotChanged(10, 0, 0);
+			public void onTake(Player entity, ItemStack stack) {
+				super.onTake(entity, stack);
+				slotChanged(10, 1, 0);
+			}
+
+			@Override
+			public void onQuickCraft(ItemStack a, ItemStack b) {
+				super.onQuickCraft(a, b);
+				slotChanged(10, 2, b.getCount() - a.getCount());
 			}
 
 			@Override
@@ -213,9 +208,15 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 			private final int slot = 11;
 
 			@Override
-			public void setChanged() {
-				super.setChanged();
-				slotChanged(11, 0, 0);
+			public void onTake(Player entity, ItemStack stack) {
+				super.onTake(entity, stack);
+				slotChanged(11, 1, 0);
+			}
+
+			@Override
+			public void onQuickCraft(ItemStack a, ItemStack b) {
+				super.onQuickCraft(a, b);
+				slotChanged(11, 2, b.getCount() - a.getCount());
 			}
 
 			@Override
@@ -228,7 +229,7 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 				this.addSlot(new Slot(inv, sj + (si + 1) * 9, 12 + 8 + sj * 18, 0 + 84 + si * 18));
 		for (int si = 0; si < 9; ++si)
 			this.addSlot(new Slot(inv, si, 12 + 8 + si * 18, 0 + 142));
-
+		//TradePrepareProcedure.execute(entity);
 	}
 
 	@Override
@@ -383,25 +384,15 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 			}
 		}
 	}
-	private boolean isSlotChanging = false;
-
-	private void slotChanged(int slotid, int ctype, int meta) {
-		if (isSlotChanging) {
-			return; // Prevent recursive slot changes
-		}
-
-		isSlotChanging = true; // Lock to prevent further slot changes
-
-		// Logic for handling slot change
-		if (this.world != null && this.world.isClientSide()) {
-			Npcshopkeeper.PACKET_HANDLER.sendToServer(new TradeSlotMessage(slotid, x, y, z, ctype, meta));
-			TradeSlotMessage.handleSlotAction(entity, slotid, ctype, meta, x, y, z);
-		}
-
-		isSlotChanging = false; // Unlock to allow future changes
-	}
 
 	public Map<Integer, Slot> get() {
 		return customSlots;
 	}
+		private void slotChanged(int slotid, int ctype, int meta) {
+			if (this.world != null && this.world.isClientSide()) {
+				Npcshopkeeper.PACKET_HANDLER.sendToServer(new TradeSlotMessage(slotid, x, y, z, ctype, meta));
+				TradeSlotMessage.handleSlotAction(entity, slotid, ctype, meta, x, y, z);
+			}
+		}
+
 }
