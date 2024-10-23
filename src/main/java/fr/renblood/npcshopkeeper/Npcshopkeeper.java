@@ -1,10 +1,13 @@
 package fr.renblood.npcshopkeeper;
 
+import fr.renblood.npcshopkeeper.data.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
 import fr.renblood.npcshopkeeper.world.WorldEventHandler;
 import fr.renblood.npcshopkeeper.world.inventory.TradeMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.common.extensions.IForgeMenuType;
+import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
@@ -47,15 +50,24 @@ public class Npcshopkeeper {
 
 
 
+    @SubscribeEvent
+    public static void onServerStarting(ServerStartedEvent event) {
+        JsonTradeFileManager.onServerStarted(event);
+        System.out.println("Evénement onServerStarting exécuté !");
+        LOGGER.info("Evénement onServerStarting exécuté !");
 
+    }
     public Npcshopkeeper() {
         // Start of user code block mod constructor
         // End of user code block mod constructor
         MinecraftForge.EVENT_BUS.register(this);
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
         MinecraftForge.EVENT_BUS.register(WorldEventHandler.class);
+        MinecraftForge.EVENT_BUS.register(JsonTradeFileManager.class);
 
         NpcshopkeeperModMenus.REGISTRY.register(bus);
+
+
         // Start of user code block mod init
         // End of user code block mod init
 

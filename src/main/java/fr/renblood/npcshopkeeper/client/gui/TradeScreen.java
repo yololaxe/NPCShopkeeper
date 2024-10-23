@@ -79,3 +79,4 @@ public class TradeScreen extends AbstractContainerScreen<TradeMenu> {
 		this.addRenderableWidget(imagebutton_check);
 	}
 }
+

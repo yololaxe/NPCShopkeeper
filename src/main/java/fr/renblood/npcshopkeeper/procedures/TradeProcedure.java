@@ -10,6 +10,8 @@ import net.minecraft.world.entity.Entity;
 import java.util.function.Supplier;
 import java.util.Map;
 
+import static fr.renblood.npcshopkeeper.data.JsonTradeFileManager.markTradeAsFinished;
+
 public class TradeProcedure {
 
 	private static boolean isProcessingTrade = false; // Flag pour éviter les appels multiples
@@ -33,8 +35,10 @@ public class TradeProcedure {
 					isValidSlotPair(_slots, 4, 5, player) &&
 					isValidSlotPair(_slots, 6, 7, player)) {
 
+
 				clearAndRemoveSlots(player, _slots);
 				giveRewards(player, _slots);
+				markTradeAsFinished(player, ((Slot) _slots.get(12)).getItem().getDisplayName().getString());
 				player.containerMenu.broadcastChanges();
 			}
 		}
