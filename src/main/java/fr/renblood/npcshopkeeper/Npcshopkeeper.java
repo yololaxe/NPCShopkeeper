@@ -1,16 +1,12 @@
 package fr.renblood.npcshopkeeper;
 
-import fr.renblood.npcshopkeeper.data.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
 import fr.renblood.npcshopkeeper.world.WorldEventHandler;
-import fr.renblood.npcshopkeeper.world.inventory.TradeMenu;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraftforge.common.extensions.IForgeMenuType;
 import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
@@ -37,8 +33,6 @@ import java.util.List;
 import java.util.Collection;
 import java.util.ArrayList;
 import java.util.AbstractMap;
-
-import static fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus.REGISTRY;
 
 // The value here should match an entry in the META-INF/mods.toml file
 

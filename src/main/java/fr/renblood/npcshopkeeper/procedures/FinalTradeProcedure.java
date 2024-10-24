@@ -15,6 +15,8 @@ public class FinalTradeProcedure {
 		if (entity == null)
 			return;
 
+
+
 		if (isSlotEmpty(entity, 8)) {
 			if (isSlotEmpty(entity, 9)) {
 				if (isSlotEmpty(entity, 10)) {

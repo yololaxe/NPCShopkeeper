@@ -64,6 +64,29 @@ public class WorldEventHandler {
                     e.printStackTrace();
                 }
             }
+            File refFile = new File(worldSaveFolder, "price_references.json");
+
+            // Vérifier si le fichier existe déjà
+            if (!refFile.exists()) {
+                try {
+                    // Créer le dossier npcshopkeeper s'il n'existe pas
+                    if (!worldSaveFolder.exists()) {
+                        worldSaveFolder.mkdirs();
+                    }
+
+                    // Créer le fichier trade_history.json
+                    refFile.createNewFile();
+
+                    // Initialiser avec un contenu JSON vide (tableau vide)
+                    FileWriter writer = new FileWriter(refFile);
+                    writer.write("{\"references\": []}");  // Créer un tableau vide de "history"
+                    writer.close();
+
+                    System.out.println("Le fichier price_references.json a été créé dans le dossier du monde.");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 }

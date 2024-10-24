@@ -1,7 +1,7 @@
 package fr.renblood.npcshopkeeper.procedures;
 
 import com.mojang.brigadier.context.CommandContext;
-import fr.renblood.npcshopkeeper.data.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.world.inventory.TradeMenu;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraftforge.network.NetworkHooks;

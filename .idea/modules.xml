@@ -2,6 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/fr.renblood.npcshopkeeper.main.iml" filepath="$PROJECT_DIR$/.idea/modules/fr.renblood.npcshopkeeper.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/fr.renblood.npcshopkeeper.test.iml" filepath="$PROJECT_DIR$/.idea/modules/fr.renblood.npcshopkeeper.test.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/npcshopkeeper.main.iml" filepath="$PROJECT_DIR$/.idea/modules/npcshopkeeper.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/npcshopkeeper.test.iml" filepath="$PROJECT_DIR$/.idea/modules/npcshopkeeper.test.iml" />
     </modules>

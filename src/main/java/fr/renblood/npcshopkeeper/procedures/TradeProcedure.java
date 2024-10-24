@@ -1,16 +1,23 @@
 package fr.renblood.npcshopkeeper.procedures;
 
+import fr.renblood.npcshopkeeper.data.TradeHistory;
+import fr.renblood.npcshopkeeper.data.TradeResult;
+import fr.renblood.npcshopkeeper.manager.MoneyCalculator;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.entity.Entity;
 
+import java.util.List;
 import java.util.function.Supplier;
 import java.util.Map;
 
-import static fr.renblood.npcshopkeeper.data.JsonTradeFileManager.markTradeAsFinished;
+import static fr.renblood.npcshopkeeper.manager.JsonTradeFileManager.*;
 
 public class TradeProcedure {
 
@@ -24,21 +31,35 @@ public class TradeProcedure {
 
 		isProcessingTrade = true; // Verrouiller la procédure pour éviter les doublons
 
+
 		// Si l'entité est un joueur avec un menu valide
 		if (isServerPlayerWithMenu(entity)) {
 			ServerPlayer player = (ServerPlayer) entity;
-			Map _slots = getSlots(player);
 
+			player.displayClientMessage(Component.literal("Lige  36 trade proc"), false);
+			Map _slots = getSlots(player);
+			String tradeSlot = ((Slot) _slots.get(12)).getItem().getDisplayName().getString();
+
+			tradeSlot = tradeSlot.replace("[", "").replace("]", "");
+			String[] parts = tradeSlot.split(" ", 2); // Sépare la chaîne en deux parties : avant et après le premier espace
+			String tradeName = parts[0];
+			String tradeId = parts[1];
+//			player.displayClientMessage(Component.literal("Trade"+tradeName+" : "+tradeId), false);
+
+			TradeHistory tradeHistory = getTradeHistoryById(tradeId);
+//			player.displayClientMessage(Component.literal("Trade"+tradeName+" : "+ tradeHistory.isFinished()), false);
 			// Comparer et modifier les slots étape par étape
 			if (isValidSlotPair(_slots, 0, 1, player) &&
 					isValidSlotPair(_slots, 2, 3, player) &&
 					isValidSlotPair(_slots, 4, 5, player) &&
-					isValidSlotPair(_slots, 6, 7, player)) {
+					isValidSlotPair(_slots, 6, 7, player)
+			&& !tradeHistory.isFinished()) {
+
 
 
 				clearAndRemoveSlots(player, _slots);
-				giveRewards(player, _slots);
-				markTradeAsFinished(player, ((Slot) _slots.get(12)).getItem().getDisplayName().getString());
+				giveRewards(player, _slots, tradeId, tradeName);
+				markTradeAsFinished(player, tradeId);
 				player.containerMenu.broadcastChanges();
 			}
 		}
@@ -89,13 +110,51 @@ public class TradeProcedure {
 	}
 
 	// Méthode utilitaire pour donner les récompenses
-	private static void giveRewards(ServerPlayer player, Map _slots) {
-		setSlot(_slots, 8, new ItemStack(Items.GOLD_INGOT), 1);
-		setSlot(_slots, 9, new ItemStack(Items.GOLD_NUGGET), 1);
-		setSlot(_slots, 10, new ItemStack(Items.IRON_SWORD), 1);
-		setSlot(_slots, 11, new ItemStack(Items.LAPIS_LAZULI), 1);
+	private static void giveRewards(ServerPlayer player, Map _slots, String tradeId, String tradeName) {
+		// Récupérer l'historique du trade
+		TradeHistory tradeHistory = getTradeHistoryById(tradeId);
+		assert tradeHistory != null;
+
+		// Récupérer les items du trade
+		List<Map<String, Object>> tradeItems = tradeHistory.getTradeItems();
+
+		// Calculer le total d'argent à partir des tradeItems
+		int totalMoneyInCopper = MoneyCalculator.calculateTotalMoneyFromTrade(tradeItems);
+
+		// Convertir le total en pièces (Gold, Silver, Bronze, Copper)
+		int[] coins = MoneyCalculator.getIntInCoins(totalMoneyInCopper);
+
+		// Définir les items correspondants aux pièces
+		Item goldCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medievalcoins:gold_coin"));
+		Item silverCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medievalcoins:silver_coin"));
+		Item bronzeCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medievalcoins:bronze_coin"));
+		Item copperCoin = Items.COPPER_INGOT;
+
+		// Tableau contenant les pièces et leur quantité
+		ItemStack[] coinStacks = {
+				new ItemStack(goldCoin, coins[0]),    // Or
+				new ItemStack(silverCoin, coins[1]),  // Argent
+				new ItemStack(bronzeCoin, coins[2]),  // Bronze
+				new ItemStack(copperCoin, coins[3])   // Cuivre
+		};
+
+		// Trouver les deux types de pièces les plus hautes avec au moins une pièce
+		int slotIndex = 8;
+		for (int i = 0; i < coinStacks.length && slotIndex <= 9; i++) {
+			if (coinStacks[i].getCount() > 0) {
+				setSlot(_slots, slotIndex, coinStacks[i],coins[i]);
+				slotIndex++;
+			}
+		}
+
+		//
+		TradeResult result = getTradeByName(tradeName).getResult();
+		setSlot(_slots, 10, new ItemStack(),result.getQuantity());
+
+		// Si nécessaire, diffuser les changements de l'inventaire
 		player.containerMenu.broadcastChanges();
 	}
+
 
 	// Méthode utilitaire pour effacer le contenu d'un slot
 	private static void clearSlot(ServerPlayer player, Map _slots, int slotId) {
