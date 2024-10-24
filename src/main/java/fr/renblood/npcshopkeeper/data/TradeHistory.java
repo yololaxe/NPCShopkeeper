@@ -8,15 +8,18 @@ public class TradeHistory {
     private String tradeName;
     private boolean isFinished;
     private String id;
-    List<Map<String, Object>> tradeItems;
+    private List<Map<String, Object>> tradeItems;
+    private int totalPrice;
 
     // Constructeur
-    public TradeHistory(String player, String tradeName, boolean isFinished, String ID, List<Map<String, Object>> tradeItems) {
+    public TradeHistory(String player, String tradeName, boolean isFinished, String ID, List<Map<String, Object>> tradeItems, int totalPrice) {
         this.player = player;
         this.tradeName = tradeName;
         this.isFinished = isFinished;
         this.id = ID;
         this.tradeItems = tradeItems;
+        this.totalPrice = totalPrice;
+
     }
 
     // Getters et Setters
@@ -58,6 +61,13 @@ public class TradeHistory {
     public void setTradeItems(List<Map<String, Object>> tradeItems) {
         this.tradeItems = tradeItems;
     }
+    public int getTotalPrice() {
+        return totalPrice;
+    }
+
+    public void setTotalPrice(int totalPrice) {
+        this.totalPrice = totalPrice;
+    }
 
     @Override
     public String toString() {
@@ -65,6 +75,8 @@ public class TradeHistory {
                 "player='" + player + '\'' +
                 ", tradeName='" + tradeName + '\'' +
                 ", isFinished=" + isFinished +
+                ", totalPrice=" + totalPrice +
+                ", tradeItems=" + tradeItems +
                 '}';
     }
 }

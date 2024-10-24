@@ -1,7 +1,6 @@
 package fr.renblood.npcshopkeeper.client.gui;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
-
 import fr.renblood.npcshopkeeper.network.CreateTradeButtonMessage;
 import fr.renblood.npcshopkeeper.world.inventory.CreateTradeMenu;
 import net.minecraft.world.level.Level;
@@ -99,7 +98,7 @@ public class CreateTradeScreen extends AbstractContainerScreen<CreateTradeMenu> 
 	@Override
 	public void init() {
 		super.init();
-		trade_name = new EditBox(this.font, this.leftPos + 122, this.topPos + 77, 118, 18, Component.translatable("gui.npcshopkeeper.create_trade.trade_name")) {
+		trade_name = new EditBox(this.font, this.leftPos + 100, this.topPos + 77, 118, 18, Component.translatable("gui.npcshopkeeper.create_trade.trade_name")) {
 			@Override
 			public void insertText(String text) {
 				super.insertText(text);

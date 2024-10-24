@@ -85,7 +85,8 @@ public class PriceReferenceManager {
                 }
             }
         }
-        return null; // Retourne null si l'item n'est pas trouvé
+
+        return Pair.of(1,1); // Retourne null si l'item n'est pas trouvé
     }
     // Créer une nouvelle référence
     public static boolean createPriceReference(String item, int min, int max, Player player) {

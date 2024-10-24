@@ -2,6 +2,7 @@ package fr.renblood.npcshopkeeper.procedures;
 
 import fr.renblood.npcshopkeeper.data.TradeHistory;
 import fr.renblood.npcshopkeeper.data.TradeResult;
+import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.manager.MoneyCalculator;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -12,6 +13,8 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.entity.Entity;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 import java.util.function.Supplier;
@@ -19,9 +22,11 @@ import java.util.Map;
 
 import static fr.renblood.npcshopkeeper.manager.JsonTradeFileManager.*;
 
+
 public class TradeProcedure {
 
 	private static boolean isProcessingTrade = false; // Flag pour éviter les appels multiples
+	private static final Logger LOGGER = LogManager.getLogger(JsonTradeFileManager.class);
 
 	// Méthode principale de gestion du trade
 	public static void execute(Entity entity) {
@@ -112,22 +117,27 @@ public class TradeProcedure {
 	// Méthode utilitaire pour donner les récompenses
 	private static void giveRewards(ServerPlayer player, Map _slots, String tradeId, String tradeName) {
 		// Récupérer l'historique du trade
+		LOGGER.info("On est dans give reward");
 		TradeHistory tradeHistory = getTradeHistoryById(tradeId);
-		assert tradeHistory != null;
+		if (tradeHistory == null) {
+			LOGGER.error("Aucun historique de trade trouvé pour le trade ID : " + tradeId);
+			return;
+		}
+		LOGGER.info("Historique de trade trouvé pour le joueur : " + tradeHistory.getPlayer());
 
-		// Récupérer les items du trade
-		List<Map<String, Object>> tradeItems = tradeHistory.getTradeItems();
 
 		// Calculer le total d'argent à partir des tradeItems
-		int totalMoneyInCopper = MoneyCalculator.calculateTotalMoneyFromTrade(tradeItems);
+		int totalMoneyInCopper = tradeHistory.getTotalPrice();
+		LOGGER.info("Total d'argent calculé (en cuivre) : " + totalMoneyInCopper);
 
 		// Convertir le total en pièces (Gold, Silver, Bronze, Copper)
 		int[] coins = MoneyCalculator.getIntInCoins(totalMoneyInCopper);
+		LOGGER.info("Conversion des pièces : Or = " + coins[0] + ", Argent = " + coins[1] + ", Bronze = " + coins[2] + ", Cuivre = " + coins[3]);
 
 		// Définir les items correspondants aux pièces
-		Item goldCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medievalcoins:gold_coin"));
-		Item silverCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medievalcoins:silver_coin"));
-		Item bronzeCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medievalcoins:bronze_coin"));
+		Item goldCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:gold_coin"));
+		Item silverCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:silver_coin"));
+		Item bronzeCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:bronze_coin"));
 		Item copperCoin = Items.COPPER_INGOT;
 
 		// Tableau contenant les pièces et leur quantité
@@ -142,18 +152,28 @@ public class TradeProcedure {
 		int slotIndex = 8;
 		for (int i = 0; i < coinStacks.length && slotIndex <= 9; i++) {
 			if (coinStacks[i].getCount() > 0) {
-				setSlot(_slots, slotIndex, coinStacks[i],coins[i]);
+				LOGGER.info("Ajout de " + coins[i] + " pièce(s) dans le slot " + slotIndex);
+				setSlot(_slots, slotIndex, coinStacks[i], coins[i]);
 				slotIndex++;
 			}
 		}
 
-		//
+		// Récupérer le résultat du trade et placer l'item dans le slot 10
 		TradeResult result = getTradeByName(tradeName).getResult();
-		setSlot(_slots, 10, new ItemStack(),result.getQuantity());
+		if (result == null) {
+			LOGGER.error("Aucun résultat trouvé pour le trade : " + tradeName);
+			return;
+		}
+		ResourceLocation itemResource = new ResourceLocation(result.getItem());
+		Item item = BuiltInRegistries.ITEM.get(itemResource);
+		LOGGER.info("Ajout de " + result.getQuantity() + " de " + result.getItem() + " dans le slot 10.");
+		setSlot(_slots, 10, new ItemStack(item), result.getQuantity());
 
 		// Si nécessaire, diffuser les changements de l'inventaire
 		player.containerMenu.broadcastChanges();
+		LOGGER.info("Changements de l'inventaire diffusés au joueur.");
 	}
+
 
 
 	// Méthode utilitaire pour effacer le contenu d'un slot
