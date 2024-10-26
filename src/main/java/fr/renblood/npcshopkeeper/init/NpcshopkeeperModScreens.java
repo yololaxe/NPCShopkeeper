@@ -18,8 +18,12 @@ public class NpcshopkeeperModScreens {
 	@SubscribeEvent
 	public static void clientLoad(FMLClientSetupEvent event) {
 		event.enqueueWork(() -> {
+
 			MenuScreens.register(NpcshopkeeperModMenus.CREATE_TRADE.get(), CreateTradeScreen::new);
 			MenuScreens.register(NpcshopkeeperModMenus.TRADE.get(), TradeScreen::new);
+			MenuScreens.register(NpcshopkeeperModMenus.CATEGORY.get(), CategoryScreen::new);
+			MenuScreens.register(NpcshopkeeperModMenus.TRADE.get(), TradeListScreen::new);
+
 		});
 	}
 }

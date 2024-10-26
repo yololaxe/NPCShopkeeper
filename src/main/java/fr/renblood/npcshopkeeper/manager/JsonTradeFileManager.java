@@ -373,7 +373,48 @@ public class JsonTradeFileManager {
         return Pair.of(false, new TradeHistory("", "", true, "", new ArrayList<>(), 0)); // Si aucun trade non terminé trouvé, renvoyer false et un trade vide
     }
 
+    public static List<String> readCategoryNames() {
+        List<String> categories = new ArrayList<>();
+        JsonObject jsonObject = readJsonFile(Path.of(path));
 
+        if (jsonObject.has("trades")) {
+            JsonArray tradeArray = jsonObject.getAsJsonArray("trades");
+            tradeArray.forEach(tradeElement -> {
+                String category = tradeElement.getAsJsonObject().get("Category").getAsString();
+                if (!categories.contains(category)) {
+                    categories.add(category);
+                }
+            });
+        }
+        return categories;
+    }
+
+    public static List<Trade> getTradesByCategory(String category) {
+        List<Trade> trades = new ArrayList<>();
+        JsonObject jsonObject = readJsonFile(Path.of(path));
+
+        if (jsonObject.has("trades")) {
+            JsonArray tradeArray = jsonObject.getAsJsonArray("trades");
+            tradeArray.forEach(tradeElement -> {
+                JsonObject tradeObject = tradeElement.getAsJsonObject();
+                if (tradeObject.get("Category").getAsString().equals(category)) {
+                    String name = tradeObject.get("Name").getAsString();
+                    List<TradeItem> tradeItems = new ArrayList<>();
+                    JsonArray tradesArray = tradeObject.getAsJsonArray("trades");
+                    tradesArray.forEach(itemElement -> {
+                        JsonObject itemObject = itemElement.getAsJsonObject();
+                        tradeItems.add(new TradeItem(itemObject.get("item").getAsString(),
+                                itemObject.get("min").getAsInt(),
+                                itemObject.get("max").getAsInt()));
+                    });
+                    TradeResult tradeResult = new TradeResult(tradeObject.getAsJsonObject("result").get("item").getAsString(),
+                            tradeObject.getAsJsonObject("result").get("quantity").getAsInt());
+                    trades.add(new Trade(name, category, tradeItems, tradeResult));
+                }
+            });
+        }
+        return trades;
+    }
 
 
 
