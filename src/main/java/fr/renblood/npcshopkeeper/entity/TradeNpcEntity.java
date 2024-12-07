@@ -1,21 +1,18 @@
 package fr.renblood.npcshopkeeper.entity;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.ibm.icu.impl.Pair;
-import fr.renblood.npcshopkeeper.data.TradeHistory;
-import fr.renblood.npcshopkeeper.procedures.TradeCommandProcedure;
-import fr.renblood.npcshopkeeper.world.inventory.TradeListMenu;
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.data.Trade;
-import fr.renblood.npcshopkeeper.world.inventory.TradeMenu;
-import io.netty.buffer.Unpooled;
+import fr.renblood.npcshopkeeper.data.TradeHistory;
+import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.procedures.TradeCommandProcedure;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
@@ -23,24 +20,20 @@ import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomStrollGoal;
-import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.LevelAccessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-;
+import fr.renblood.npcshopkeeper.manager.ConstantManager;
 
-import javax.annotation.Nullable;
-import java.awt.*;
 import java.util.ArrayList;
-import java.util.Random;
 import java.util.List;
+import java.util.Random;
+
+;
 
 public class TradeNpcEntity extends Villager {
 
@@ -57,6 +50,44 @@ public class TradeNpcEntity extends Villager {
     public TradeNpcEntity(EntityType<TradeNpcEntity> type, Level world) {
         super(type, world);
         this.registerGoals();
+        this.initializeNpcData(); // Initialiser les données PNJ
+    }
+
+    private void initializeNpcData() {
+        try {
+            JsonArray pnjs = ConstantManager.getPnjData(); // Récupère les PNJs depuis ConstantManager
+            if (pnjs != null && pnjs.size() > 0) {
+                // Choisir un PNJ aléatoire
+                JsonObject randomPnj = pnjs.get(this.random.nextInt(pnjs.size())).getAsJsonObject();
+
+                this.npcId = randomPnj.has("name") ? randomPnj.get("name").getAsString() : "Unknown";
+                this.npcName = this.npcId;
+                this.texture = randomPnj.has("texture") ? randomPnj.get("texture").getAsString() : "textures/entity/default.png";
+                this.texts = new ArrayList<>();
+                if (randomPnj.has("texts")) {
+                    randomPnj.getAsJsonArray("texts").forEach(text -> texts.add(text.getAsString()));
+                }
+            } else {
+                LOGGER.warn("Aucun PNJ défini dans les données JSON !");
+                this.npcId = "Default";
+                this.npcName = "Default";
+                this.texture = "textures/entity/default.png";
+                this.texts = new ArrayList<>();
+                this.texts.add("Salut !");
+                this.texts.add("Je suis un PNJ générique.");
+            }
+
+            this.setCustomName(Component.literal(this.npcName));
+            LOGGER.info("PNJ initialisé avec succès : " + this.npcName);
+
+        } catch (Exception e) {
+            LOGGER.error("Erreur lors de l'initialisation du PNJ : " + e.getMessage(), e);
+            this.npcId = "Error";
+            this.npcName = "Error";
+            this.texture = "textures/entity/error.png";
+            this.texts = new ArrayList<>();
+            this.texts.add("Erreur lors du chargement des données.");
+        }
     }
 
     // Propriétés spécifiques au PNJ
@@ -123,11 +154,11 @@ public class TradeNpcEntity extends Villager {
                 try {
                     // Vérifier si un trade existe déjà pour ce PNJ
                     Pair<Boolean, TradeHistory> tradeStatus = JsonTradeFileManager.checkTradeStatusForNpc(this.npcId);
+                    position = player.blockPosition();
 
                     if (tradeStatus.first) {
                         // Si un trade existe, récupérer ses détails
                         tradeHistory = tradeStatus.second;
-
                         if (tradeHistory == null || tradeHistory.getTradeName() == null || tradeHistory.getTradeItems().isEmpty()) {
                             player.displayClientMessage(Component.literal("Erreur : données de trade manquantes pour le PNJ."), true);
                             LOGGER.error("Données de trade manquantes pour le PNJ : " + this.npcId);
@@ -138,7 +169,7 @@ public class TradeNpcEntity extends Villager {
                         String existingTradeName = tradeHistory.getTradeName();
                         player.displayClientMessage(Component.literal("Un trade existant a été trouvé : " + existingTradeName), true);
 
-                        position = player.blockPosition();
+
                         TradeCommandProcedure.execute(
                                 this.level(), position.getX(), position.getY(), position.getZ(),
                                 existingTradeName, player, this.npcId, this.npcName
@@ -150,12 +181,12 @@ public class TradeNpcEntity extends Villager {
 
                             if (!trades.isEmpty()) {
                                 trade = trades.get(new Random().nextInt(trades.size()));
-                                player.displayClientMessage(Component.literal("Nouveau trade généré : " + randomTrade.getName()), true);
+                                player.displayClientMessage(Component.literal("Nouveau trade généré : " + trade.getName()), true);
 
-                                BlockPos blockPos = player.blockPosition();
+
                                 TradeCommandProcedure.execute(
-                                        this.level(), blockPos.getX(), blockPos.getY(), blockPos.getZ(),
-                                        randomTrade.getName(), player, this.npcId, this.npcName
+                                        this.level(), position.getX(), position.getY(), position.getZ(),
+                                        trade.getName(), player, this.npcId, this.npcName
                                 );
                             } else {
                                 player.displayClientMessage(Component.literal("Aucun trade trouvé dans cette catégorie : " + tradeCategory), true);
