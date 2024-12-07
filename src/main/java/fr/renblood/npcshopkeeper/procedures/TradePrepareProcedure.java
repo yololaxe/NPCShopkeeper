@@ -11,6 +11,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -24,7 +25,7 @@ import static fr.renblood.npcshopkeeper.manager.PriceReferenceManager.findRefere
 
 
 public class TradePrepareProcedure {
-	public static void execute(Entity entity, String cleanTradeName) {
+	public static void execute(Entity entity, String cleanTradeName, String npcId, String npcName) {
 		if (entity == null) return;
 
 		// Check if the entity is a player
@@ -36,16 +37,16 @@ public class TradePrepareProcedure {
 				// Check if containerMenu is an instance of TradeMenu or any expected class
 				if (_player.containerMenu instanceof Supplier _current && _current.get() instanceof Map _slots) {
 					Trade trade = getTradeByName(cleanTradeName);
-					Pair<Boolean, TradeHistory> checkAndHistory = checkTradeStatusForPlayer(_player, cleanTradeName);
+					Pair<Boolean, TradeHistory> checkAndHistory = checkTradeStatusForNpc(npcId);
 					String id = checkAndHistory.first ? checkAndHistory.second.getId() : UUID.randomUUID().toString();
 					TradeHistory tradeHistory = checkAndHistory.second;
 					boolean checkExist = checkAndHistory.first;
 
 					final int[] slotID = {0};
-					List<Map<String, Object>> tradeItems = new ArrayList<>(); // Stockage des données
+					List<Map<String, Object>> tradeItems = new ArrayList<>(); // Store trade data
 					Random random = new Random();
 
-					// Optimisation : Récupération anticipée des tradeItems
+					// Retrieve trade items if the trade already exists
 					List<Map<String, Object>> existingTradeItems = checkExist ? tradeHistory.getTradeItems() : null;
 
 					trade.getTrades().forEach(tradeItem -> {
@@ -55,7 +56,7 @@ public class TradePrepareProcedure {
 						Item item = BuiltInRegistries.ITEM.get(itemResource);
 						ItemStack _setstack = new ItemStack(item).copy();
 
-						// Calcul du prix et de la quantité
+						// Calculate price and quantity
 						if (!checkExist) {
 							Pair<Integer, Integer> minMax = findReferenceByItem(tradeItem.getItem(), _player);
 							priceTradeItem = random.nextInt(minMax.second - minMax.first + 1) + minMax.first;
@@ -69,7 +70,7 @@ public class TradePrepareProcedure {
 						_setstack.setCount(quantity);
 						((Slot) _slots.get(slotID[0])).set(_setstack);
 
-						// Ajouter le trade item dans la liste
+						// Add trade item to the list
 						Map<String, Object> tradeMap = new HashMap<>();
 						tradeMap.put("price", priceTradeItem);
 						tradeMap.put("item", tradeItem.getItem());
@@ -80,31 +81,28 @@ public class TradePrepareProcedure {
 					});
 
 					// Set the trade category in slot 12
-					ResourceLocation categotyRessource = new ResourceLocation(trade.getCategory());
-					Item categoryItem = BuiltInRegistries.ITEM.get(categotyRessource);
+					ResourceLocation categoryResource = new ResourceLocation(trade.getCategory());
+					Item categoryItem = BuiltInRegistries.ITEM.get(categoryResource);
 					ItemStack categorySetStack = new ItemStack(categoryItem).copy();
 					categorySetStack.setHoverName(Component.literal(trade.getName() + " " + id));
 					((Slot) _slots.get(12)).set(categorySetStack);
 
-					// PARTIE POUR SET LES COINS
+					// Set the coins in the slots
 					int totalMoneyInCopper = checkExist ? tradeHistory.getTotalPrice() : MoneyCalculator.calculateTotalMoneyFromTrade(tradeItems);
 					int[] coins = MoneyCalculator.getIntInCoins(totalMoneyInCopper);
 
-					// Optimisation : Déclaration des items de pièce de monnaie
 					Item goldCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:gold_coin"));
 					Item silverCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:silver_coin"));
 					Item bronzeCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:bronze_coin"));
 					Item copperCoin = Items.COPPER_INGOT;
 
-					// Optimisation : Création des stacks de pièces
 					ItemStack[] coinStacks = {
-							new ItemStack(goldCoin, coins[0]),    // Or
-							new ItemStack(silverCoin, coins[1]),  // Argent
-							new ItemStack(bronzeCoin, coins[2]),  // Bronze
-							new ItemStack(copperCoin, coins[3])   // Cuivre
+							new ItemStack(goldCoin, coins[0]), // Gold
+							new ItemStack(silverCoin, coins[1]), // Silver
+							new ItemStack(bronzeCoin, coins[2]), // Bronze
+							new ItemStack(copperCoin, coins[3]) // Copper
 					};
 
-					// Place the two highest denominations in slots 13 and 14
 					int slotIndex = 13;
 					for (int i = 0; i < coinStacks.length && slotIndex <= 14; i++) {
 						if (coinStacks[i].getCount() > 0) {
@@ -116,7 +114,9 @@ public class TradePrepareProcedure {
 					// Log trade start if it's a new trade
 					if (!checkExist) {
 						_player.displayClientMessage(Component.literal("Début de l'enregistrement dans History"), false);
-						JsonTradeFileManager.logTradeStart(_player, cleanTradeName, id, tradeItems, totalMoneyInCopper);
+						ArrayList<Player> players = new ArrayList<>(); // Append new player
+						if (!players.contains(_player)) players.add(_player);
+						JsonTradeFileManager.logTradeStart(_player, cleanTradeName, id, tradeItems, totalMoneyInCopper, players, npcId, npcName);
 					}
 
 				} else {
@@ -128,4 +128,3 @@ public class TradePrepareProcedure {
 		}
 	}
 }
-

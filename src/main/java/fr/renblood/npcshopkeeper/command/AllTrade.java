@@ -8,8 +8,13 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 
+@Mod.EventBusSubscriber
 public class AllTrade {
+
+    @SubscribeEvent
     public static void registerCommand(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("alltrade").requires(s -> s.hasPermission(4)).executes(arguments -> {
             Level world = arguments.getSource().getUnsidedLevel();

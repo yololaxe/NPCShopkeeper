@@ -27,7 +27,8 @@ public class NpcshopkeeperModMenus {
 	public static final RegistryObject<MenuType<fr.renblood.npcshopkeeper.world.inventory.TradeMenu>> TRADE = REGISTRY.register("trade", () -> IForgeMenuType.create((id, inv, extraData) -> new TradeMenu(id, inv, extraData)));
 	public static final RegistryObject<MenuType<CategoryMenu>> CATEGORY_MENU = REGISTRY.register("category_menu",
 			() -> IForgeMenuType.create((windowId, inv, data) -> new CategoryMenu(windowId, inv)));
-
+	public static final RegistryObject<MenuType<CategoryMenu>> CATEGORY = REGISTRY.register("category",
+			() -> IForgeMenuType.create((windowId, inv, data) -> new CategoryMenu(windowId, inv)));
 	public static final RegistryObject<MenuType<TradeListMenu>> TRADE_LIST_MENU = REGISTRY.register("trade_list_menu",
 			() -> IForgeMenuType.create((windowId, inv, data) -> new TradeListMenu(windowId, inv)));
 

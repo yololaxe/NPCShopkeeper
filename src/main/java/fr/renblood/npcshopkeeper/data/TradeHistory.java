@@ -4,21 +4,26 @@ import java.util.List;
 import java.util.Map;
 
 public class TradeHistory {
-    private String player;
+    private List<String> player;
     private String tradeName;
     private boolean isFinished;
     private String id;
     private List<Map<String, Object>> tradeItems;
     private int totalPrice;
+    private String npcId;
+    private String npcName;
+
 
     // Constructeur
-    public TradeHistory(String player, String tradeName, boolean isFinished, String ID, List<Map<String, Object>> tradeItems, int totalPrice) {
+    public TradeHistory(List<String> player, String tradeName, boolean isFinished, String ID, List<Map<String, Object>> tradeItems, int totalPrice, String npcId, String npcName) {
         this.player = player;
         this.tradeName = tradeName;
         this.isFinished = isFinished;
         this.id = ID;
         this.tradeItems = tradeItems;
         this.totalPrice = totalPrice;
+        this.npcId = npcId;
+        this.npcName = npcName;
 
     }
 
@@ -31,14 +36,13 @@ public class TradeHistory {
         this.id = id;
     }
 
-    public String getPlayer() {
+    public List<String> getPlayer() {
         return player;
     }
 
-    public void setPlayer(String player) {
+    public void setPlayer(List<String> player) {
         this.player = player;
     }
-
     public String getTradeName() {
         return tradeName;
     }
@@ -67,6 +71,22 @@ public class TradeHistory {
 
     public void setTotalPrice(int totalPrice) {
         this.totalPrice = totalPrice;
+    }
+
+    public String getNpcId() {
+        return npcId;
+    }
+
+    public void setNpcId(String npcId) {
+        this.npcId = npcId;
+    }
+
+    public String getNpcName() {
+        return npcName;
+    }
+
+    public void setNpcName(String npcName) {
+        this.npcName = npcName;
     }
 
     @Override

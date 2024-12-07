@@ -47,7 +47,7 @@ public class TradeCommand {
 							if (entity != null)
 								direction = entity.getDirection();
 
-							TradeCommandProcedure.execute(world, x, y, z, arguments, entity);
+							TradeCommandProcedure.execute(world, x, y, z, arguments.getInput().substring(6), entity, "", "");
 							return 0;
 						})));
 	}

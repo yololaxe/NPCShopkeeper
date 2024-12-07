@@ -1,0 +1,1 @@
+package fr.renblood.npcshopkeeper.manager;  public class ConstantManager { }

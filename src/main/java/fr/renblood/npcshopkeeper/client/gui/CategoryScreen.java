@@ -1,13 +1,17 @@
 package fr.renblood.npcshopkeeper.client.gui;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import fr.renblood.npcshopkeeper.world.inventory.CategoryMenu;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.client.Minecraft;
 import java.util.List;
 import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
+import net.minecraft.world.entity.player.Inventory;
 
 public class CategoryScreen extends AbstractContainerScreen<CategoryMenu> {
 
@@ -28,10 +32,14 @@ public class CategoryScreen extends AbstractContainerScreen<CategoryMenu> {
         // Dynamically add buttons for each category
         for (int i = 0; i < categories.size(); i++) {
             String category = categories.get(i);
-            this.addRenderableWidget(new Button(this.width / 2 - 100, y + i * 25, 200, 20, Component.literal(category), button -> {
-                // On button click, open a new screen showing the trades in this category
-                Minecraft.getInstance().setScreen(new TradeListScreen(category));
-            }));
+            this.addRenderableWidget(
+                    Button.builder(Component.literal(category), button -> {
+                                // Ouvrir une nouvelle interface pour cette catégorie
+                                Minecraft.getInstance().setScreen(new SeeTradesScreen(0, category));
+                            })
+                            .bounds(this.width / 2 - 100, y + i * 25, 200, 20) // Position et dimensions
+                            .build()
+            );
         }
     }
 
@@ -40,6 +48,10 @@ public class CategoryScreen extends AbstractContainerScreen<CategoryMenu> {
         this.renderBackground(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
         this.renderTooltip(guiGraphics, mouseX, mouseY);
+    }
+
+    @Override
+    protected void renderBg(GuiGraphics guiGraphics, float v, int i, int i1) {
     }
 
     @Override

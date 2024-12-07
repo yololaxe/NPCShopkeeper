@@ -2,6 +2,7 @@ package fr.renblood.npcshopkeeper.init;
 /*
  *	MCreator note: This file will be REGENERATED on each build.
  */
+import fr.renblood.npcshopkeeper.client.gui.CategoryScreen;
 
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -22,7 +23,7 @@ public class NpcshopkeeperModScreens {
 			MenuScreens.register(NpcshopkeeperModMenus.CREATE_TRADE.get(), CreateTradeScreen::new);
 			MenuScreens.register(NpcshopkeeperModMenus.TRADE.get(), TradeScreen::new);
 			MenuScreens.register(NpcshopkeeperModMenus.CATEGORY.get(), CategoryScreen::new);
-			MenuScreens.register(NpcshopkeeperModMenus.TRADE.get(), TradeListScreen::new);
+			//MenuScreens.register(NpcshopkeeperModMenus.TRADE.get(), TradeListScreen::new);
 
 		});
 	}

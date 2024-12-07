@@ -87,6 +87,30 @@ public class WorldEventHandler {
                     e.printStackTrace();
                 }
             }
+
+            File consFile = new File(worldSaveFolder, "constant.json");
+
+            // Vérifier si le fichier existe déjà
+            if (!consFile.exists()) {
+                try {
+                    // Créer le dossier npcshopkeeper s'il n'existe pas
+                    if (!worldSaveFolder.exists()) {
+                        worldSaveFolder.mkdirs();
+                    }
+
+                    // Créer le fichier trade_history.json
+                    consFile.createNewFile();
+
+                    // Initialiser avec un contenu JSON vide (tableau vide)
+                    FileWriter writer = new FileWriter(refFile);
+                    writer.write("{\"references\": []}");  // Créer un tableau vide de "history"
+                    writer.close();
+
+                    System.out.println("Le fichier constant.json a été créé dans le dossier du monde.");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 }

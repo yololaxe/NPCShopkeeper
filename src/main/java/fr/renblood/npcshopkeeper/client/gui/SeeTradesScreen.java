@@ -1,8 +1,11 @@
 package fr.renblood.npcshopkeeper.client.gui;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import fr.renblood.npcshopkeeper.world.inventory.TradeListMenu;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.client.Minecraft;
@@ -14,10 +17,12 @@ public class SeeTradesScreen extends AbstractContainerScreen<TradeListMenu> {
     private final String category;
     private final List<Trade> trades; // This holds trades for the selected category
 
-    public SeeTradesScreen(String category) {
-        super(new TradeListMenu(), Minecraft.getInstance().player.getInventory(), Component.literal(category));
+    public SeeTradesScreen(int id, String category) {
+        super(new TradeListMenu(id, Minecraft.getInstance().player.getInventory()),
+                Minecraft.getInstance().player.getInventory(),
+                Component.literal(category));
         this.category = category;
-        this.trades = JsonTradeFileManager.getTradesForCategory(category); // Fetch trades for this category
+        this.trades = JsonTradeFileManager.getTradesByCategory(category); // Récupérer les trades
         this.imageWidth = 176;
         this.imageHeight = 166;
     }
@@ -30,10 +35,16 @@ public class SeeTradesScreen extends AbstractContainerScreen<TradeListMenu> {
         // Dynamically add buttons for each trade in the category
         for (int i = 0; i < trades.size(); i++) {
             Trade trade = trades.get(i);
-            this.addRenderableWidget(new Button(this.width / 2 - 100, y + i * 25, 200, 20, Component.literal(trade.getName()), button -> {
-                // When a trade is selected, you can display details or start the trade
-                Minecraft.getInstance().player.sendMessage(Component.literal("Trade selected: " + trade.getName()));
-            }));
+            this.addRenderableWidget(Button.builder(
+                            Component.literal(trade.getName()), // Texte affiché sur le bouton
+                            button -> {
+                                // Action à effectuer lors du clic sur le bouton
+                                Minecraft.getInstance().player.displayClientMessage(
+                                        Component.literal("Trade selected: " + trade.getName()), true);
+                            })
+                    .bounds(this.width / 2 - 100, y + i * 25, 200, 20) // Position et dimensions du bouton
+                    .build()
+            );
         }
     }
 
@@ -42,6 +53,11 @@ public class SeeTradesScreen extends AbstractContainerScreen<TradeListMenu> {
         this.renderBackground(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
         this.renderTooltip(guiGraphics, mouseX, mouseY);
+    }
+
+    @Override
+    protected void renderBg(GuiGraphics guiGraphics, float v, int i, int i1) {
+        return;
     }
 
     @Override

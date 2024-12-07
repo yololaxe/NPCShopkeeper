@@ -5,6 +5,7 @@ import com.ibm.icu.impl.Pair;
 import fr.renblood.npcshopkeeper.data.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -13,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
@@ -51,21 +53,25 @@ public class JsonTradeFileManager {
 
     // Méthode pour lire un fichier JSON
     public static JsonObject readJsonFile(Path filePath) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath.toFile()))) {
-            StringBuilder content = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                content.append(line);
+        try {
+            // Lire le fichier
+            String content = Files.readString(filePath);
+            JsonElement jsonElement = JsonParser.parseString(content);
+
+            // Vérifier que l'élément est un objet JSON
+            if (!jsonElement.isJsonObject()) {
+                LOGGER.error("Le contenu du fichier JSON n'est pas un objet JSON valide : {}", filePath);
+                return new JsonObject(); // Retourne un objet vide pour éviter l'erreur
             }
-            return JsonParser.parseString(content.toString()).getAsJsonObject();
-        } catch (FileNotFoundException e) {
-            LOGGER.error("Le fichier JSON est introuvable : " + filePath.toString());
+
+            return jsonElement.getAsJsonObject();
         } catch (IOException e) {
-            LOGGER.error("Erreur lors de la lecture du fichier JSON : " + e.getMessage());
-        } catch (JsonSyntaxException e) {
-            LOGGER.error("Le fichier JSON est mal formé : " + e.getMessage());
+            LOGGER.error("Erreur lors de la lecture du fichier JSON : {}", filePath, e);
+            return new JsonObject(); // Retourne un objet vide si le fichier ne peut pas être lu
+        } catch (Exception e) {
+            LOGGER.error("Erreur inattendue lors de la lecture du fichier JSON : {}", filePath, e);
+            return new JsonObject(); // Retourne un objet vide si une autre erreur survient
         }
-        return new JsonObject(); // Retourne un objet JSON vide en cas d'erreur
     }
 
 
@@ -183,33 +189,53 @@ public class JsonTradeFileManager {
     }
 
     // Méthode pour enregistrer le début d'un trade
-    public static void logTradeStart(ServerPlayer player, String tradeName, String id, List<Map<String, Object>> tradeItems, int totalPrice) {
+    public static void logTradeStart(ServerPlayer player, String tradeName, String id, List<Map<String, Object>> tradeItems, int totalPrice, List<Player> players, String npcId, String npcName) {
         Path path = Paths.get(player.getServer().getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/trade_history.json").toString());
         JsonObject jsonObject = readJsonFile(path);
 
         JsonArray historyArray = jsonObject.has("history") ? jsonObject.getAsJsonArray("history") : new JsonArray();
         boolean tradeExists = false;
 
-        // Parcourir l'historique pour vérifier s'il y a un trade non terminé pour ce joueur et ce tradeName
+        // Parcourir l'historique pour vérifier s'il y a un trade non terminé pour ce NPC
         for (JsonElement element : historyArray) {
             JsonObject tradeEntry = element.getAsJsonObject();
 
-            String tradeId = tradeEntry.get("id").getAsString();
+            String tradeNpcId = tradeEntry.get("npcId").getAsString();
             boolean isFinished = tradeEntry.get("isFinished").getAsBoolean();
 
-            if (tradeId.equals(id) && !isFinished) {
+            // Si un trade non terminé avec le même NPC existe, ajouter les joueurs à ce trade
+            if (tradeNpcId.equals(npcId) && !isFinished) {
                 tradeExists = true;
+
+                // Ajouter les nouveaux joueurs à la liste des joueurs existants
+                JsonArray existingPlayersArray = tradeEntry.getAsJsonArray("players");
+                for (Player player1 : players) {
+                    String playerName = player1.getName().getString();
+                    if (!containsPlayer(existingPlayersArray, playerName)) {
+                        existingPlayersArray.add(playerName);
+                    }
+                }
+
+                // Mettre à jour le trade dans l'historique
+                tradeEntry.add("players", existingPlayersArray);
                 break;
             }
         }
 
         // Si aucun trade non terminé trouvé, créer une nouvelle entrée
         if (!tradeExists) {
+            JsonArray playersArray = new JsonArray();
+            for (Player player1 : players) {
+                playersArray.add(player1.getName().getString());
+            }
+
             JsonObject newTradeEntry = new JsonObject();
             newTradeEntry.addProperty("id", id);
-            newTradeEntry.addProperty("player", player.getName().getString());
+            newTradeEntry.add("players", playersArray);
             newTradeEntry.addProperty("tradeName", tradeName);
             newTradeEntry.addProperty("isFinished", false);
+            newTradeEntry.addProperty("npcId", npcId);
+            newTradeEntry.addProperty("npcName", npcName);
 
             // Ajouter la date et l'heure du trade
             LocalDateTime now = LocalDateTime.now();
@@ -217,7 +243,7 @@ public class JsonTradeFileManager {
             String formattedDateTime = now.format(formatter);
             newTradeEntry.addProperty("dateTime", formattedDateTime);
 
-            // Ajouter le total des trades (nouveau champ totalPrice)
+            // Ajouter le total des trades
             newTradeEntry.addProperty("totalPrice", totalPrice);
 
             // Ajouter les items du trade
@@ -233,15 +259,26 @@ public class JsonTradeFileManager {
 
             // Ajouter cette nouvelle entrée dans l'historique
             historyArray.add(newTradeEntry);
-            jsonObject.add("history", historyArray);
-
-            // Sauvegarder le fichier JSON
-            writeJsonFile(path, jsonObject);
-
-            LOGGER.info("Trade loggué pour le joueur " + player.getName().getString() + " et le trade " + tradeName + " avec un total de " + totalPrice + " en cuivre.");
-        } else {
-            LOGGER.info("Un trade non terminé existe déjà pour le joueur " + player.getName().getString() + " et le trade " + tradeName);
         }
+
+        // Sauvegarder le fichier JSON
+        jsonObject.add("history", historyArray);
+        writeJsonFile(path, jsonObject);
+
+        if (tradeExists) {
+            LOGGER.info("Un trade non terminé avec le NPC " + npcName + " a été mis à jour avec de nouveaux joueurs.");
+        } else {
+            LOGGER.info("Un nouveau trade loggué pour le joueur " + player.getName().getString() + " et le NPC " + npcName);
+        }
+    }
+
+    private static boolean containsPlayer(JsonArray playersArray, String playerName) {
+        for (JsonElement element : playersArray) {
+            if (element.getAsString().equals(playerName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 
@@ -274,9 +311,17 @@ public class JsonTradeFileManager {
                 String tradeId = tradeObject.get("id").getAsString();
 
                 if (tradeId.equals(id)) {
-                    String playerName = tradeObject.get("player").getAsString();
+                    List<String> playersName = new ArrayList<>();
+                    if (tradeObject.has("player")) {
+                        JsonArray playersArray = tradeObject.getAsJsonArray("player");
+                        for (JsonElement playerElement : playersArray) {
+                            playersName.add(playerElement.getAsString());
+                        }
+                    }
                     String tradeName = tradeObject.get("tradeName").getAsString();
                     boolean isFinished = tradeObject.get("isFinished").getAsBoolean();
+                    String npcId = tradeObject.get("npcId").getAsString();
+                    String npcName = tradeObject.get("npcName").getAsString();
 
                     // Récupération des tradeItems
                     List<Map<String, Object>> tradeItems = new ArrayList<>();
@@ -303,7 +348,7 @@ public class JsonTradeFileManager {
                     int totalPrice = tradeObject.has("totalPrice") ? tradeObject.get("totalPrice").getAsInt() : 0;
 
                     // Retourne un TradeHistory avec les informations du joueur, du trade, du statut et du prix total
-                    return new TradeHistory(playerName, tradeName, isFinished, tradeId, tradeItems, totalPrice);
+                    return new TradeHistory(playersName, tradeName, isFinished, tradeId, tradeItems, totalPrice, npcId, npcName);
                 }
             }
         }
@@ -312,66 +357,83 @@ public class JsonTradeFileManager {
         return null;
     }
 
+//
+//    public static Pair<Boolean, TradeHistory> checkTradeStatusForPlayer(ServerPlayer player, String tradeName) {
+//        JsonObject jsonObject = readJsonFile(Path.of(pathHistory));
+//
+//        if (jsonObject.has("history")) {
+//            JsonArray historyArray = jsonObject.getAsJsonArray("history");
+//
+//            // Parcourir l'historique des trades pour ce joueur
+//            for (JsonElement tradeElement : historyArray) {
+//                JsonObject tradeObject = tradeElement.getAsJsonObject();
+//
+//                // Vérifier si le trade appartient à ce joueur
+//                JsonArray playersArray = tradeObject.getAsJsonArray("players");
+//                boolean isPlayerInTrade = false;
+//
+//                for (JsonElement playerElement : playersArray) {
+//                    String playerName = playerElement.getAsString();
+//                    if (playerName.equals(player.getName().getString())) {
+//                        isPlayerInTrade = true;
+//                        break;
+//                    }
+//                }
+//                if (!isPlayerInTrade) {
+//                    continue;
+//                }
+//
+//                String tradeId = tradeObject.get("id").getAsString();
+//                String npcId = tradeObject.get("npcId").getAsString();
+//                String npcName = tradeObject.get("npcName").getAsString();
+//                String currentTradeName = tradeObject.get("tradeName").getAsString();
+//
+//                // Vérifier si le nom du trade correspond à celui recherché
+//                if (currentTradeName.equalsIgnoreCase(tradeName)) {
+//                    boolean isFinished = tradeObject.get("isFinished").getAsBoolean();
+//
+//                    // Récupérer les tradeItems
+//                    List<Map<String, Object>> tradeItems = new ArrayList<>();
+//                    if (tradeObject.has("trades")) {
+//                        JsonArray tradesArray = tradeObject.getAsJsonArray("trades");
+//
+//                        for (JsonElement tradeItemElement : tradesArray) {
+//                            JsonObject tradeItemObject = tradeItemElement.getAsJsonObject();
+//                            Map<String, Object> tradeItemMap = new HashMap<>();
+//
+//                            String item = tradeItemObject.get("item").getAsString();
+//                            int quantity = tradeItemObject.get("quantity").getAsInt();
+//                            int price = tradeItemObject.get("price").getAsInt();
+//
+//                            tradeItemMap.put("item", item);
+//                            tradeItemMap.put("quantity", quantity);
+//                            tradeItemMap.put("price", price);
+//
+//                            tradeItems.add(tradeItemMap);
+//                        }
+//                    }
+//
+//                    // Si le trade n'est pas terminé, renvoyer true et le TradeHistory complet
+//                    if (!isFinished) {
+//                        List<String> playersList = new ArrayList<>();
+//                        for (JsonElement playerElement : playersArray) {
+//                            playersList.add(playerElement.getAsString());
+//                        }
+//                        int totalPrice = tradeObject.has("totalPrice") ? tradeObject.get("totalPrice").getAsInt() : 0;
+//                        LOGGER.info("Le joueur " + player.getName().getString() + " a un trade non terminé pour " + tradeName);
+//                        return Pair.of(true, new TradeHistory(playersList, tradeName, isFinished, tradeId, tradeItems, totalPrice, npcId, npcName));
+//                    }
+//
+//                    // Si le trade est terminé, on passe à la recherche d'un autre trade du même nom
+//                }
+//            }
+//        }
+//
+//        LOGGER.warn("Aucun trade non terminé trouvé pour le joueur " + player.getName().getString() + " et le trade " + tradeName);
+//        return Pair.of(false, new TradeHistory(new ArrayList<>(), "", true, "", new ArrayList<>(), 0, "", "")); // Si aucun trade non terminé trouvé, renvoyer false et un trade vide
+//    }
 
-    public static Pair<Boolean, TradeHistory> checkTradeStatusForPlayer(ServerPlayer player, String tradeName) {
-        JsonObject jsonObject = readJsonFile(Path.of(pathHistory));
 
-        if (jsonObject.has("history")) {
-            JsonArray historyArray = jsonObject.getAsJsonArray("history");
-
-            // Parcourir l'historique des trades pour ce joueur
-            for (JsonElement tradeElement : historyArray) {
-                JsonObject tradeObject = tradeElement.getAsJsonObject();
-
-                // Vérifier si le trade appartient à ce joueur
-                String playerName = tradeObject.get("player").getAsString();
-                if (!playerName.equals(player.getName().getString())) {
-                    continue; // Passer au trade suivant si ce n'est pas pour ce joueur
-                }
-
-                String tradeId = tradeObject.get("id").getAsString();
-                String currentTradeName = tradeObject.get("tradeName").getAsString();
-
-                // Vérifier si le nom du trade correspond à celui recherché
-                if (currentTradeName.equalsIgnoreCase(tradeName)) {
-                    boolean isFinished = tradeObject.get("isFinished").getAsBoolean();
-
-                    // Récupérer les tradeItems
-                    List<Map<String, Object>> tradeItems = new ArrayList<>();
-                    if (tradeObject.has("trades")) {
-                        JsonArray tradesArray = tradeObject.getAsJsonArray("trades");
-
-                        for (JsonElement tradeItemElement : tradesArray) {
-                            JsonObject tradeItemObject = tradeItemElement.getAsJsonObject();
-                            Map<String, Object> tradeItemMap = new HashMap<>();
-
-                            String item = tradeItemObject.get("item").getAsString();
-                            int quantity = tradeItemObject.get("quantity").getAsInt();
-                            int price = tradeItemObject.get("price").getAsInt();
-
-                            tradeItemMap.put("item", item);
-                            tradeItemMap.put("quantity", quantity);
-                            tradeItemMap.put("price", price);
-
-                            tradeItems.add(tradeItemMap);
-                        }
-                    }
-
-                    // Si le trade n'est pas terminé, renvoyer true et le TradeHistory complet
-                    if (!isFinished) {
-                        int totalPrice = tradeObject.has("totalPrice") ? tradeObject.get("totalPrice").getAsInt() : 0;
-                        LOGGER.info("Le joueur " + player.getName().getString() + " a un trade non terminé pour " + tradeName);
-                        return Pair.of(true, new TradeHistory(playerName, tradeName, isFinished, tradeId, tradeItems, totalPrice));
-                    }
-
-                    // Si le trade est terminé, on passe à la recherche d'un autre trade du même nom
-                }
-            }
-        }
-
-        LOGGER.warn("Aucun trade non terminé trouvé pour le joueur " + player.getName().getString() + " et le trade " + tradeName);
-        return Pair.of(false, new TradeHistory("", "", true, "", new ArrayList<>(), 0)); // Si aucun trade non terminé trouvé, renvoyer false et un trade vide
-    }
 
     public static List<String> readCategoryNames() {
         List<String> categories = new ArrayList<>();
@@ -397,24 +459,122 @@ public class JsonTradeFileManager {
             JsonArray tradeArray = jsonObject.getAsJsonArray("trades");
             tradeArray.forEach(tradeElement -> {
                 JsonObject tradeObject = tradeElement.getAsJsonObject();
-                if (tradeObject.get("Category").getAsString().equals(category)) {
-                    String name = tradeObject.get("Name").getAsString();
+
+                // Vérification que la catégorie correspond
+                if (tradeObject.has("Category") && tradeObject.get("Category").getAsString().equals(category)) {
+                    String name = tradeObject.has("Name") ? tradeObject.get("Name").getAsString() : "Unknown";
+
+                    // Récupération des items de trade
                     List<TradeItem> tradeItems = new ArrayList<>();
-                    JsonArray tradesArray = tradeObject.getAsJsonArray("trades");
-                    tradesArray.forEach(itemElement -> {
-                        JsonObject itemObject = itemElement.getAsJsonObject();
-                        tradeItems.add(new TradeItem(itemObject.get("item").getAsString(),
-                                itemObject.get("min").getAsInt(),
-                                itemObject.get("max").getAsInt()));
-                    });
-                    TradeResult tradeResult = new TradeResult(tradeObject.getAsJsonObject("result").get("item").getAsString(),
-                            tradeObject.getAsJsonObject("result").get("quantity").getAsInt());
+                    if (tradeObject.has("trades")) {
+                        JsonArray tradesArray = tradeObject.getAsJsonArray("trades");
+                        tradesArray.forEach(itemElement -> {
+                            JsonObject itemObject = itemElement.getAsJsonObject();
+                            String item = itemObject.has("item") ? itemObject.get("item").getAsString() : "minecraft:air";
+                            int min = itemObject.has("min") ? itemObject.get("min").getAsInt() : 0;
+                            int max = itemObject.has("max") ? itemObject.get("max").getAsInt() : 0;
+                            tradeItems.add(new TradeItem(item, min, max));
+                        });
+                    }
+
+                    // Récupération du résultat du trade (peut être null)
+                    TradeResult tradeResult = null;
+                    if (tradeObject.has("result") && !tradeObject.get("result").isJsonNull()) {
+                        JsonObject resultObject = tradeObject.getAsJsonObject("result");
+                        String resultItem = resultObject.has("item") ? resultObject.get("item").getAsString() : "minecraft:air";
+                        int quantity = resultObject.has("quantity") ? resultObject.get("quantity").getAsInt() : 1;
+                        tradeResult = new TradeResult(resultItem, quantity);
+                    }
+
+                    // Ajout du trade à la liste
                     trades.add(new Trade(name, category, tradeItems, tradeResult));
                 }
             });
         }
         return trades;
     }
+    public static Pair<Boolean, TradeHistory> checkTradeStatusForNpc(String npcId) {
+        LOGGER.info("Début de la vérification du statut du trade pour le NPC : " + npcId);
+        JsonObject jsonObject = readJsonFile(Path.of(pathHistory));
+
+        if (jsonObject.has("history")) {
+            JsonArray historyArray = jsonObject.getAsJsonArray("history");
+            LOGGER.info("Nombre de trades dans l'historique : " + historyArray.size());
+
+            for (JsonElement element : historyArray) {
+                JsonObject tradeObject = element.getAsJsonObject();
+                String currentNpcId = tradeObject.get("npcId").getAsString();
+                boolean isFinished = tradeObject.get("isFinished").getAsBoolean();
+                LOGGER.info("Traitement du trade pour NPC ID : " + currentNpcId + ", Terminé : " + isFinished);
+
+                if (currentNpcId.equals(npcId) && !isFinished) {
+                    LOGGER.info("Un trade non terminé a été trouvé pour le NPC ID : " + npcId);
+
+                    // Récupération du nom du trade
+                    String tradeName = tradeObject.has("tradeName") ? tradeObject.get("tradeName").getAsString() : null;
+                    if (tradeName == null) {
+                        LOGGER.error("Le nom du trade est null pour le NPC : " + npcId);
+                    } else {
+                        LOGGER.info("Nom du trade récupéré : " + tradeName);
+                    }
+
+                    // Récupération des items du trade
+                    List<Map<String, Object>> tradeItems = new ArrayList<>();
+                    if (tradeObject.has("trades")) {
+                        JsonArray tradesArray = tradeObject.getAsJsonArray("trades");
+                        LOGGER.info("Nombre d'items dans le trade : " + tradesArray.size());
+
+                        for (JsonElement tradeItemElement : tradesArray) {
+                            JsonObject tradeItemObject = tradeItemElement.getAsJsonObject();
+                            Map<String, Object> tradeItem = new HashMap<>();
+                            tradeItem.put("item", tradeItemObject.get("item").getAsString());
+                            tradeItem.put("quantity", tradeItemObject.get("quantity").getAsInt());
+                            tradeItem.put("price", tradeItemObject.get("price").getAsInt());
+                            tradeItems.add(tradeItem);
+                            LOGGER.info("Item ajouté : " + tradeItem);
+                        }
+                    } else {
+                        LOGGER.warn("Aucun item trouvé pour le trade du NPC : " + npcId);
+                    }
+
+                    // Vérification des données critiques
+                    if (tradeItems.isEmpty()) {
+                        LOGGER.error("Les items du trade sont vides pour le NPC : " + npcId);
+                    }
+
+                    int totalPrice = tradeObject.has("totalPrice") ? tradeObject.get("totalPrice").getAsInt() : 0;
+                    LOGGER.info("Prix total récupéré pour le trade : " + totalPrice);
+
+                    String npcName = tradeObject.get("npcName").getAsString();
+                    LOGGER.info("Nom du NPC récupéré : " + npcName);
+
+                    // Création de l'objet TradeHistory
+                    TradeHistory tradeHistory = new TradeHistory(
+                            new ArrayList<>(), // Liste des joueurs si nécessaire
+                            tradeName,
+                            false,
+                            tradeObject.get("id").getAsString(),
+                            tradeItems,
+                            totalPrice,
+                            npcId,
+                            npcName
+                    );
+                    LOGGER.info("Objet TradeHistory créé avec succès pour le NPC : " + npcId);
+                    return Pair.of(true, tradeHistory);
+                }
+            }
+            LOGGER.info("Aucun trade non terminé trouvé pour le NPC : " + npcId);
+        } else {
+            LOGGER.warn("Aucun historique de trade trouvé.");
+        }
+
+        LOGGER.info("Fin de la vérification du statut du trade pour le NPC : " + npcId);
+        TradeHistory tradeHistory = new TradeHistory(new ArrayList<>(), "", true, "", new ArrayList<>(), 0, "", "");
+        return Pair.of(false, tradeHistory);
+    }
+
+
+
 
 
 
