@@ -1,14 +1,18 @@
 package fr.renblood.npcshopkeeper.entity;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.ibm.icu.impl.Pair;
+import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.Trade;
 import fr.renblood.npcshopkeeper.data.TradeHistory;
+import fr.renblood.npcshopkeeper.manager.GlobalNpcManager;
 import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.procedures.TradeCommandProcedure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
@@ -27,66 +31,69 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import fr.renblood.npcshopkeeper.manager.ConstantManager;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
-;
+;import static fr.renblood.npcshopkeeper.manager.JsonTradeFileManager.getPnjData;
 
 public class TradeNpcEntity extends Villager {
 
-    private String npcId;
-    private String npcName;
-    private ArrayList<String> texts;
-    private String texture;
+    private String npcId = this.stringUUID;
+    private String npcName = GlobalNpcManager.getRandomInactiveNpc().get();
+    Map<String, Object> npcData = GlobalNpcManager.getNpcData(npcName);
+    private ArrayList<String> texts = (ArrayList<String>) npcData.getOrDefault("Texts", new ArrayList<>());
+    private String texture = (String) npcData.getOrDefault("Texture", "textures/entity/banker.png");
     private BlockPos position;
     private String tradeCategory; // Catégorie du trade assignée à ce PNJ
     private Trade trade;
     private TradeHistory tradeHistory;
+    private boolean initialized = false;
+
     private static final Logger LOGGER = LogManager.getLogger(TradeCommandProcedure.class);
 
     public TradeNpcEntity(EntityType<TradeNpcEntity> type, Level world) {
         super(type, world);
-        this.registerGoals();
-        this.initializeNpcData(); // Initialiser les données PNJ
+        if (world.isClientSide()) {
+            LOGGER.warn("TradeNpcEntity constructor called on client side. Ignoring...");
+            return;
+        }
+
+//        this.registerGoals();
+        if (!initialized) {
+            LOGGER.info("Initializing NPC entity: {}", this.getUUID());
+
+            initialized = true;
+        } else {
+            LOGGER.warn("TradeNpcEntity was already initialized: {}", this.getUUID());
+        }
     }
 
-    private void initializeNpcData() {
-        try {
-            JsonArray pnjs = ConstantManager.getPnjData(); // Récupère les PNJs depuis ConstantManager
-            if (pnjs != null && pnjs.size() > 0) {
-                // Choisir un PNJ aléatoire
-                JsonObject randomPnj = pnjs.get(this.random.nextInt(pnjs.size())).getAsJsonObject();
+    public boolean initializeNpcData() {
+        if (initialized) {
+            LOGGER.warn("initializeNpcData() déjà appelée pour l'entité : " + this.getUUID());
+            return false;
+        }
 
-                this.npcId = randomPnj.has("name") ? randomPnj.get("name").getAsString() : "Unknown";
-                this.npcName = this.npcId;
-                this.texture = randomPnj.has("texture") ? randomPnj.get("texture").getAsString() : "textures/entity/default.png";
-                this.texts = new ArrayList<>();
-                if (randomPnj.has("texts")) {
-                    randomPnj.getAsJsonArray("texts").forEach(text -> texts.add(text.getAsString()));
-                }
-            } else {
-                LOGGER.warn("Aucun PNJ défini dans les données JSON !");
-                this.npcId = "Default";
-                this.npcName = "Default";
-                this.texture = "textures/entity/default.png";
-                this.texts = new ArrayList<>();
-                this.texts.add("Salut !");
-                this.texts.add("Je suis un PNJ générique.");
-            }
+        Optional<String> npcNameOptional = GlobalNpcManager.getRandomInactiveNpc();
+        if (npcNameOptional.isEmpty()) {
+            LOGGER.error("Tous les PNJs disponibles sont déjà en jeu !");
+            return false;
+        }
 
-            this.setCustomName(Component.literal(this.npcName));
-            LOGGER.info("PNJ initialisé avec succès : " + this.npcName);
+        GlobalNpcManager.activateNpc(npcName);
+        this.setCustomName(Component.literal(this.npcName));
+        this.setCustomNameVisible(true);
 
-        } catch (Exception e) {
-            LOGGER.error("Erreur lors de l'initialisation du PNJ : " + e.getMessage(), e);
-            this.npcId = "Error";
-            this.npcName = "Error";
-            this.texture = "textures/entity/error.png";
-            this.texts = new ArrayList<>();
-            this.texts.add("Erreur lors du chargement des données.");
+        LOGGER.info("PNJ initialisé avec succès : " + this.npcName + " --> " + this.texture);
+        initialized = true;
+        return true;
+    }
+
+    @Override
+    public void remove(RemovalReason reason) {
+        super.remove(reason);
+        if (this.npcName != null) {
+            GlobalNpcManager.deactivateNpc(this.npcName);
         }
     }
 
@@ -212,6 +219,7 @@ public class TradeNpcEntity extends Villager {
         // Exemple : Ne rien faire pour le PNJ
     }
 
+
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 20.0D)  // Santé max
@@ -224,4 +232,21 @@ public class TradeNpcEntity extends Villager {
     public static boolean canSpawn(EntityType<TradeNpcEntity> entityType, LevelAccessor level, MobSpawnType spawnType, BlockPos position, RandomSource random){
         return Villager.checkMobSpawnRules(entityType, level, spawnType, position, random);
     }
+    public boolean hasLoggedTexture = false;
+
+    public boolean hasLoggedTexture() {
+        return hasLoggedTexture;
+    }
+
+    public void setLoggedTexture(boolean hasLoggedTexture) {
+        this.hasLoggedTexture = hasLoggedTexture;
+    }
+    @Override
+    public void onAddedToWorld() {
+        super.onAddedToWorld();
+        initializeNpcData();
+        LOGGER.info("Entité ajoutée au monde : " + this.getName().getString() + ", texture : " + this.texture);
+    }
+
+
 }

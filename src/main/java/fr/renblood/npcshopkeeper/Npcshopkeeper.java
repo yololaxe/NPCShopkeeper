@@ -1,56 +1,46 @@
 package fr.renblood.npcshopkeeper;
+
 import fr.renblood.npcshopkeeper.client.renderer.TradeNpcRenderer;
-import net.minecraft.client.gui.screens.MenuScreens;
-import net.minecraft.client.renderer.entity.EntityRenderers;
-import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
-import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
+import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.world.WorldEventHandler;
-import fr.renblood.npcshopkeeper.world.inventory.CreateTradeMenu;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.MobCategory;
+import net.minecraft.client.renderer.entity.EntityRenderers;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.MenuType;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.fml.util.thread.SidedThreadGroups;
+import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.network.NetworkRegistry;
+import net.minecraftforge.network.simple.SimpleChannel;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import net.minecraftforge.network.simple.SimpleChannel;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.fml.util.thread.SidedThreadGroups;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.common.MinecraftForge;
-
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.network.FriendlyByteBuf;
-
-
-import java.util.function.Supplier;
-import java.util.function.Function;
-import java.util.function.BiConsumer;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.List;
-import java.util.Collection;
-import java.util.ArrayList;
 import java.util.AbstractMap;
+import java.util.Collection;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static fr.renblood.npcshopkeeper.init.EntityInit.ENTITY_TYPES;
 import static fr.renblood.npcshopkeeper.init.EntityInit.TRADE_NPC_ENTITY;
+import static fr.renblood.npcshopkeeper.manager.OnServerStartedManager.onServerStarted;
 
 // The value here should match an entry in the META-INF/mods.toml file
 
 @Mod("npcshopkeeper")
 public class Npcshopkeeper {
     public static final Logger LOGGER = LogManager.getLogger(Npcshopkeeper.class);
+
     public static final String MODID = "npcshopkeeper";
     public static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
 
@@ -58,12 +48,13 @@ public class Npcshopkeeper {
 
 
     @SubscribeEvent
-    public static void onServerStarting(ServerStartedEvent event) {
-        JsonTradeFileManager.onServerStarted(event);
+    public void onServerStarting(ServerStartedEvent event) {
+        onServerStarted(event);
         System.out.println("Evénement onServerStarting exécuté !");
         LOGGER.info("Evénement onServerStarting exécuté !");
 
     }
+
     public Npcshopkeeper() {
         // Start of user code block mod constructor
         // End of user code block mod constructor
@@ -77,6 +68,7 @@ public class Npcshopkeeper {
         ENTITY_TYPES.register(bus);
         MENUS.register(bus);
         NpcshopkeeperModMenus.REGISTRY.register(bus);
+        MinecraftForge.EVENT_BUS.register(Npcshopkeeper.class);
 
 
         // Start of user code block mod init

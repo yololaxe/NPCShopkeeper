@@ -24,44 +24,33 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static fr.renblood.npcshopkeeper.manager.OnServerStartedManager.*;
+
 public class JsonTradeFileManager {
 
     private static final Logger LOGGER = LogManager.getLogger(JsonTradeFileManager.class);
-    public static String pathHistory = "";
+    public static String path = PATH;
+    public static String pathHistory = PATH_HISTORY;
+    public static String pathConstant= PATH_CONSTANT;
 
-    public static String path= "";
-    @SubscribeEvent
-    public static void onServerStarted(ServerStartedEvent event) {
-        MinecraftServer server = event.getServer();
-        if (server != null) {
-            Path serverPath = server.getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/trade.json");
-            path = serverPath.toString();
-            pathHistory = Paths.get(ServerLifecycleHooks.getCurrentServer().getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/trade_history.json").toString()).toString();
-            LOGGER.info("Chemin complet du fichier trade.json après démarrage : " + path);
-
-            // Vérifiez que le fichier existe à cet emplacement
-            File file = new File(path);
-            if (!file.exists()) {
-                LOGGER.error("Le fichier JSON spécifié n'existe pas à cet emplacement : " + path);
-            } else {
-                LOGGER.info("Le fichier JSON existe à l'emplacement : " + path);
-            }
-        } else {
-            LOGGER.error("Le serveur est null dans l'événement onServerStarted");
-        }
-    }
 
     // Méthode pour lire un fichier JSON
     public static JsonObject readJsonFile(Path filePath) {
         try {
-            // Lire le fichier
+            // Vérifier si le fichier existe
+            if (!Files.exists(filePath)) {
+                LOGGER.error("Le fichier JSON n'existe pas : {}", filePath);
+                return new JsonObject(); // Retourne un objet vide
+            }
+
+            // Lire le contenu du fichier
             String content = Files.readString(filePath);
             JsonElement jsonElement = JsonParser.parseString(content);
 
-            // Vérifier que l'élément est un objet JSON
+            // Vérifier que le contenu est un objet JSON valide
             if (!jsonElement.isJsonObject()) {
                 LOGGER.error("Le contenu du fichier JSON n'est pas un objet JSON valide : {}", filePath);
-                return new JsonObject(); // Retourne un objet vide pour éviter l'erreur
+                return new JsonObject(); // Retourne un objet vide
             }
 
             return jsonElement.getAsJsonObject();
@@ -70,9 +59,10 @@ public class JsonTradeFileManager {
             return new JsonObject(); // Retourne un objet vide si le fichier ne peut pas être lu
         } catch (Exception e) {
             LOGGER.error("Erreur inattendue lors de la lecture du fichier JSON : {}", filePath, e);
-            return new JsonObject(); // Retourne un objet vide si une autre erreur survient
+            return new JsonObject(); // Retourne un objet vide en cas d'erreur inattendue
         }
     }
+
 
 
     // Méthode pour écrire dans un fichier JSON
@@ -572,6 +562,59 @@ public class JsonTradeFileManager {
         TradeHistory tradeHistory = new TradeHistory(new ArrayList<>(), "", true, "", new ArrayList<>(), 0, "", "");
         return Pair.of(false, tradeHistory);
     }
+
+    public static Map<String, Map<String, Object>> getPnjData() {
+        // Lecture du fichier constant.json
+        JsonObject jsonObject = readJsonFile(Path.of(pathConstant));
+        Map<String, Map<String, Object>> pnjMap = new HashMap<>();
+
+        if (jsonObject == null) {
+            LOGGER.error("Impossible de lire le fichier constant.json ou le fichier est vide.");
+            return pnjMap; // Retourne une map vide
+        }
+
+        if (!jsonObject.has("pnjs") || !jsonObject.get("pnjs").isJsonObject()) {
+            LOGGER.error("Le fichier JSON ne contient pas la clé 'pnjs' ou n'est pas un objet valide.");
+            return pnjMap; // Retourne une map vide
+        }
+
+        LOGGER.info("Chargement des PNJs depuis le fichier constant.json réussi.");
+
+        JsonObject pnjsObject = jsonObject.getAsJsonObject("pnjs");
+
+        // Parcourir chaque clé (nom du PNJ) et récupérer ses détails
+        for (Map.Entry<String, JsonElement> entry : pnjsObject.entrySet()) {
+            String name = entry.getKey();
+            JsonObject pnjObject = entry.getValue().getAsJsonObject();
+
+            Map<String, Object> pnjDetails = new HashMap<>();
+
+            // Récupération de la texture
+            String texture = pnjObject.has("Texture") ? pnjObject.get("Texture").getAsString() : "textures/entity/banker.png";
+
+            // Récupération des textes
+            List<String> texts = new ArrayList<>();
+            if (pnjObject.has("Texts") && pnjObject.get("Texts").isJsonArray()) {
+                JsonArray textsArray = pnjObject.getAsJsonArray("Texts");
+                textsArray.forEach(textElement -> {
+                    if (textElement.isJsonPrimitive()) {
+                        texts.add(textElement.getAsString());
+                    }
+                });
+            }
+
+            // Ajout des détails du PNJ dans la map
+            pnjDetails.put("Texture", texture);
+            pnjDetails.put("Texts", texts);
+
+            // Ajouter les détails du PNJ dans la map principale
+            pnjMap.put(name, pnjDetails);
+        }
+
+        return pnjMap;
+    }
+
+
 
 
 

@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
+import fr.renblood.npcshopkeeper.manager.GlobalNpcManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
@@ -12,17 +13,28 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+
+import static com.mojang.text2speech.Narrator.LOGGER;
+
 @Mod.EventBusSubscriber
 public class SpawnTradeNpcCommand {
 
     @SubscribeEvent
     public static void registerCommand(RegisterCommandsEvent event) {
-        event.getDispatcher().register(Commands.literal("spawntradenpc")
+        event.getDispatcher().register(Commands.literal("spawntradenpc").requires(s -> s.hasPermission(4))
                 .executes(context -> {
                     CommandSourceStack source = context.getSource();
+                    Level world = source.getUnsidedLevel();
+
+                    // Limiter l'exécution au serveur
+                    if (world.isClientSide()) {
+                        LOGGER.warn("Command executed on the client side. Ignoring...");
+                        return 0;
+                    }
 
                     // Étape 1 : Vérification du joueur
                     if (!(source.getEntity() instanceof Player player)) {
@@ -41,26 +53,39 @@ public class SpawnTradeNpcCommand {
 
                     // Étape 3 : Récupération de l'ID de l'item pour la catégorie
                     String category = offhandItem.getItem().builtInRegistryHolder().key().location().toString();
-
                     source.sendSuccess(() -> Component.literal("[Step 3] Trade category determined: " + category), true);
 
                     // Étape 4 : Création et ajout du PNJ
                     try {
-                        ServerLevel world = source.getLevel();
+
                         BlockPos position = BlockPos.containing(source.getPosition());
-                        TradeNpcEntity npc = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
 
-                        if (npc == null) {
-                            source.sendFailure(Component.literal("Failed to create NPC instance."));
-                            return 0;
+                        // Utiliser la méthode de Forge pour créer une entité
+                        if (!world.isClientSide) {
+                            LOGGER.info("Création d'un PNJ via la commande spawntradenpc.");
+                            TradeNpcEntity npc = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
+                            //LOGGER.info("Constructeur de TradeNpcEntity appelé : " + npc.getUUID());
+
+                            if (npc == null) {
+                                source.sendFailure(Component.literal("Failed to create NPC instance."));
+                                return 0;
+                            }
+
+                            npc.setTradeCategory(category);
+                            npc.setPos(position.getX(), position.getY(), position.getZ());
+
+                            if(npc.getNpcName() != "null")
+                                world.addFreshEntity(npc);
+                            else
+                                LOGGER.info("PNJ null : " + npc.getUUID());
+
+                            source.sendSuccess(() -> Component.literal("[Step 4] Spawned trade NPC at " +
+                                    position.getX() + ", " + position.getY() + ", " + position.getZ()), true);
+
                         }
-
-                        npc.setTradeCategory(category);
-                        npc.setPos(position.getX(), position.getY(), position.getZ());
-                        world.addFreshEntity(npc);
-
-                        source.sendSuccess(() -> Component.literal("[Step 4] Spawned trade NPC at " +
-                                position.getX() + ", " + position.getY() + ", " + position.getZ()), true);
+                        else {
+                            source.sendFailure(Component.literal("[Step 4] Failed to spawn NPC: "));
+                        }
                     } catch (Exception e) {
                         source.sendFailure(Component.literal("[Step 4] Failed to spawn NPC: " + e.getMessage()));
                         e.printStackTrace();

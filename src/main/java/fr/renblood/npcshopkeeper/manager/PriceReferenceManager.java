@@ -18,44 +18,17 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import static fr.renblood.npcshopkeeper.manager.JsonTradeFileManager.readJsonFile;
+import static fr.renblood.npcshopkeeper.manager.OnServerStartedManager.PATH_PRICE;
+
 public class PriceReferenceManager {
 
     private static final Logger LOGGER = LogManager.getLogger(PriceReferenceManager.class);
 
-    public static String path= "";
-    @SubscribeEvent
-    public static void onServerStarted(ServerStartedEvent event) {
-        MinecraftServer server = event.getServer();
-        if (server != null) {
-            Path serverPath = server.getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/price_references.json");
-            path = serverPath.toString();
-
-            // Vérifiez que le fichier existe à cet emplacement
-            File file = new File(path);
-            if (!file.exists()) {
-                LOGGER.error("Le fichier JSON spécifié n'existe pas à cet emplacement : " + path);
-            } else {
-                LOGGER.info("Le fichier JSON existe à l'emplacement : " + path);
-            }
-        } else {
-            LOGGER.error("Le serveur est null dans l'événement onServerStarted");
-        }
-    }
+    public static String pathPrice= PATH_PRICE;
 
     // Lire le fichier JSON
-    public static JsonObject readJsonFile(Path filePath) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath.toFile()))) {
-            StringBuilder content = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                content.append(line);
-            }
-            return JsonParser.parseString(content.toString()).getAsJsonObject();
-        } catch (IOException e) {
-            LOGGER.error("Erreur lors de la lecture du fichier JSON : " + e.getMessage());
-            return new JsonObject(); // Retourner un objet vide en cas d'erreur
-        }
-    }
+
 
     // Écrire dans le fichier JSON
     public static void writeJsonFile(Path filePath, JsonObject jsonObject) {
@@ -68,8 +41,7 @@ public class PriceReferenceManager {
 
     // Chercher une référence par nom d'item
     public static Pair<Integer, Integer> findReferenceByItem(String itemName, Player player) {
-        Path path = Paths.get(player.getServer().getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/price_references.json").toString());
-        JsonObject jsonObject = readJsonFile(path);
+        JsonObject jsonObject = readJsonFile(Path.of(pathPrice));
 
         if (jsonObject.has("references")) {
             JsonArray referencesArray = jsonObject.getAsJsonArray("references");
@@ -131,7 +103,7 @@ public class PriceReferenceManager {
 
     // Modifier une référence existante
     public static void updateReference(String itemName, int newMinPrice, int newMaxPrice) {
-        JsonObject jsonObject = readJsonFile(Path.of(path));
+        JsonObject jsonObject = readJsonFile(Path.of(pathPrice));
 
         if (jsonObject.has("references")) {
             JsonArray referencesArray = jsonObject.getAsJsonArray("references");
@@ -140,7 +112,7 @@ public class PriceReferenceManager {
                 if (reference.get("item").getAsString().equals(itemName)) {
                     reference.addProperty("min", newMinPrice);
                     reference.addProperty("max", newMaxPrice);
-                    writeJsonFile(Path.of(path), jsonObject);
+                    writeJsonFile(Path.of(pathPrice), jsonObject);
                     LOGGER.info("Référence mise à jour : " + itemName);
                     return;
                 }
@@ -152,7 +124,7 @@ public class PriceReferenceManager {
     // Récupérer toutes les références sous forme de liste
     public static List<JsonObject> getAllReferences() {
         List<JsonObject> references = new ArrayList<>();
-        JsonObject jsonObject = readJsonFile(Path.of(path));
+        JsonObject jsonObject = readJsonFile(Path.of(pathPrice));
 
         if (jsonObject.has("references")) {
             JsonArray referencesArray = jsonObject.getAsJsonArray("references");
