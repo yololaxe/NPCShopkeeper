@@ -1,7 +1,10 @@
 package fr.renblood.npcshopkeeper;
 
 import fr.renblood.npcshopkeeper.client.renderer.TradeNpcRenderer;
+import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
+import fr.renblood.npcshopkeeper.init.NpcshopkeeperModItems;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
+import fr.renblood.npcshopkeeper.init.NpcshopkeeperModTabs;
 import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.world.WorldEventHandler;
 import net.minecraft.client.renderer.entity.EntityRenderers;
@@ -25,6 +28,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.BiConsumer;
@@ -45,7 +49,7 @@ public class Npcshopkeeper {
     public static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
 
 
-
+    public static final ArrayList<CommercialRoad> COMMERCIAL_ROADS = new ArrayList<>();
 
     @SubscribeEvent
     public void onServerStarting(ServerStartedEvent event) {
@@ -67,7 +71,9 @@ public class Npcshopkeeper {
         MinecraftForge.EVENT_BUS.register(JsonTradeFileManager.class);
         ENTITY_TYPES.register(bus);
         MENUS.register(bus);
+        NpcshopkeeperModItems.REGISTRY.register(bus);
         NpcshopkeeperModMenus.REGISTRY.register(bus);
+        NpcshopkeeperModTabs.REGISTRY.register(bus);
         MinecraftForge.EVENT_BUS.register(Npcshopkeeper.class);
 
 

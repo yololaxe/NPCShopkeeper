@@ -6,9 +6,7 @@ package fr.renblood.npcshopkeeper.init;
 
 import com.mojang.brigadier.context.CommandContext;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
-import fr.renblood.npcshopkeeper.world.inventory.CategoryMenu;
-import fr.renblood.npcshopkeeper.world.inventory.CreateTradeMenu;
-import fr.renblood.npcshopkeeper.world.inventory.TradeListMenu;
+import fr.renblood.npcshopkeeper.world.inventory.*;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraftforge.registries.RegistryObject;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -16,7 +14,6 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.common.extensions.IForgeMenuType;
 
 import net.minecraft.world.inventory.MenuType;
-import fr.renblood.npcshopkeeper.world.inventory.TradeMenu;
 
 import static net.minecraftforge.registries.ForgeRegistries.Keys.MENU_TYPES;
 
@@ -31,5 +28,7 @@ public class NpcshopkeeperModMenus {
 			() -> IForgeMenuType.create((windowId, inv, data) -> new CategoryMenu(windowId, inv)));
 	public static final RegistryObject<MenuType<TradeListMenu>> TRADE_LIST_MENU = REGISTRY.register("trade_list_menu",
 			() -> IForgeMenuType.create((windowId, inv, data) -> new TradeListMenu(windowId, inv)));
+	public static final RegistryObject<MenuType<NpcShopkeeperWandGuiMenu>> NPC_SHOPKEEPER_WAND_GUI = REGISTRY.register("npc_shopkeeper_wand_gui", () -> IForgeMenuType.create(NpcShopkeeperWandGuiMenu::new));
+
 
 }

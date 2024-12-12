@@ -20,6 +20,10 @@ public class GlobalNpcManager {
     private static final List<String> inactiveNpcs = new ArrayList<>();
     private static final Map<String, Map<String, Object>> npcDataMap = new HashMap<>();
 
+
+    public static int getDataSize(){
+        return npcDataMap.size();
+    }
     // Charger les données du fichier JSON au démarrage
     public static void loadNpcData() {
         npcDataMap.clear();

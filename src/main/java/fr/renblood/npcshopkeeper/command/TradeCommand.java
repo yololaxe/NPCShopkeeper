@@ -26,9 +26,10 @@ import org.apache.logging.log4j.Logger;
 import java.util.concurrent.CompletableFuture;
 import java.util.List;
 
+import static com.mojang.text2speech.Narrator.LOGGER;
+
 @Mod.EventBusSubscriber
 public class TradeCommand {
-	public static final Logger LOGGER = LogManager.getLogger(Npcshopkeeper.class);
 	@SubscribeEvent
 	public static void registerCommand(RegisterCommandsEvent event) {
 		event.getDispatcher().register(Commands.literal("trade")
@@ -54,7 +55,6 @@ public class TradeCommand {
 
 	// SuggestionProvider pour donner les noms des trades dans la commande
 	private static final SuggestionProvider<CommandSourceStack> TRADE_SUGGESTIONS = (context, builder) -> {
-		CommandSourceStack source = context.getSource();
 		List<String> tradeNames = getTradeNamesFromFile();
 
 		if (tradeNames.isEmpty()) {

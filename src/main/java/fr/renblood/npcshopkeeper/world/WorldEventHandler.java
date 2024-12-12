@@ -24,6 +24,7 @@ public class WorldEventHandler {
             initializeFile(worldSaveFolder, "trade.json", "{\"trades\": []}");
             initializeFile(worldSaveFolder, "trade_history.json", "{\"history\": []}");
             initializeFile(worldSaveFolder, "price_references.json", "{\"references\": []}");
+            initializeFile(worldSaveFolder, "commercial_road.json", "{\"roads\": []}");
             initializeFile(worldSaveFolder, "constant.json", getDefaultConstantJson());
         }
     }
@@ -139,4 +140,5 @@ public class WorldEventHandler {
         }
         """;
     }
+
 }

@@ -41,7 +41,6 @@ public class TradeProcedure {
 		if (isServerPlayerWithMenu(entity)) {
 			ServerPlayer player = (ServerPlayer) entity;
 
-			player.displayClientMessage(Component.literal("Lige  36 trade proc"), false);
 			Map _slots = getSlots(player);
 			String tradeSlot = ((Slot) _slots.get(12)).getItem().getDisplayName().getString();
 
@@ -102,7 +101,6 @@ public class TradeProcedure {
 
 	// Méthode utilitaire pour effacer les slots et mettre à jour les quantités
 	private static void clearAndRemoveSlots(ServerPlayer player, Map _slots) {
-		player.displayClientMessage(Component.literal("On commence le CLEAR"), false);
 		removeItem(player, _slots, 0, 1);
 		removeItem(player, _slots, 2, 3);
 		removeItem(player, _slots, 4, 5);

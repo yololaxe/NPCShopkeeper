@@ -14,7 +14,6 @@ import org.apache.logging.log4j.Logger;
 
 public class TradeNpcRenderer extends HumanoidMobRenderer<TradeNpcEntity, PlayerModel<TradeNpcEntity>> {
 
-    private static final Logger LOGGER = LogManager.getLogger(TradeNpcRenderer.class);
     public TradeNpcRenderer(EntityRendererProvider.Context context) {
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 1.0F);
     }
