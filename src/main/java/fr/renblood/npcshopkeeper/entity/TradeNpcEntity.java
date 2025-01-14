@@ -1,8 +1,10 @@
 package fr.renblood.npcshopkeeper.entity;
 
 import com.ibm.icu.impl.Pair;
-import fr.renblood.npcshopkeeper.data.Trade;
-import fr.renblood.npcshopkeeper.data.TradeHistory;
+import fr.renblood.npcshopkeeper.data.Trade.Trade;
+import fr.renblood.npcshopkeeper.data.Trade.TradeHistory;
+import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
+import fr.renblood.npcshopkeeper.manager.ActiveNpcManager;
 import fr.renblood.npcshopkeeper.manager.GlobalNpcManager;
 import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.procedures.TradeCommandProcedure;
@@ -36,55 +38,86 @@ import java.util.*;
 
 public class TradeNpcEntity extends Villager {
 
-    private String npcId = this.stringUUID;
-    private String npcName = GlobalNpcManager.getRandomInactiveNpc().get();
-    Map<String, Object> npcData = GlobalNpcManager.getNpcData(npcName);
-    private ArrayList<String> texts = (ArrayList<String>) npcData.getOrDefault("Texts", new ArrayList<>());
-    private String texture = (String) npcData.getOrDefault("Texture", "textures/entity/banker.png");
+    private String npcId ;
+    private String npcName;
+    Map<String, Object> npcData ; //texture texts
+    private ArrayList<String> texts ;
+    private String texture;
     private BlockPos position;
     private String tradeCategory; // Catégorie du trade assignée à ce PNJ
     private Trade trade;
     private TradeHistory tradeHistory;
     private boolean initialized = false;
+    private boolean created = false;
+    public boolean isCreated = false;
 
     private static final Logger LOGGER = LogManager.getLogger(TradeCommandProcedure.class);
 
     public TradeNpcEntity(EntityType<TradeNpcEntity> type, Level world) {
         super(type, world);
-        if (world.isClientSide()) {
-            LOGGER.warn("TradeNpcEntity constructor called on client side. Ignoring...");
-            return;
-        }
+        if(!world.isClientSide) {
 
 //        this.registerGoals();
-        if (!initialized) {
-            LOGGER.info("Initializing NPC entity: {}", this.getUUID());
-
-            initialized = true;
-        } else {
-            LOGGER.warn("TradeNpcEntity was already initialized: {}", this.getUUID());
+            if (!initialized) {
+                LOGGER.info("Initializing NPC entity: {}", this.getUUID());
+                initializeNpcData();
+            } else {
+                LOGGER.warn("TradeNpcEntity was already initialized: {}", this.getUUID());
+            }
         }
     }
 
     public boolean initializeNpcData() {
-        if (initialized) {
-            LOGGER.warn("initializeNpcData() déjà appelée pour l'entité : " + this.getUUID());
-            return false;
+        if (isCreated) {
+            TradeNpc npc = JsonTradeFileManager.loadTradeNpcsFromJson(this.getCommandSenderWorld()).get(this.getUUID());
+            ActiveNpcManager.printActiveNpcs();
+
+            setNpcId(this.getUUID().toString());
+            setNpcName(npc.getNpcName());
+            this.position = npc.getPos();
+            this.tradeCategory = npc.getTradeCategory();
+            this.texture = npc.getTexture();
+            this.texts = npc.getTexts();
+
+            // Si la texture est manquante, définir la valeur par défaut
+            if (this.texture == null || this.texture.isEmpty()) {
+                this.texture = "textures/entity/banker.png"; // Texture par défaut
+            }
+
+            // Configure les propriétés de l'entité
+            this.setCustomName(Component.literal(this.npcName));
+            this.setCustomNameVisible(true);
+
+            LOGGER.info("PNJ ID : " + this.npcId);
+            LOGGER.info("PNJ initialisé avec succès : " + this.npcName);
+            LOGGER.info("Position du PNJ : " + this.position);
+            LOGGER.info("Catégorie du commerce : " + this.tradeCategory);
+            LOGGER.info("Texture assignée : " + this.texture);
+
+            // Initialiser l'entité une fois toutes les données chargées
+            initialized = true;
+
+            // Ajouter l'entité au monde après l'initialisation
+            this.setPos(this.position.getX(), this.position.getY(), this.position.getZ());
+            this.level().addFreshEntity(this);  // Ajouter l'entité au monde
+
+            LOGGER.info("PNJ ajouté au monde : " + this.npcName);
+
+
+            return true;
         }
-
-        Optional<String> npcNameOptional = GlobalNpcManager.getRandomInactiveNpc();
-        if (npcNameOptional.isEmpty()) {
-            LOGGER.error("Tous les PNJs disponibles sont déjà en jeu !");
-            return false;
-        }
-
-        GlobalNpcManager.activateNpc(npcName);
-        this.setCustomName(Component.literal(this.npcName));
-        this.setCustomNameVisible(true);
-
-        LOGGER.info("PNJ initialisé avec succès : " + this.npcName + " --> " + this.texture);
-        initialized = true;
         return true;
+    }
+        @Override
+    public void onAddedToWorld() {
+        super.onAddedToWorld();
+
+            if (!initializeNpcData()) {
+                LOGGER.error("Erreur lors de l'initialisation de l'entité. Texture manquante ou invalide.");
+                return;  // Sortir si l'initialisation échoue
+            }
+
+        LOGGER.info("Entité ajoutée au monde : " + (this.getName() != null ? this.getName().getString() : "Inconnue") + ", texture : " + this.texture);
     }
 
     @Override
@@ -93,57 +126,8 @@ public class TradeNpcEntity extends Villager {
         if (this.npcName != null) {
             GlobalNpcManager.deactivateNpc(this.npcName);
         }
+        JsonTradeFileManager.removeTradeNpcFromJson(this.getNpcId()); // Supprimer le PNJ du JSON
     }
-
-    // Propriétés spécifiques au PNJ
-    public String getNpcId() {
-        return npcId;
-    }
-
-    public void setNpcId(String npcId) {
-        this.npcId = npcId;
-    }
-
-    public String getNpcName() {
-        return npcName;
-    }
-
-    public void setNpcName(String npcName) {
-        this.npcName = npcName;
-    }
-
-    public ArrayList<String> getTexts() {
-        return texts;
-    }
-
-    public void setTexts(ArrayList<String> texts) {
-        this.texts = texts;
-    }
-
-    public String getTexture() {
-        return texture;
-    }
-
-    public void setTexture(String texture) {
-        this.texture = texture;
-    }
-
-    public BlockPos getPosition() {
-        return position;
-    }
-
-    public void setPosition(BlockPos position) {
-        this.position = position;
-    }
-
-    public void setTradeCategory(String category) {
-        this.tradeCategory = category;
-    }
-
-    public void setTrade(Trade trade) {
-        this.trade = trade;
-    }
-
 
     @Override
     protected void registerGoals() {
@@ -218,6 +202,8 @@ public class TradeNpcEntity extends Villager {
         return super.mobInteract(player, hand);
     }
 
+
+
     @Override
     public void rewardTradeXp(MerchantOffer offer) {
         // Implémentation vide ou logique personnalisée
@@ -247,12 +233,8 @@ public class TradeNpcEntity extends Villager {
     public void setLoggedTexture(boolean hasLoggedTexture) {
         this.hasLoggedTexture = hasLoggedTexture;
     }
-    @Override
-    public void onAddedToWorld() {
-        super.onAddedToWorld();
-        initializeNpcData();
-        LOGGER.info("Entité ajoutée au monde : " + this.getName().getString() + ", texture : " + this.texture);
-    }
+
+
     @Override
     public boolean isInvulnerableTo(DamageSource source) {
         // Bloquer tous les dégâts, même les dégâts magiques ou de chute
@@ -281,7 +263,89 @@ public class TradeNpcEntity extends Villager {
     public boolean isNoGravity() {
         return true; // Empêche l'entité d'être affectée par la gravité
     }
+    // Propriétés spécifiques au PNJ
+    public String getNpcId() {
+        return npcId;
+    }
 
+    public void setNpcId(String npcId) {
+        this.npcId = npcId;
+    }
+
+    public String getNpcName() {
+        return npcName;
+    }
+
+    public void setNpcName(String npcName) {
+        this.npcName = npcName;
+    }
+
+    public ArrayList<String> getTexts() {
+        return texts;
+    }
+
+    public void setTexts(ArrayList<String> texts) {
+        this.texts = texts;
+    }
+
+    public String getTexture() {
+        return texture;
+    }
+
+    public void setTexture(String texture) {
+        this.texture = texture;
+    }
+
+    public BlockPos getPosition() {
+        return position;
+    }
+
+    public void setPosition(BlockPos position) {
+        this.position = position;
+    }
+
+    public void setTradeCategory(String category) {
+        this.tradeCategory = category;
+    }
+
+    public Map<String, Object> getNpcData() {
+        return npcData;
+    }
+
+    public String getTradeCategory() {
+        return tradeCategory;
+    }
+
+    public Trade getTrade() {
+        return trade;
+    }
+
+    public TradeHistory getTradeHistory() {
+        return tradeHistory;
+    }
+
+    public boolean isInitialized() {
+        return initialized;
+    }
+
+    public void setTrade(Trade trade) {
+        this.trade = trade;
+    }
+    public void setTradeHistory(TradeHistory tradeHistory) {
+        this.tradeHistory = tradeHistory;
+    }
+
+    public void setInitialized(boolean initialized) {
+        this.initialized = initialized;
+    }
+
+    public boolean isCreated() {
+        return created;
+    }
+
+    public void setCreated(boolean created) {
+        this.created = created;
+    }
 
 
 }

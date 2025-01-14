@@ -1,10 +1,9 @@
 package fr.renblood.npcshopkeeper.procedures;
 
 import com.ibm.icu.impl.Pair;
-import fr.renblood.npcshopkeeper.data.TradeHistory;
-import fr.renblood.npcshopkeeper.data.TradeResult;
+import fr.renblood.npcshopkeeper.data.Trade.TradeHistory;
 import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
-import fr.renblood.npcshopkeeper.data.Trade;
+import fr.renblood.npcshopkeeper.data.Trade.Trade;
 import fr.renblood.npcshopkeeper.manager.MoneyCalculator;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;

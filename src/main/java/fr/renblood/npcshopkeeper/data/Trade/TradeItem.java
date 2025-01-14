@@ -1,4 +1,4 @@
-package fr.renblood.npcshopkeeper.data;
+package fr.renblood.npcshopkeeper.data.Trade;
 
 public class TradeItem {
     private String item;

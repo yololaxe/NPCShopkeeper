@@ -2,20 +2,20 @@ package fr.renblood.npcshopkeeper.manager;
 
 import com.google.gson.*;
 import com.ibm.icu.impl.Pair;
-import fr.renblood.npcshopkeeper.data.*;
+import fr.renblood.npcshopkeeper.data.Trade.Trade;
+import fr.renblood.npcshopkeeper.data.Trade.TradeHistory;
+import fr.renblood.npcshopkeeper.data.Trade.TradeItem;
+import fr.renblood.npcshopkeeper.data.Trade.TradeResult;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
+import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
+import fr.renblood.npcshopkeeper.init.EntityInit;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.storage.LevelResource;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.server.ServerLifecycleHooks;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+import static fr.renblood.npcshopkeeper.data.commercial.CommercialRoad.updateCommercialRoadAfterRemoval;
 import static fr.renblood.npcshopkeeper.manager.OnServerStartedManager.*;
 
 public class JsonTradeFileManager {
@@ -329,29 +330,26 @@ public class JsonTradeFileManager {
 
 
     // Méthode pour supprimer le PNJ associé au trade
-    private static void removeNpc(ServerPlayer player, String id) {
-        // Parcourir les entités présentes dans le monde du joueur
-        // Convertir l'id en UUID
-        UUID entityUuid = UUID.fromString(id);
-
-        // Récupérer le monde du joueur
+    public static void removeNpc(ServerPlayer player, String id) {
         ServerLevel level = player.serverLevel();
-
-        // Récupérer l'entité avec l'UUID
+        UUID entityUuid = UUID.fromString(id);
         Entity entity = level.getEntity(entityUuid);
+
         if (entity != null) {
-            // Vérifier si c'est une instance de votre entité personnalisée
             if (entity instanceof TradeNpcEntity tradeNpcEntity) {
-                // Supprimer l'entité du monde
                 tradeNpcEntity.remove(Entity.RemovalReason.DISCARDED);
-                LOGGER.info("Entité avec l'UUID " + id + " supprimée avec succès.");
+                LOGGER.info("NPC avec l'UUID : " + id + " supprimé avec succès.");
+
+                // Mettre à jour la route commerciale associée
+                updateCommercialRoadAfterRemoval(tradeNpcEntity);
             } else {
-                LOGGER.warn("L'entité avec l'UUID " + id + " n'est pas une instance de TradeNpcEntity.");
+                LOGGER.warn("L'entité avec l'UUID : " + id + " n'est pas une instance de TradeNpcEntity.");
             }
         } else {
-            LOGGER.warn("Aucune entité trouvée avec l'UUID " + id + ".");
+            LOGGER.warn("Aucune entité trouvée avec l'UUID : " + id + ".");
         }
     }
+
 
 
     public static TradeHistory getTradeHistoryById(String id) {
@@ -627,88 +625,257 @@ public class JsonTradeFileManager {
     }
 
     public static Map<String, Map<String, Object>> getPnjData() {
-        // Lecture du fichier constant.json
         JsonObject jsonObject = readJsonFile(Path.of(pathConstant));
-        Map<String, Map<String, Object>> pnjMap = new HashMap<>();
+        Map<String, Map<String, Object>> npcMap = new HashMap<>();
 
-        if (jsonObject == null) {
-            LOGGER.error("Impossible de lire le fichier constant.json ou le fichier est vide.");
-            return pnjMap; // Retourne une map vide
+        if (jsonObject == null || !jsonObject.has("npcs") || !jsonObject.get("npcs").isJsonObject()) {
+            LOGGER.error("Le fichier JSON ne contient pas une clé 'npcs' valide dans : " + pathConstant);
+            return npcMap;
         }
 
-        if (!jsonObject.has("pnjs") || !jsonObject.get("pnjs").isJsonObject()) {
-            LOGGER.error("Le fichier JSON ne contient pas la clé 'pnjs' ou n'est pas un objet valide.");
-            return pnjMap; // Retourne une map vide
-        }
+        JsonObject npcsObject = jsonObject.getAsJsonObject("npcs");
 
-        LOGGER.info("Chargement des PNJs depuis le fichier constant.json réussi.");
-
-        JsonObject pnjsObject = jsonObject.getAsJsonObject("pnjs");
-
-        // Parcourir chaque clé (nom du PNJ) et récupérer ses détails
-        for (Map.Entry<String, JsonElement> entry : pnjsObject.entrySet()) {
+        for (Map.Entry<String, JsonElement> entry : npcsObject.entrySet()) {
             String name = entry.getKey();
-            JsonObject pnjObject = entry.getValue().getAsJsonObject();
+            JsonObject npcObject = entry.getValue().getAsJsonObject();
 
-            Map<String, Object> pnjDetails = new HashMap<>();
+            Map<String, Object> npcData = new HashMap<>();
+            String texture = npcObject.has("Texture") ? npcObject.get("Texture").getAsString() : "textures/entity/banker.png";
 
-            // Récupération de la texture
-            String texture = pnjObject.has("Texture") ? pnjObject.get("Texture").getAsString() : "textures/entity/banker.png";
-
-            // Récupération des textes
             List<String> texts = new ArrayList<>();
-            if (pnjObject.has("Texts") && pnjObject.get("Texts").isJsonArray()) {
-                JsonArray textsArray = pnjObject.getAsJsonArray("Texts");
-                textsArray.forEach(textElement -> {
+            if (npcObject.has("Texts") && npcObject.get("Texts").isJsonArray()) {
+                JsonArray textsArray = npcObject.get("Texts").getAsJsonArray();
+                for (JsonElement textElement : textsArray) {
                     if (textElement.isJsonPrimitive()) {
                         texts.add(textElement.getAsString());
                     }
-                });
+                }
             }
 
-            // Ajout des détails du PNJ dans la map
-            pnjDetails.put("Texture", texture);
-            pnjDetails.put("Texts", texts);
+            npcData.put("Texture", texture);
+            npcData.put("Texts", texts);
 
-            // Ajouter les détails du PNJ dans la map principale
-            pnjMap.put(name, pnjDetails);
+            npcMap.put(name, npcData);
         }
 
-        return pnjMap;
+        LOGGER.info("Données PNJs chargées avec succès depuis le fichier JSON.");
+        return npcMap;
     }
+
 
     public static void saveRoadToFile(CommercialRoad road) {
-        JsonObject jsonObject = readJsonFile(Path.of(pathCommercial)); // Lire le fichier existant
-        JsonArray roadArray = jsonObject.has("roads") ? jsonObject.getAsJsonArray("roads") : new JsonArray();
 
-        // Convertir la route en JSON
-        JsonObject roadJson = new JsonObject();
-        roadJson.addProperty("id", road.getId());
-        roadJson.addProperty("name", road.getName());
-        roadJson.addProperty("category", road.getCategory());
-        roadJson.addProperty("minTimer", road.getMinTimer());
-        roadJson.addProperty("maxTimer", road.getMaxTimer());
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("id", road.getId());
+        jsonObject.addProperty("name", road.getName());
+        jsonObject.addProperty("category", road.getCategory());
+        jsonObject.addProperty("minTimer", road.getMinTimer());
+        jsonObject.addProperty("maxTimer", road.getMaxTimer());
 
-        // Ajouter les positions
         JsonArray positionsArray = new JsonArray();
-        for (BlockPos position : road.getPositions()) {
-            JsonObject positionJson = new JsonObject();
-            positionJson.addProperty("x", position.getX());
-            positionJson.addProperty("y", position.getY());
-            positionJson.addProperty("z", position.getZ());
-            positionsArray.add(positionJson);
+        for (BlockPos pos : road.getPositions()) {
+            JsonObject posObject = new JsonObject();
+            posObject.addProperty("x", pos.getX());
+            posObject.addProperty("y", pos.getY());
+            posObject.addProperty("z", pos.getZ());
+            positionsArray.add(posObject);
         }
-        roadJson.add("positions", positionsArray);
+        jsonObject.add("positions", positionsArray);
 
-        // Ajouter la route au tableau
-        roadArray.add(roadJson);
-        jsonObject.add("roads", roadArray);
+        JsonArray npcEntitiesArray = new JsonArray();
+        for (TradeNpcEntity npc : road.getNpcEntities()) {
+            JsonObject npcObject = new JsonObject();
+            npcObject.addProperty("uuid", npc.getUUID().toString());
+            npcEntitiesArray.add(npcObject);
+        }
+        jsonObject.add("npcEntities", npcEntitiesArray);
 
-        // Sauvegarder le fichier
-        try (FileWriter writer = new FileWriter(Path.of(pathCommercial).toFile())) {
-            writer.write(new GsonBuilder().setPrettyPrinting().create().toJson(jsonObject));
+        // Sauvegarder dans un fichier
+        Path filePath = Paths.get("commercial_roads", road.getId() + ".json");
+        try (Writer writer = Files.newBufferedWriter(filePath)) {
+            writer.write(jsonObject.toString());
         } catch (IOException e) {
-            LOGGER.error("Erreur lors de l'écriture du fichier JSON : " + e.getMessage());
+            LOGGER.error("Erreur lors de la sauvegarde de la route commerciale : " + road.getId(), e);
         }
     }
+
+    public static CommercialRoad loadRoadFromFile(ServerPlayer player) {
+        JsonObject jsonObject = readJsonFile(Path.of(pathCommercial));
+
+        String id = jsonObject.get("id").getAsString();
+        String name = jsonObject.get("name").getAsString();
+        String category = jsonObject.get("category").getAsString();
+        int minTimer = jsonObject.get("minTimer").getAsInt();
+        int maxTimer = jsonObject.get("maxTimer").getAsInt();
+
+        ArrayList<BlockPos> positions = new ArrayList<>();
+        JsonArray positionsArray = jsonObject.getAsJsonArray("positions");
+        for (JsonElement posElement : positionsArray) {
+            JsonObject posObject = posElement.getAsJsonObject();
+            int x = posObject.get("x").getAsInt();
+            int y = posObject.get("y").getAsInt();
+            int z = posObject.get("z").getAsInt();
+            positions.add(new BlockPos(x, y, z));
+        }
+
+        ArrayList<TradeNpcEntity> npcEntities = new ArrayList<>();
+        JsonArray npcEntitiesArray = jsonObject.getAsJsonArray("npcEntities");
+        for (JsonElement npcElement : npcEntitiesArray) {
+            JsonObject npcObject = npcElement.getAsJsonObject();
+            UUID uuid = UUID.fromString(npcObject.get("uuid").getAsString());
+            Entity npc = player.serverLevel().getEntity(uuid); // Charger l'entité si disponible
+            if (npc instanceof TradeNpcEntity tradeNpcEntity) {
+                npcEntities.add(tradeNpcEntity);
+            }
+        }
+
+        return new CommercialRoad(id, name, category, positions, npcEntities, minTimer, maxTimer);
+
+    }
+
+    public static void addTradeNpcToJson(TradeNpc npc) {
+        try {
+            // Lire le fichier JSON existant
+            JsonObject json = readJsonFile(Path.of(PATH_NPCS));
+            if (!json.has("npcs")) {
+                json.add("npcs", new JsonArray());
+            }
+
+            JsonArray npcsArray = json.getAsJsonArray("npcs");
+
+            // Vérifiez si le NPC existe déjà
+            boolean npcExists = false;
+            for (JsonElement element : npcsArray) {
+                JsonObject npcObject = element.getAsJsonObject();
+                if (npcObject.get("id").getAsString().equals(npc.getNpcId())) {
+                    npcExists = true;
+                    break;
+                }
+            }
+
+            if (npcExists) {
+                LOGGER.warn("Le NPC avec l'ID " + npc.getNpcId() + " est déjà enregistré.");
+                return;
+            }
+
+            // Ajouter le nouveau NPC
+            JsonObject npcObject = new JsonObject();
+            npcObject.addProperty("id", npc.getNpcId());
+            npcObject.addProperty("name", npc.getNpcName());
+            npcObject.addProperty("texture", npc.getTexture());
+            npcObject.addProperty("x", npc.getPos().getX());
+            npcObject.addProperty("y", npc.getPos().getY());
+            npcObject.addProperty("z", npc.getPos().getZ());
+            npcObject.addProperty("category", npc.getTradeCategory());
+
+            npcsArray.add(npcObject);
+            writeJsonFile(Path.of(PATH_NPCS), json);
+
+            LOGGER.info("NPC ajouté avec succès au fichier JSON : " + npc.getNpcId());
+
+            // Activation du PNJ sans créer une nouvelle entité
+            // Récupérer l'entité existante dans le monde en fonction de son UUID
+
+
+                // Ajouter ce PNJ à ActiveNpcManager
+            GlobalNpcManager.activateNpc(new TradeNpc(npc.getNpcId(), npc.getNpcName(), npc.getNpcData(), npc.getTradeCategory(), npc.getPos()));
+            LOGGER.info("PNJ avec ID " + npc.getNpcId() + " activé avec succès.");
+
+
+        } catch (Exception e) {
+            LOGGER.error("Erreur lors de l'ajout d'un PNJ dans le fichier JSON : ", e);
+        }
+    }
+
+
+
+    public static void removeTradeNpcFromJson(String npcId) {
+        try {
+            JsonObject json = readJsonFile(Path.of(PATH_NPCS));
+
+            if (!json.has("npcs")) {
+                LOGGER.warn("Aucun NPC trouvé pour suppression dans le fichier JSON.");
+                return;
+            }
+
+            JsonArray npcsArray = json.getAsJsonArray("npcs");
+            JsonArray updatedArray = new JsonArray();
+
+            boolean found = false;
+            for (JsonElement element : npcsArray) {
+                JsonObject npcObject = element.getAsJsonObject();
+                if (!npcObject.get("id").getAsString().equals(npcId)) {
+                    updatedArray.add(npcObject);
+                } else {
+                    found = true;
+                }
+            }
+
+            if (found) {
+                json.add("npcs", updatedArray);
+                writeJsonFile(Path.of(PATH_NPCS), json);
+                LOGGER.info("NPC supprimé avec succès du fichier JSON : " + npcId);
+            } else {
+                LOGGER.warn("Aucun NPC avec l'ID " + npcId + " trouvé dans le fichier JSON.");
+            }
+        } catch (Exception e) {
+            LOGGER.error("Erreur lors de la suppression d'un PNJ du fichier JSON : ", e);
+        }
+    }
+    public static Map<UUID, TradeNpc> loadTradeNpcsFromJson(Level world) {
+        Map<UUID, TradeNpc> tradeNpcsMap = new HashMap<>();
+
+        if (world.isClientSide) {
+            LOGGER.warn("Tentative de charger des PNJs côté client. Ignoré...");
+            return tradeNpcsMap;
+        }
+
+        try {
+            JsonObject json = readJsonFile(Path.of(PATH_NPCS));
+            if (!json.has("npcs")) {
+                LOGGER.warn("Aucun PNJ trouvé dans le fichier JSON.");
+                return tradeNpcsMap;
+            }
+
+            JsonArray npcsArray = json.getAsJsonArray("npcs");
+
+            for (JsonElement element : npcsArray) {
+                JsonObject npcObject = element.getAsJsonObject();
+
+                String npcId = npcObject.get("id").getAsString();
+                String name = npcObject.get("name").getAsString();
+                String category = npcObject.get("category").getAsString();
+                Integer x = npcObject.get("x").getAsInt();
+                Integer y = npcObject.get("y").getAsInt();
+                Integer z = npcObject.get("z").getAsInt();
+
+                UUID uuid;
+                try {
+                    uuid = UUID.fromString(npcId);
+                } catch (IllegalArgumentException e) {
+                    LOGGER.error("UUID invalide pour le PNJ : " + npcId);
+                    continue;
+                }
+
+                // Create and store TradeNpc in map
+                TradeNpc tradeNpc = new TradeNpc(npcId, name, GlobalNpcManager.getNpcData(name), category, new BlockPos(x, y, z));
+                tradeNpcsMap.put(uuid, tradeNpc);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Erreur lors du chargement des PNJs depuis le fichier JSON : ", e);
+        }
+
+        return tradeNpcsMap;  // Return the map of TradeNpc objects
+    }
+
+
+
+
+
+
+
+
+
+
+
 }

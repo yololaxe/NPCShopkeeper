@@ -14,11 +14,13 @@ public class EntityInit {
 
     public static final DeferredRegister<EntityType<?>> ENTITY_TYPES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, Npcshopkeeper.MODID);
 
+
+
     public static final RegistryObject<EntityType<TradeNpcEntity>> TRADE_NPC_ENTITY = ENTITY_TYPES.register(
             "trade_npc",
-            () -> EntityType.Builder.of(TradeNpcEntity::new, MobCategory.CREATURE)
-                    .sized(1.0F, 2.0F)
-                    .build(new ResourceLocation(Npcshopkeeper.MODID, "trade_npc").toString())
+            () -> EntityType.Builder.of(TradeNpcEntity::new, MobCategory.MISC)
+                    .sized(0.6F, 2.0F)
+                    .build("trade_npc")
     );
 
 

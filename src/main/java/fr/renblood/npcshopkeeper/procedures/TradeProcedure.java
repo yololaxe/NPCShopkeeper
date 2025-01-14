@@ -1,11 +1,10 @@
 package fr.renblood.npcshopkeeper.procedures;
 
-import fr.renblood.npcshopkeeper.data.TradeHistory;
-import fr.renblood.npcshopkeeper.data.TradeResult;
+import fr.renblood.npcshopkeeper.data.Trade.TradeHistory;
+import fr.renblood.npcshopkeeper.data.Trade.TradeResult;
 import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.manager.MoneyCalculator;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
@@ -16,7 +15,6 @@ import net.minecraft.world.entity.Entity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.List;
 import java.util.function.Supplier;
 import java.util.Map;
 

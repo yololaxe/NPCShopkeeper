@@ -1,7 +1,11 @@
 package fr.renblood.npcshopkeeper.world;
 
+
+import fr.renblood.npcshopkeeper.manager.NpcSpawnerManager;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.storage.LevelResource;
+import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -25,7 +29,20 @@ public class WorldEventHandler {
             initializeFile(worldSaveFolder, "trade_history.json", "{\"history\": []}");
             initializeFile(worldSaveFolder, "price_references.json", "{\"references\": []}");
             initializeFile(worldSaveFolder, "commercial_road.json", "{\"roads\": []}");
+            initializeFile(worldSaveFolder, "trades_npcs.json", "{\"npcs\": []}");
             initializeFile(worldSaveFolder, "constant.json", getDefaultConstantJson());
+            ServerLevel world = event.getServer().overworld();
+//            NpcSpawnerManager.loadNpcData(); // Charger les données des PNJs
+//            NpcSpawner.spawnAllNpcs(world);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onWorldSave(LevelEvent.Save event) {
+        // Vérifie que le monde est bien un monde de type serveur
+        if (event.getLevel() instanceof ServerLevel serverLevel) {
+            // Appelle la méthode pour sauvegarder les données des PNJs
+            NpcSpawnerManager.saveNpcData(serverLevel);
         }
     }
 
@@ -33,7 +50,7 @@ public class WorldEventHandler {
         File file = new File(folder, fileName);
         if (!file.exists()) {
             try {
-                // Créer le dossier npcshopkeeper s'il n'existe pas
+                // Créer le dossier npcshopkeeper s'il n'existe pasB
                 if (!folder.exists()) {
                     folder.mkdirs();
                 }
@@ -55,7 +72,7 @@ public class WorldEventHandler {
         // Contenu JSON par defaut pour constant.json
         return """
         {
-          "pnjs": {
+          "npcs": {
             "Bingo": {
               "Texture": "textures/entity/bingo.png",
               "Texts": [

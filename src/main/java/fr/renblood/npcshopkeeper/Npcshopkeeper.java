@@ -6,15 +6,23 @@ import fr.renblood.npcshopkeeper.init.NpcshopkeeperModItems;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModTabs;
 import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.manager.NpcSpawnerManager;
 import fr.renblood.npcshopkeeper.world.WorldEventHandler;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.level.Level;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.util.LogicalSidedProvider;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.LogicalSide;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -56,7 +64,7 @@ public class Npcshopkeeper {
         onServerStarted(event);
         System.out.println("Evénement onServerStarting exécuté !");
         LOGGER.info("Evénement onServerStarting exécuté !");
-
+        updateAllRoads(event.getServer().overworld());
     }
 
     public Npcshopkeeper() {
@@ -87,6 +95,12 @@ public class Npcshopkeeper {
             EntityRenderers.register(TRADE_NPC_ENTITY.get(), TradeNpcRenderer::new);
         });
     }
+    public static void updateAllRoads(ServerLevel world) {
+        for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
+            NpcSpawnerManager.updateSpawn(world, road);
+        }
+    }
+
 
     // Start of user code block mod methods
     // End of user code block mod methods
@@ -106,30 +120,21 @@ public class Npcshopkeeper {
             workQueue.add(new AbstractMap.SimpleEntry<>(action, tick));
     }
 
-//    @SubscribeEvent
-//    public void tick(TickEvent.ServerTickEvent event) {
-//        if (event.phase == TickEvent.Phase.END) {
-//            List<AbstractMap.SimpleEntry<Runnable, Integer>> actions = new ArrayList<>();
-//            workQueue.forEach(work -> {
-//                work.setValue(work.getValue() - 1);
-//                if (work.getValue() == 0)
-//                    actions.add(work);
-//            });
-//            actions.forEach(e -> e.getKey().run());
-//            workQueue.removeAll(actions);
-//        }
-//    }
-//
-//    @SubscribeEvent
-//    public static void registerEntityAttributes(EntityAttributeCreationEvent event) {
-//        LOGGER.info("Attempting to register attributes for TradeNpcEntity.");
-//        if (TRADE_NPC_ENTITY.get() != null) {
-//            event.put(TRADE_NPC_ENTITY.get(), TradeNpcEntity.createAttributes().build());
-//            LOGGER.info("Successfully registered attributes for TradeNpcEntity.");
-//        } else {
-//            LOGGER.error("Failed to register attributes: TRADE_NPC_ENTITY is null!");
-//        }
-//    }
+    @SubscribeEvent
+    public void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return; // Limitez à une phase.
+
+        // Récupérez l'instance du serveur depuis l'événement
+        MinecraftServer server = event.getServer();
+        if (server == null) return;
+
+        // Accédez au monde principal (Overworld)
+        ServerLevel overworld = server.overworld();
+        if (overworld != null) {
+            updateAllRoads(overworld);
+        }
+    }
+
 
 
 

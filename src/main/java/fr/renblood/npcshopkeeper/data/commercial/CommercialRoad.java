@@ -1,10 +1,19 @@
 package fr.renblood.npcshopkeeper.data.commercial;
 
+import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
+import fr.renblood.npcshopkeeper.manager.NpcSpawnerManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.UUID;
+
+import static com.mojang.text2speech.Narrator.LOGGER;
 
 public class CommercialRoad {
     private String id;
@@ -70,6 +79,9 @@ public class CommercialRoad {
     public void setMaxTimer(int maxTimer) {
         this.maxTimer = maxTimer;
     }
+    public void removeNpcEntity(TradeNpcEntity npc) {
+        this.npcEntities.remove(npc);
+    }
 
     public CommercialRoad(String id, String name, String category, ArrayList<BlockPos> positions, ArrayList<TradeNpcEntity> npcEntities, int minTimer, int maxTimer) {
         this.id = id;
@@ -84,5 +96,18 @@ public class CommercialRoad {
     public static String generateUniqueId() {
         return UUID.randomUUID().toString();
     }
+
+
+    public static void updateCommercialRoadAfterRemoval(TradeNpcEntity npc) {
+        for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
+            if (road.getNpcEntities().contains(npc)) {
+                road.removeNpcEntity(npc);
+                LOGGER.info("NPC supprimé de la route commerciale : " + road.getName());
+                return;
+            }
+        }
+    }
+
+
 
 }
