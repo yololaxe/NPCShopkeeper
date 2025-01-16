@@ -1,7 +1,12 @@
 package fr.renblood.npcshopkeeper.world;
 
 
+import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
+import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
+import fr.renblood.npcshopkeeper.init.EntityInit;
+import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.manager.NpcSpawnerManager;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.storage.LevelResource;
@@ -13,6 +18,10 @@ import net.minecraftforge.fml.common.Mod;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Map;
+import java.util.UUID;
+
+import static com.mojang.text2speech.Narrator.LOGGER;
 
 @Mod.EventBusSubscriber
 public class WorldEventHandler {
@@ -31,7 +40,11 @@ public class WorldEventHandler {
             initializeFile(worldSaveFolder, "commercial_road.json", "{\"roads\": []}");
             initializeFile(worldSaveFolder, "trades_npcs.json", "{\"npcs\": []}");
             initializeFile(worldSaveFolder, "constant.json", getDefaultConstantJson());
-            ServerLevel world = event.getServer().overworld();
+
+
+
+
+
 //            NpcSpawnerManager.loadNpcData(); // Charger les données des PNJs
 //            NpcSpawner.spawnAllNpcs(world);
         }

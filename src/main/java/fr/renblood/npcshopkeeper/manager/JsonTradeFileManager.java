@@ -735,7 +735,6 @@ public class JsonTradeFileManager {
 
     public static void addTradeNpcToJson(TradeNpc npc) {
         try {
-            // Lire le fichier JSON existant
             JsonObject json = readJsonFile(Path.of(PATH_NPCS));
             if (!json.has("npcs")) {
                 json.add("npcs", new JsonArray());
@@ -743,7 +742,7 @@ public class JsonTradeFileManager {
 
             JsonArray npcsArray = json.getAsJsonArray("npcs");
 
-            // Vérifiez si le NPC existe déjà
+            // Vérifier si le NPC existe déjà
             boolean npcExists = false;
             for (JsonElement element : npcsArray) {
                 JsonObject npcObject = element.getAsJsonObject();
@@ -773,19 +772,14 @@ public class JsonTradeFileManager {
 
             LOGGER.info("NPC ajouté avec succès au fichier JSON : " + npc.getNpcId());
 
-            // Activation du PNJ sans créer une nouvelle entité
-            // Récupérer l'entité existante dans le monde en fonction de son UUID
-
-
-                // Ajouter ce PNJ à ActiveNpcManager
+            // Activation du PNJ
             GlobalNpcManager.activateNpc(new TradeNpc(npc.getNpcId(), npc.getNpcName(), npc.getNpcData(), npc.getTradeCategory(), npc.getPos()));
             LOGGER.info("PNJ avec ID " + npc.getNpcId() + " activé avec succès.");
-
-
         } catch (Exception e) {
             LOGGER.error("Erreur lors de l'ajout d'un PNJ dans le fichier JSON : ", e);
         }
     }
+
 
 
 

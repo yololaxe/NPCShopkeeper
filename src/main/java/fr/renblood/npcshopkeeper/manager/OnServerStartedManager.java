@@ -1,6 +1,11 @@
 package fr.renblood.npcshopkeeper.manager;
 
+import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
+import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
+import fr.renblood.npcshopkeeper.init.EntityInit;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -10,6 +15,10 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Map;
+import java.util.UUID;
+
+import static com.mojang.text2speech.Narrator.LOGGER;
 
 public class OnServerStartedManager {
     private static final Logger LOGGER = LogManager.getLogger(JsonTradeFileManager.class);
@@ -46,8 +55,28 @@ public class OnServerStartedManager {
             checkFileExists(PATH_COMMERCIAL, "price_references.json");
             checkFileExists(PATH_NPCS, "trades_npcs.json");
 
+            ServerLevel world = event.getServer().overworld();
+            Map<UUID, TradeNpc> tradeNpcsMap = JsonTradeFileManager.loadTradeNpcsFromJson(world);
+
+            if (!tradeNpcsMap.isEmpty()) {
+                for (Map.Entry<UUID, TradeNpc> entry : tradeNpcsMap.entrySet()) {
+                    TradeNpc tradeNpc = entry.getValue();
+                    BlockPos pos = tradeNpc.getPos();
+
+                    TradeNpcEntity npcEntity = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
+                    npcEntity.setTradeNpc(tradeNpc);
+                    npcEntity.setPos(pos.getX(), pos.getY(), pos.getZ());
+
+                    world.addFreshEntity(npcEntity);
+                }
+
+                LOGGER.info("Tous les PNJs ont été chargés avec succès !");
+            } else {
+                LOGGER.warn("Aucun PNJ trouvé dans le fichier JSON au chargement du serveur.");
+            }
+
             GlobalNpcManager.loadNpcData();
-            JsonTradeFileManager.loadTradeNpcsFromJson(event.getServer().overworld());
+            //JsonTradeFileManager.loadTradeNpcsFromJson(event.getServer().overworld());
             LOGGER.info("PNJs initialisés avec succès.");
 
         } else {

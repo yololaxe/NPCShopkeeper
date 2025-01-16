@@ -28,6 +28,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -50,75 +51,88 @@ public class TradeNpcEntity extends Villager {
     private boolean initialized = false;
     private boolean created = false;
     public boolean isCreated = false;
+    private TradeNpc tradeNpc;
 
     private static final Logger LOGGER = LogManager.getLogger(TradeCommandProcedure.class);
 
-    public TradeNpcEntity(EntityType<TradeNpcEntity> type, Level world) {
+    public TradeNpcEntity(EntityType<? extends TradeNpcEntity> type, Level world) {
         super(type, world);
-        if(!world.isClientSide) {
-
-//        this.registerGoals();
-            if (!initialized) {
-                LOGGER.info("Initializing NPC entity: {}", this.getUUID());
-                initializeNpcData();
-            } else {
-                LOGGER.warn("TradeNpcEntity was already initialized: {}", this.getUUID());
-            }
-        }
     }
+//    public TradeNpcEntity(EntityType<? extends TradeNpcEntity> type, Level world, TradeNpc tradeNpc) {
+//        super(type, world);
+//        if(!world.isClientSide) {
+//            this.tradeNpc = tradeNpc; // Stockez l'objet TradeNpc
+//            this.initializeNpcData();
+//        }
+//    }
+
+        public void setTradeNpc(TradeNpc tradeNpc) {
+            this.tradeNpc = tradeNpc;
+            this.initializeNpcData();
+
+        }
+
+
+
+
 
     public boolean initializeNpcData() {
-        if (isCreated) {
-            TradeNpc npc = JsonTradeFileManager.loadTradeNpcsFromJson(this.getCommandSenderWorld()).get(this.getUUID());
-            ActiveNpcManager.printActiveNpcs();
-
-            setNpcId(this.getUUID().toString());
-            setNpcName(npc.getNpcName());
-            this.position = npc.getPos();
-            this.tradeCategory = npc.getTradeCategory();
-            this.texture = npc.getTexture();
-            this.texts = npc.getTexts();
-
-            // Si la texture est manquante, définir la valeur par défaut
-            if (this.texture == null || this.texture.isEmpty()) {
-                this.texture = "textures/entity/banker.png"; // Texture par défaut
+//        if (isCreated) {
+            //TradeNpc npc = JsonTradeFileManager.loadTradeNpcsFromJson(this.getCommandSenderWorld()).get(this.getUUID().toString());
+            if (tradeNpc == null) {
+                LOGGER.error("Impossible de récupérer les données du TradeNpc.");
+                return false;
             }
 
-            // Configure les propriétés de l'entité
+//            // Vérifier si l'UUID du PNJ existe déjà
+//            if (isNpcAlreadyPresent(UUID.fromString(this.getUUID().toString()), this.position)) {
+//                LOGGER.error("Un PNJ avec le même UUID existe déjà à cette position.");
+//                return false;
+//            }
+
+            // Initialisation des attributs à partir des données
+            this.setNpcId(this.getUUID().toString());
+            this.setNpcName(tradeNpc.getNpcName());
+            this.position = tradeNpc.getPos();
+            this.tradeCategory = tradeNpc.getTradeCategory();
+            this.texture = tradeNpc.getTexture();
+            this.texts = tradeNpc.getTexts();
+
+//            // Si la texture est manquante, définir une texture par défaut
+//            if (this.texture == null || this.texture.isEmpty()) {
+//                this.texture = "textures/entity/banker.png"; // Texture par défaut
+//            }
+
+            // Mise à jour de l'entité avec les valeurs
             this.setCustomName(Component.literal(this.npcName));
             this.setCustomNameVisible(true);
+            LOGGER.info("PNJ initialisé : " + this.npcName);
 
-            LOGGER.info("PNJ ID : " + this.npcId);
-            LOGGER.info("PNJ initialisé avec succès : " + this.npcName);
-            LOGGER.info("Position du PNJ : " + this.position);
-            LOGGER.info("Catégorie du commerce : " + this.tradeCategory);
-            LOGGER.info("Texture assignée : " + this.texture);
-
-            // Initialiser l'entité une fois toutes les données chargées
-            initialized = true;
-
-            // Ajouter l'entité au monde après l'initialisation
+            // Assurez-vous que toutes les données sont assignées avant l'ajout au monde
             this.setPos(this.position.getX(), this.position.getY(), this.position.getZ());
-            this.level().addFreshEntity(this);  // Ajouter l'entité au monde
-
-            LOGGER.info("PNJ ajouté au monde : " + this.npcName);
-
+            this.level().addFreshEntity(this);  // Ajout au monde après l'initialisation des données
 
             return true;
-        }
-        return true;
+//        }
+//        return false;
     }
-        @Override
-    public void onAddedToWorld() {
-        super.onAddedToWorld();
+//    public boolean isNpcAlreadyPresent(UUID uuid, BlockPos position) {
+//        // Vérifiez s'il existe déjà un PNJ avec le même UUID et la même position
+//        return this.level().getEntitiesOfClass(TradeNpcEntity.class, new AABB(position)).stream()
+//                .anyMatch(existingNpc -> existingNpc.getUUID().equals(uuid));
+//    }
 
-            if (!initializeNpcData()) {
-                LOGGER.error("Erreur lors de l'initialisation de l'entité. Texture manquante ou invalide.");
-                return;  // Sortir si l'initialisation échoue
-            }
-
-        LOGGER.info("Entité ajoutée au monde : " + (this.getName() != null ? this.getName().getString() : "Inconnue") + ", texture : " + this.texture);
-    }
+//    @Override
+//    public void onAddedToWorld() {
+//        super.onAddedToWorld();
+//
+//            if (!initializeNpcData()) {
+//                LOGGER.error("Erreur lors de l'initialisation de l'entité. Texture manquante ou invalide.");
+//                return;  // Sortir si l'initialisation échoue
+//            }
+//
+//        LOGGER.info("Entité ajoutée au monde : " + (this.getName() != null ? this.getName().getString() : "Inconnue") + ", texture : " + this.texture);
+//    }
 
     @Override
     public void remove(RemovalReason reason) {

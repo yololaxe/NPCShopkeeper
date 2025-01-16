@@ -121,34 +121,6 @@ public class TradeNpc {
         this.pos = pos;
     }
 
-    public void interact(ServerPlayer player, BlockPos position) {
 
-        if (hasTexts()) {
-            String randomText = texts.get(new Random().nextInt(texts.size()));
-            player.displayClientMessage(Component.literal(randomText), false);
-        } else {
-            player.displayClientMessage(Component.literal("Ce PNJ n'a rien à dire pour le moment."), false);
-        }
 
-        Pair<Boolean, TradeHistory> tradeStatus = JsonTradeFileManager.checkTradeStatusForNpc(npcId);
-        if (tradeStatus.first) {
-            tradeHistory = tradeStatus.second;
-            if (tradeHistory == null || tradeHistory.getTradeName() == null || tradeHistory.getTradeItems().isEmpty()) {
-                player.displayClientMessage(Component.literal("Erreur : données de trade manquantes pour le PNJ."), true);
-                LOGGER.error("Données de trade manquantes pour le PNJ : " + npcId);
-                return;
-            }
-            player.displayClientMessage(Component.literal("Un trade existant a été trouvé : " + tradeHistory.getTradeName()), true);
-        } else if (tradeCategory != null) {
-            List<Trade> trades = JsonTradeFileManager.getTradesByCategory(tradeCategory);
-            if (!trades.isEmpty()) {
-                trade = trades.get(new Random().nextInt(trades.size()));
-                player.displayClientMessage(Component.literal("Nouveau trade généré : " + trade.getName()), true);
-            } else {
-                player.displayClientMessage(Component.literal("Aucun trade trouvé dans cette catégorie : " + tradeCategory), true);
-            }
-        } else {
-            player.displayClientMessage(Component.literal("Ce PNJ n'a pas de catégorie de trade assignée."), true);
-        }
-    }
 }

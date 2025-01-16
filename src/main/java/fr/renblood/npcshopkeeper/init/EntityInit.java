@@ -2,10 +2,8 @@ package fr.renblood.npcshopkeeper.init;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.level.Level;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
@@ -22,6 +20,10 @@ public class EntityInit {
                     .sized(0.6F, 2.0F)
                     .build("trade_npc")
     );
+
+
+
+
 
 
 }

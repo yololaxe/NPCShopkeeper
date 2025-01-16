@@ -92,23 +92,23 @@ public class SpawnTradeNpcCommand {
                 LOGGER.info("Données du PNJ : " + npcData);
 
 
-
+                TradeNpc modelNpc = new TradeNpc(npcName, npcData, category,position);
 
                 // Création de l'entité NPC
                 TradeNpcEntity npc = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), source.getUnsidedLevel());
+                modelNpc.setNpcId(npc.getStringUUID());
+                npc.setTradeNpc(modelNpc);
                 if (npc == null) {
                     LOGGER.error("Impossible de créer une instance de TradeNpcEntity.");
                     source.sendFailure(Component.literal("Failed to create NPC instance."));
                     return 0;
                 }
-                TradeNpc modelNpc = new TradeNpc(npc.getUUID().toString(), npcName, npcData, category,position);
-
                 ActiveNpcManager.printActiveNpcs();
                 JsonTradeFileManager.addTradeNpcToJson(modelNpc); // Enregistrement dans le fichier JSON
-
-                npc.setInitialized(false);
-                npc.isCreated = true;
-                npc.initializeNpcData();
+//
+//                npc.setInitialized(false);
+//                npc.isCreated = true;
+//                npc.initializeNpcData();
 
                 // Configuration du PNJ
 //                npc.setTradeCategory(category);
