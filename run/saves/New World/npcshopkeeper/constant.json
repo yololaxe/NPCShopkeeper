@@ -1,0 +1,84 @@
+{
+  "npcs": {
+    "Bingo": {
+      "Texture": "textures/entity/bingo.png",
+      "Texts": [
+        "Bienvenue dans le jardin ! Pret a commencer ?",
+        "Tu devrais planter des melons, ils poussent vite !",
+        "Cet endroit est parfait pour se detendre."
+      ]
+    },
+    "George": {
+      "Texture": "textures/entity/george.png",
+      "Texts": [
+        "J'aime ce que tu as fait ici.",
+        "Les animaux adorent cet endroit.",
+        "Tu pourrais ajouter une serre ?"
+      ]
+    },
+    "Diana": {
+      "Texture": "textures/entity/diana.png",
+      "Texts": [
+        "Tes recoltes sont impressionnantes.",
+        "Les fruits de ton travail sont magnifiques.",
+        "Tu prends vraiment soin de ton jardin."
+      ]
+    },
+    "Bazaar": {
+      "Texture": "textures/entity/bazaar.png",
+      "Texts": [
+        "Besoin d'aide pour le jardin ?",
+        "Je peux te fournir ce qu'il te faut.",
+        "Pense a ajouter des fleurs rares ici."
+      ]
+    },
+    "Jerry": {
+      "Texture": "textures/entity/jerry.png",
+      "Texts": [
+        "C'est agreable de voir le jardin grandir.",
+        "Ton jardin attire beaucoup d'attention.",
+        "N'oublie pas de nourrir tes animaux."
+      ]
+    },
+    "Derpy": {
+      "Texture": "textures/entity/derpy.png",
+      "Texts": [
+        "Pourquoi pas planter du ble ici ?",
+        "Les betteraves poussent bien ici.",
+        "Et si tu essayais de cultiver des champignons ?"
+      ]
+    },
+    "Paul": {
+      "Texture": "textures/entity/paul.png",
+      "Texts": [
+        "Tes recoltes de carottes sont incroyables !",
+        "Tu devrais vendre tes surplus.",
+        "Un bon fermier connait ses sols."
+      ]
+    },
+    "Sam": {
+      "Texture": "textures/entity/sam.png",
+      "Texts": [
+        "Ce jardin est parfait pour se relaxer.",
+        "J'aime ton organisation.",
+        "Tu devrais peut-etre installer un bassin."
+      ]
+    },
+    "Tia": {
+      "Texture": "textures/entity/tia.png",
+      "Texts": [
+        "As-tu besoin d'engrais ?",
+        "Ce sol est parfait pour planter.",
+        "Je peux t'aider avec tes plantes."
+      ]
+    },
+    "Adventurer": {
+      "Texture": "textures/entity/adventurer.png",
+      "Texts": [
+        "Ce jardin est un endroit calme.",
+        "Il offre une pause loin de l'agitation.",
+        "Ces fruits sont parfaits pour mes voyages."
+      ]
+    }
+  }
+}

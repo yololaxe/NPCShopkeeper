@@ -3,6 +3,7 @@ package fr.renblood.npcshopkeeper.procedures;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.manager.NpcSpawnerManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -118,6 +119,7 @@ public class PointDefiningModeProcedure {
 
         // Sauvegarder dans le fichier JSON
         JsonTradeFileManager.saveRoadToFile(newRoad);
+        NpcSpawnerManager.startSpawningForRoad(player.getServer().overworld(), newRoad);
 
         // Message de confirmation
         player.displayClientMessage(Component.literal("Route commerciale enregistrée avec succès : " + newRoad.getName()), false);

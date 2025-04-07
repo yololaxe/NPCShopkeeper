@@ -1,5 +1,6 @@
 package fr.renblood.npcshopkeeper.manager;
 
+import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
@@ -29,6 +30,7 @@ public class OnServerStartedManager {
     public static String PATH_COMMERCIAL= "";
     public static String PATH_NPCS= "";
 
+
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
@@ -41,23 +43,18 @@ public class OnServerStartedManager {
             PATH_COMMERCIAL = server.getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/commercial_road.json").toString();
             PATH_NPCS = server.getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/trades_npcs.json").toString();
 
-            LOGGER.info("Chemin complet du fichier trade.json après démarrage : {}", PATH);
-            LOGGER.info("Chemin complet du fichier trade_history.json après démarrage : {}", PATH_HISTORY);
-            LOGGER.info("Chemin complet du fichier constant.json après démarrage : {}", PATH_CONSTANT);
-            LOGGER.info("Chemin complet du fichier price_references.json après démarrage : {}", PATH_PRICE);
-            LOGGER.info("Chemin complet du fichier price_references.json après démarrage : {}", PATH_COMMERCIAL);
-            LOGGER.info("Chemin complet du fichier trades_npcs.json après démarrage : {}", PATH_NPCS);
-
+            LOGGER.info("Chemins JSON init...");
             checkFileExists(PATH, "trade.json");
             checkFileExists(PATH_HISTORY, "trade_history.json");
             checkFileExists(PATH_CONSTANT, "constant.json");
             checkFileExists(PATH_PRICE, "price_references.json");
-            checkFileExists(PATH_COMMERCIAL, "price_references.json");
+            checkFileExists(PATH_COMMERCIAL, "commercial_road.json");
             checkFileExists(PATH_NPCS, "trades_npcs.json");
 
-            ServerLevel world = event.getServer().overworld();
-            Map<UUID, TradeNpc> tradeNpcsMap = JsonTradeFileManager.loadTradeNpcsFromJson(world);
+            ServerLevel world = server.overworld();
 
+            // --- CHARGEMENT DES PNJs ---
+            Map<UUID, TradeNpc> tradeNpcsMap = JsonTradeFileManager.loadTradeNpcsFromJson(world);
             if (!tradeNpcsMap.isEmpty()) {
                 for (Map.Entry<UUID, TradeNpc> entry : tradeNpcsMap.entrySet()) {
                     TradeNpc tradeNpc = entry.getValue();
@@ -69,20 +66,36 @@ public class OnServerStartedManager {
 
                     world.addFreshEntity(npcEntity);
                 }
-
                 LOGGER.info("Tous les PNJs ont été chargés avec succès !");
             } else {
-                LOGGER.warn("Aucun PNJ trouvé dans le fichier JSON au chargement du serveur.");
+                LOGGER.warn("Aucun PNJ trouvé dans le fichier JSON.");
             }
 
             GlobalNpcManager.loadNpcData();
-            //JsonTradeFileManager.loadTradeNpcsFromJson(event.getServer().overworld());
-            LOGGER.info("PNJs initialisés avec succès.");
+            LOGGER.info("PNJs init terminée.");
+
+            // --- CHARGEMENT DES ROUTES COMMERCIALES ---
+            File folder = new File("commercial_road");
+            if (folder.exists() && folder.isDirectory()) {
+                File[] files = folder.listFiles((dir, name) -> name.endsWith(".json"));
+                if (files != null) {
+                    for (File file : files) {
+                        CommercialRoad road = JsonTradeFileManager.loadRoadFromFile(file.toPath());
+                        if (road != null) {
+                            NpcSpawnerManager.startSpawningForRoad(world, road);
+                            LOGGER.info("Route commerciale chargée : " + road.getName());
+                        }
+                    }
+                }
+            } else {
+                LOGGER.warn("Le dossier commercial_road est introuvable ou vide.");
+            }
 
         } else {
             LOGGER.error("Le serveur est null dans l'événement onServerStarted");
         }
     }
+
     private static void checkFileExists(String path, String description) {
         File file = new File(path);
         if (!file.exists()) {

@@ -39,10 +39,10 @@ import java.util.*;
 
 public class TradeNpcEntity extends Villager {
 
-    private String npcId ;
+    private String npcId;
     private String npcName;
-    Map<String, Object> npcData ; //texture texts
-    private ArrayList<String> texts ;
+    Map<String, Object> npcData; //texture texts
+    private ArrayList<String> texts;
     private String texture;
     private BlockPos position;
     private String tradeCategory; // Catégorie du trade assignée à ce PNJ
@@ -66,23 +66,27 @@ public class TradeNpcEntity extends Villager {
 //        }
 //    }
 
-        public void setTradeNpc(TradeNpc tradeNpc) {
-            this.tradeNpc = tradeNpc;
-            this.initializeNpcData();
+    public void setTradeNpc(TradeNpc tradeNpc) {
+        this.tradeNpc = tradeNpc;
+        this.initializeNpcData();
 
-        }
+    }
 
-
-
+    public void loadData(TradeNpc npc) {
+        this.setTradeCategory(npc.getTradeCategory());
+        this.setNpcId(npc.getNpcId());
+        this.setNpcName(npc.getNpcName());
+        this.setTexture(npc.getTexture());
+    }
 
 
     public boolean initializeNpcData() {
 //        if (isCreated) {
-            //TradeNpc npc = JsonTradeFileManager.loadTradeNpcsFromJson(this.getCommandSenderWorld()).get(this.getUUID().toString());
-            if (tradeNpc == null) {
-                LOGGER.error("Impossible de récupérer les données du TradeNpc.");
-                return false;
-            }
+        //TradeNpc npc = JsonTradeFileManager.loadTradeNpcsFromJson(this.getCommandSenderWorld()).get(this.getUUID().toString());
+        if (tradeNpc == null) {
+            LOGGER.error("Impossible de récupérer les données du TradeNpc.");
+            return false;
+        }
 
 //            // Vérifier si l'UUID du PNJ existe déjà
 //            if (isNpcAlreadyPresent(UUID.fromString(this.getUUID().toString()), this.position)) {
@@ -90,29 +94,29 @@ public class TradeNpcEntity extends Villager {
 //                return false;
 //            }
 
-            // Initialisation des attributs à partir des données
-            this.setNpcId(this.getUUID().toString());
-            this.setNpcName(tradeNpc.getNpcName());
-            this.position = tradeNpc.getPos();
-            this.tradeCategory = tradeNpc.getTradeCategory();
-            this.texture = tradeNpc.getTexture();
-            this.texts = tradeNpc.getTexts();
+        // Initialisation des attributs à partir des données
+        this.setNpcId(this.getUUID().toString());
+        this.setNpcName(tradeNpc.getNpcName());
+        this.position = tradeNpc.getPos();
+        this.tradeCategory = tradeNpc.getTradeCategory();
+        this.texture = tradeNpc.getTexture();
+        this.texts = tradeNpc.getTexts();
 
 //            // Si la texture est manquante, définir une texture par défaut
 //            if (this.texture == null || this.texture.isEmpty()) {
 //                this.texture = "textures/entity/banker.png"; // Texture par défaut
 //            }
 
-            // Mise à jour de l'entité avec les valeurs
-            this.setCustomName(Component.literal(this.npcName));
-            this.setCustomNameVisible(true);
-            LOGGER.info("PNJ initialisé : " + this.npcName);
+        // Mise à jour de l'entité avec les valeurs
+        this.setCustomName(Component.literal(this.npcName));
+        this.setCustomNameVisible(true);
+        LOGGER.info("PNJ initialisé : " + this.npcName);
 
-            // Assurez-vous que toutes les données sont assignées avant l'ajout au monde
-            this.setPos(this.position.getX(), this.position.getY(), this.position.getZ());
-            this.level().addFreshEntity(this);  // Ajout au monde après l'initialisation des données
+        // Assurez-vous que toutes les données sont assignées avant l'ajout au monde
+        this.setPos(this.position.getX(), this.position.getY(), this.position.getZ());
+        this.level().addFreshEntity(this);  // Ajout au monde après l'initialisation des données
 
-            return true;
+        return true;
 //        }
 //        return false;
     }
@@ -217,7 +221,6 @@ public class TradeNpcEntity extends Villager {
     }
 
 
-
     @Override
     public void rewardTradeXp(MerchantOffer offer) {
         // Implémentation vide ou logique personnalisée
@@ -235,9 +238,10 @@ public class TradeNpcEntity extends Villager {
                 .add(Attributes.FOLLOW_RANGE, 0.0D);  // Désactiver la portée de suivi
     }
 
-    public static boolean canSpawn(EntityType<TradeNpcEntity> entityType, LevelAccessor level, MobSpawnType spawnType, BlockPos position, RandomSource random){
+    public static boolean canSpawn(EntityType<TradeNpcEntity> entityType, LevelAccessor level, MobSpawnType spawnType, BlockPos position, RandomSource random) {
         return Villager.checkMobSpawnRules(entityType, level, spawnType, position, random);
     }
+
     public boolean hasLoggedTexture = false;
 
     public boolean hasLoggedTexture() {
@@ -277,6 +281,7 @@ public class TradeNpcEntity extends Villager {
     public boolean isNoGravity() {
         return true; // Empêche l'entité d'être affectée par la gravité
     }
+
     // Propriétés spécifiques au PNJ
     public String getNpcId() {
         return npcId;
@@ -345,6 +350,7 @@ public class TradeNpcEntity extends Villager {
     public void setTrade(Trade trade) {
         this.trade = trade;
     }
+
     public void setTradeHistory(TradeHistory tradeHistory) {
         this.tradeHistory = tradeHistory;
     }

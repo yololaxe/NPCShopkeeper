@@ -35,8 +35,8 @@ public class JsonTradeFileManager {
     private static final Logger LOGGER = LogManager.getLogger(JsonTradeFileManager.class);
     public static String path = PATH;
     public static String pathHistory = PATH_HISTORY;
-    public static String pathConstant= PATH_CONSTANT;
-    public static String pathCommercial= PATH_COMMERCIAL;
+    public static String pathConstant = PATH_CONSTANT;
+    public static String pathCommercial = PATH_COMMERCIAL;
 
 
     // Méthode pour lire un fichier JSON
@@ -69,7 +69,6 @@ public class JsonTradeFileManager {
     }
 
 
-
     // Méthode pour écrire dans un fichier JSON
     private static void writeJsonFile(Path filePath, JsonObject jsonObject) {
         try (FileWriter writer = new FileWriter(filePath.toFile())) {
@@ -93,7 +92,7 @@ public class JsonTradeFileManager {
             });
             LOGGER.info("Total des trades trouvés : " + tradeNames.size());
         } else {
-            LOGGER.warn("Aucun trade trouvé dans le fichier JSON. + path :"+path);
+            LOGGER.warn("Aucun trade trouvé dans le fichier JSON. + path :" + path);
         }
         return tradeNames;
     }
@@ -351,7 +350,6 @@ public class JsonTradeFileManager {
     }
 
 
-
     public static TradeHistory getTradeHistoryById(String id) {
         JsonObject jsonObject = readJsonFile(Path.of(pathHistory));
 
@@ -485,7 +483,6 @@ public class JsonTradeFileManager {
 //    }
 
 
-
     public static List<String> readCategoryNames() {
         List<String> categories = new ArrayList<>();
         JsonObject jsonObject = readJsonFile(Path.of(path));
@@ -544,6 +541,7 @@ public class JsonTradeFileManager {
         }
         return trades;
     }
+
     public static Pair<Boolean, TradeHistory> checkTradeStatusForNpc(String npcId) {
         LOGGER.info("Début de la vérification du statut du trade pour le NPC : " + npcId);
         JsonObject jsonObject = readJsonFile(Path.of(pathHistory));
@@ -664,7 +662,6 @@ public class JsonTradeFileManager {
 
 
     public static void saveRoadToFile(CommercialRoad road) {
-
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("id", road.getId());
         jsonObject.addProperty("name", road.getName());
@@ -690,14 +687,16 @@ public class JsonTradeFileManager {
         }
         jsonObject.add("npcEntities", npcEntitiesArray);
 
-        // Sauvegarder dans un fichier
-        Path filePath = Paths.get("commercial_roads", road.getId() + ".json");
+        // 🔁 Écriture dans un seul fichier : commercial_road.json
+        Path filePath = Paths.get(pathCommercial);
+
         try (Writer writer = Files.newBufferedWriter(filePath)) {
             writer.write(jsonObject.toString());
         } catch (IOException e) {
             LOGGER.error("Erreur lors de la sauvegarde de la route commerciale : " + road.getId(), e);
         }
     }
+
 
     public static CommercialRoad loadRoadFromFile(ServerPlayer player) {
         JsonObject jsonObject = readJsonFile(Path.of(pathCommercial));
@@ -732,6 +731,17 @@ public class JsonTradeFileManager {
         return new CommercialRoad(id, name, category, positions, npcEntities, minTimer, maxTimer);
 
     }
+    public static List<TradeNpc> getAllTradeNpcs() {
+        List<TradeNpc> tradeNpcList = new ArrayList<>();
+        Map<UUID, TradeNpc> npcsMap = loadTradeNpcsFromJson(null); // Le paramètre Level n’est pas utilisé en réalité
+
+        if (npcsMap != null) {
+            tradeNpcList.addAll(npcsMap.values());
+        }
+
+        return tradeNpcList;
+    }
+
 
     public static void addTradeNpcToJson(TradeNpc npc) {
         try {
@@ -781,8 +791,6 @@ public class JsonTradeFileManager {
     }
 
 
-
-
     public static void removeTradeNpcFromJson(String npcId) {
         try {
             JsonObject json = readJsonFile(Path.of(PATH_NPCS));
@@ -816,6 +824,7 @@ public class JsonTradeFileManager {
             LOGGER.error("Erreur lors de la suppression d'un PNJ du fichier JSON : ", e);
         }
     }
+
     public static Map<UUID, TradeNpc> loadTradeNpcsFromJson(Level world) {
         Map<UUID, TradeNpc> tradeNpcsMap = new HashMap<>();
 
@@ -861,15 +870,47 @@ public class JsonTradeFileManager {
 
         return tradeNpcsMap;  // Return the map of TradeNpc objects
     }
+    public static CommercialRoad loadRoadFromFile(Path filePath) {
+        JsonObject jsonObject = readJsonFile(filePath);
 
+        if (jsonObject == null) return null;
 
+        try {
+            String id = jsonObject.get("id").getAsString();
+            String name = jsonObject.get("name").getAsString();
+            String category = jsonObject.get("category").getAsString();
+            int minTimer = jsonObject.get("minTimer").getAsInt();
+            int maxTimer = jsonObject.get("maxTimer").getAsInt();
 
+            ArrayList<BlockPos> positions = new ArrayList<>();
+            JsonArray positionsArray = jsonObject.getAsJsonArray("positions");
+            for (JsonElement posElement : positionsArray) {
+                JsonObject posObject = posElement.getAsJsonObject();
+                int x = posObject.get("x").getAsInt();
+                int y = posObject.get("y").getAsInt();
+                int z = posObject.get("z").getAsInt();
+                positions.add(new BlockPos(x, y, z));
+            }
 
+            ArrayList<TradeNpcEntity> npcEntities = new ArrayList<>();
+            if (jsonObject.has("npcEntities")) {
+                JsonArray npcArray = jsonObject.getAsJsonArray("npcEntities");
+                for (JsonElement npcElement : npcArray) {
+                    JsonObject npcObj = npcElement.getAsJsonObject();
+                    // ici, on ignore le chargement des entités physiques
+                    // on ne garde que les positions
+                    if (npcObj.has("uuid")) {
+                        // tu peux rajouter une logique de recoupement avec ActiveNpcManager si besoin
+                    }
+                }
+            }
 
-
-
-
-
+            return new CommercialRoad(id, name, category, positions, npcEntities, minTimer, maxTimer);
+        } catch (Exception e) {
+            LOGGER.error("Erreur lors du chargement de la route commerciale : " + filePath, e);
+            return null;
+        }
+    }
 
 
 }

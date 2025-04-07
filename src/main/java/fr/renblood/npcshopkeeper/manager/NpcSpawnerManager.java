@@ -3,6 +3,7 @@ package fr.renblood.npcshopkeeper.manager;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
+import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
 import net.minecraft.core.BlockPos;
@@ -12,21 +13,21 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class NpcSpawnerManager {
 
     public static final HashMap<CommercialRoad, HashMap<BlockPos, Mob>> activeNPCs = new HashMap<>();
     private static final Random random = new Random();
+    private static final Logger LOGGER = LogManager.getLogger(NpcSpawnerManager.class);
 
     // Appelle cette méthode périodiquement
     public static void updateSpawn(ServerLevel world, CommercialRoad road) {
@@ -88,7 +89,7 @@ public class NpcSpawnerManager {
         return EntityType.VILLAGER; // Exemple par défaut
     }
 
-    private static int getRandomTime(int min, int max) {
+    static int getRandomTime(int min, int max) {
         return random.nextInt(max - min + 1) + min;
     }
 
@@ -116,6 +117,7 @@ public class NpcSpawnerManager {
         public int x, y, z;
         public String category;
     }
+
     public static void saveNpcData(ServerLevel world) {
         List<NpcData> npcDataList = new ArrayList<>();
 
@@ -141,7 +143,51 @@ public class NpcSpawnerManager {
             e.printStackTrace();
         }
     }
+    static void trySpawnNpcForRoad(ServerLevel level, CommercialRoad road) {
+        if (!activeNPCs.containsKey(road)) {
+            activeNPCs.put(road, new HashMap<>());
+        }
 
+        HashMap<BlockPos, Mob> roadNPCs = activeNPCs.get(road);
+
+        for (BlockPos point : road.getPositions()) {
+            if (!roadNPCs.containsKey(point)) {
+                TradeNpc npcData = getRandomInactiveTradeNpcByCategory(road.getCategory());
+                if (npcData == null) return;
+                LOGGER.info("Tentative de spawn d'un PNJ sur la route : {}", road.getName());
+
+
+                TradeNpcEntity npcEntity = EntityInit.TRADE_NPC_ENTITY.get().create(level);
+                if (npcEntity != null) {
+                    npcEntity.moveTo(point.getX() + 0.5, point.getY(), point.getZ() + 0.5);
+                    npcEntity.loadData(npcData); // à ajouter dans ton entité
+                    level.addFreshEntity(npcEntity);
+                    roadNPCs.put(point, npcEntity);
+                    ActiveNpcManager.addActiveNpc(npcData);
+                }
+
+                break;
+            }
+        }
+    }
+    private static TradeNpc getRandomInactiveTradeNpcByCategory(String category) {
+        List<TradeNpc> candidates = JsonTradeFileManager.getAllTradeNpcs().stream()
+                .filter(npc -> npc.getTradeCategory().equals(category))
+                .filter(npc -> !ActiveNpcManager.isNpcActive(UUID.fromString(npc.getNpcId())))
+                .toList();
+
+        if (candidates.isEmpty()) return null;
+        return candidates.get(new Random().nextInt(candidates.size()));
+    }
+
+
+    public static void startSpawningForRoad(ServerLevel level, CommercialRoad road) {
+        if (road == null || level == null) return;
+
+        int delay = getRandomTime(road.getMinTimer(), road.getMaxTimer()) * 20; // ticks
+        trySpawnNpcForRoad(level, road); // 👈 spawn immédiat
+        NpcSpawnScheduler.scheduleSpawn(level, road, delay);
+    }
 
 
 
