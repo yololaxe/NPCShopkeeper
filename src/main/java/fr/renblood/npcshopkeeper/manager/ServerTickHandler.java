@@ -8,15 +8,14 @@ import net.minecraftforge.fml.LogicalSide;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraftforge.server.ServerLifecycleHooks;
 
 @Mod.EventBusSubscriber
 public class ServerTickHandler {
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
-            MinecraftServer server = event.getServer();
-            if (server != null) {
-                ServerLevel level = server.overworld();
+        if (event.phase == TickEvent.Phase.END && event.side.isServer()) {
+            for (ServerLevel level : ServerLifecycleHooks.getCurrentServer().getAllLevels()) {
                 RoadTickScheduler.tick(level);
             }
         }

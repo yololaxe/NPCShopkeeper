@@ -129,10 +129,10 @@ public class Npcshopkeeper {
         if (server == null) return;
 
         // Accédez au monde principal (Overworld)
-        ServerLevel overworld = server.overworld();
-        if (overworld != null) {
-            updateAllRoads(overworld);
-        }
+//        ServerLevel overworld = server.overworld();
+//        if (overworld != null) {
+//            updateAllRoads(overworld);
+//        }
     }
 
 

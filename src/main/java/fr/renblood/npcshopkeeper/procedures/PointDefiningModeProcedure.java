@@ -4,18 +4,23 @@ import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.manager.NpcSpawnerManager;
+import fr.renblood.npcshopkeeper.manager.RoadTickScheduler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 public class PointDefiningModeProcedure {
+
+    private static final Logger LOGGER = LogManager.getLogger(PointDefiningModeProcedure.class);
     public static final HashMap<ServerPlayer, PointDefiningModeProcedure> activeModes = new HashMap<>();
 
     private final ServerPlayer player;
@@ -97,36 +102,39 @@ public class PointDefiningModeProcedure {
 
     // Terminer et enregistrer la route
     public void finish() {
+        LOGGER.info("Début de la procédure finish pour le joueur : " + player.getName().getString());
+
         if (positions.size() != maxPoints) {
+            LOGGER.warn("Points insuffisants : " + positions.size() + "/" + maxPoints);
             player.displayClientMessage(Component.literal("Vous n'avez pas placé tous les points requis. (" + positions.size() + "/" + maxPoints + ")"), false);
             return;
         }
 
-        // Créer une nouvelle route commerciale
         String id = CommercialRoad.generateUniqueId();
-        CommercialRoad newRoad = new CommercialRoad(
-                id,
-                name,
-                category, // Catégorie par défaut (modifiable)
-                new ArrayList<>(positions), // Copier les positions
-                new ArrayList<>(), // Entités vides
-                minTimer,
-                maxTimer
-        );
+        LOGGER.info("ID de la route généré : " + id);
 
-        // Ajouter à la liste globale
+        CommercialRoad newRoad = new CommercialRoad(id, name, category, new ArrayList<>(positions), new ArrayList<>(), minTimer, maxTimer);
+
+        LOGGER.info("Nouvelle route construite : " + name + ", catégorie : " + category);
+
         Npcshopkeeper.COMMERCIAL_ROADS.add(newRoad);
+        LOGGER.info("Route ajoutée à la liste globale");
 
-        // Sauvegarder dans le fichier JSON
         JsonTradeFileManager.saveRoadToFile(newRoad);
-        NpcSpawnerManager.startSpawningForRoad(player.getServer().overworld(), newRoad);
+        LOGGER.info("Route sauvegardée dans le fichier JSON");
 
-        // Message de confirmation
+//        NpcSpawnerManager.trySpawnNpcForRoad(player.getServer().overworld(), newRoad); // Ajouter ce log !
+//        LOGGER.info("Tentative de spawn immédiat du premier PNJ");
+
+        LOGGER.info("Lancement du spawn différé via RoadTickScheduler");
+        RoadTickScheduler.registerRoad(newRoad);
+
         player.displayClientMessage(Component.literal("Route commerciale enregistrée avec succès : " + newRoad.getName()), false);
 
-        // Arrêter le mode
         stop(player);
+        LOGGER.info("Fin de la procédure finish pour le joueur : " + player.getName().getString());
     }
+
 
     // Mettre à jour les particules
     public void updateParticles() {
