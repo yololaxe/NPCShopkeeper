@@ -13,6 +13,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -34,60 +35,8 @@ public class NpcSpawnerManager {
         if (!activeNPCs.containsKey(road)) {
             activeNPCs.put(road, new HashMap<>());
         }
-
-        HashMap<BlockPos, Mob> roadNPCs = activeNPCs.get(road);
-        List<BlockPos> positions = road.getPositions();
-
-        for (BlockPos point : positions) {
-            if (!roadNPCs.containsKey(point)) { // Si le point est libre
-                int timer = getRandomTime(road.getMinTimer(), road.getMaxTimer());
-
-                // Planifier une tâche différée via un "Tick Task"
-                world.getServer().execute(() -> {
-                    if (!roadNPCs.containsKey(point)) { // Vérifier encore si le point est libre
-////                        Mob npc = spawnRandomNPC(world, point, road.getCategory());
-//                        if (npc != null) {
-//                            roadNPCs.put(point, npc);
-//                        }
-                    }
-                });
-            }
-        }
     }
 
-
-//    public static void npcFinished(ServerLevel world, CommercialRoad road, Mob npc) {
-//        HashMap<BlockPos, Mob> roadNPCs = activeNPCs.get(road);
-//        if (roadNPCs != null) {
-//            BlockPos npcPos = roadNPCs.entrySet().stream()
-//                    .filter(entry -> entry.getValue() == npc)
-//                    .map(HashMap.Entry::getKey)
-//                    .findFirst()
-//                    .orElse(null);
-//
-//            if (npcPos != null) {
-//                roadNPCs.remove(npcPos); // Libérer le point
-//                npc.discard(); // Supprimer le NPC
-//            }
-//        }
-//    }
-
-
-//    private static Mob spawnRandomNPC(ServerLevel world, BlockPos pos, String category) {
-//        // Remplace "EntityType.VILLAGER" par une logique pour sélectionner un type d'entité basé sur la catégorie
-//        EntityType<?> entityType = selectRandomEntityTypeByCategory(category);
-//        Mob npc = (Mob) entityType.create(world);
-//        if (npc != null) {
-//            npc.setPos(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
-//            world.addFreshEntity(npc);
-//        }
-//        return npc;
-//    }
-//
-//    private static EntityType<?> selectRandomEntityTypeByCategory(String category) {
-//        // Remplace par une logique qui retourne un type d'entité basé sur la catégorie
-//        return EntityType.VILLAGER; // Exemple par défaut
-//    }
 
     static int getRandomTime(int min, int max) {
         return random.nextInt(max - min + 1) + min;
@@ -96,20 +45,6 @@ public class NpcSpawnerManager {
     private static final String NPC_DATA_FILE = "npc_data.json"; // Chemin du fichier JSON
     private static List<NpcData> npcDataList;
 
-    public static void loadNpcData() {
-        try (Reader reader = new FileReader(NPC_DATA_FILE)) {
-            Gson gson = new Gson();
-            Type listType = new TypeToken<List<NpcData>>() {
-            }.getType();
-            npcDataList = gson.fromJson(reader, listType);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static List<NpcData> getNpcDataList() {
-        return npcDataList;
-    }
 
     public static class NpcData {
         public String id;
@@ -155,18 +90,30 @@ public class NpcSpawnerManager {
 
         HashMap<BlockPos, Mob> roadNPCs = activeNPCs.get(road);
 
-        // 🧹 NE GARDER que les TradeNpcEntity valides
+        // 🧹 Nettoyer les entités invalides
         roadNPCs.entrySet().removeIf(entry ->
                 !(entry.getValue() instanceof TradeNpcEntity) || entry.getValue().isRemoved());
 
-        LOGGER.info("➡️ Tentative de spawn pour la route : " + road.getName());
+        LOGGER.info("➡️ Tentative de spawn pour la route : {}", road.getName());
         LOGGER.info("Positions : " + road.getPositions());
         LOGGER.info("Positions occupées (roadNPCs.keySet()) : " + roadNPCs.keySet());
         LOGGER.info("NPCs actifs (roadNPCs.values()) : " + roadNPCs.values());
 
+        boolean spawned = false;
         for (BlockPos point : road.getPositions()) {
             if (!roadNPCs.containsKey(point)) {
                 LOGGER.info("🧭 Point libre trouvé à : " + point);
+
+//                // 🔒 Vérifie s'il y a déjà une entité présente à cette position
+//                List<TradeNpcEntity> alreadyPresent = level.getEntitiesOfClass(
+//                        TradeNpcEntity.class,
+//                        new AABB(point)
+//                );
+//
+//                if (!alreadyPresent.isEmpty()) {
+//                    LOGGER.warn("⚠️ Entité déjà présente à cette position, annulation du spawn.");
+//                    continue;
+//                }
 
                 String npcName = GlobalNpcManager.getRandomInactiveNpc();
                 if (npcName == null) {
@@ -181,34 +128,52 @@ public class NpcSpawnerManager {
                 }
 
                 TradeNpc modelNpc = new TradeNpc(npcName, npcData, road.getCategory(), point);
+
                 TradeNpcEntity npcEntity = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), level);
                 modelNpc.setNpcId(npcEntity.getStringUUID());
-
                 npcEntity.setTradeNpc(modelNpc);
-                level.addFreshEntity(npcEntity);
+
+                // ✅ Vérifie si l'entité est déjà présente dans roadNPCs (évite les doublons)
+                if (roadNPCs.containsValue(npcEntity)) {
+                    LOGGER.warn("⚠️ Entité déjà référencée dans roadNPCs, annulation du spawn.");
+                    continue;
+                }
+
+                try {
+                    level.addFreshEntity(npcEntity);
+                    LOGGER.info("✅ Entité ajoutée avec succès !");
+                } catch (Exception e) {
+                    LOGGER.error("❌ Échec lors de l'ajout de l'entité : " + e.getMessage());
+                    e.printStackTrace();
+                }
 
                 roadNPCs.put(point, npcEntity);
                 road.getNpcEntities().add(npcEntity);
                 JsonTradeFileManager.saveRoadToFile(road);
                 JsonTradeFileManager.addTradeNpcToJson(modelNpc);
-                ActiveNpcManager.addActiveNpc(modelNpc);
+//                ActiveNpcManager.addActiveNpc(modelNpc);
 
                 LOGGER.info("✅ PNJ spawné sur la route '" + road.getName() + "' à " + point + " : " + npcName);
+                spawned = true;
                 break;
-            } else {
-                LOGGER.error("❌ PATATE");
             }
         }
+
+        if (!spawned) {
+            LOGGER.error("❌ Tous les points sont occupés : aucun PNJ spawné.");
+        }
     }
+
+
 
 
     public static void startSpawningForRoad(ServerLevel level, CommercialRoad road) {
         if (road == null || level == null) return;
 
-        int delay = getRandomTime(road.getMinTimer(), road.getMaxTimer()) * 20; // ticks
-        trySpawnNpcForRoad(level, road); // 👈 spawn immédiat
-        NpcSpawnScheduler.scheduleSpawn(level, road, delay);
+        trySpawnNpcForRoad(level, road); // ✅ Spawner au moment de la création
+        RoadTickScheduler.registerRoad(road); // ✅ Et laisser le vrai scheduler gérer le reste
     }
+
 
 
 }

@@ -1,5 +1,6 @@
 package fr.renblood.npcshopkeeper.command;
 
+import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.procedures.PointDefiningModeProcedure;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -13,6 +14,7 @@ public class PointDefiningCommand {
     @SubscribeEvent
     public static void registerCommand(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("define")
+                .requires(commandSource -> commandSource.getEntity() instanceof ServerPlayer) // S'assure que seule une entité serveur peut exécuter la commande
                 .then(Commands.literal("remove").executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                     if (PointDefiningModeProcedure.isInMode(player)) {

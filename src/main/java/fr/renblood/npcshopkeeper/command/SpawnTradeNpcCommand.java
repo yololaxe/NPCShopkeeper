@@ -92,12 +92,14 @@ public class SpawnTradeNpcCommand {
                 LOGGER.info("Données du PNJ : " + npcData);
 
 
-                TradeNpc modelNpc = new TradeNpc(npcName, npcData, category,position);
+                TradeNpc modelNpc = new TradeNpc(npcName, npcData, category, position);
 
                 // Création de l'entité NPC
                 TradeNpcEntity npc = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), source.getUnsidedLevel());
                 modelNpc.setNpcId(npc.getStringUUID());
                 npc.setTradeNpc(modelNpc);
+
+
                 if (npc == null) {
                     LOGGER.error("Impossible de créer une instance de TradeNpcEntity.");
                     source.sendFailure(Component.literal("Failed to create NPC instance."));

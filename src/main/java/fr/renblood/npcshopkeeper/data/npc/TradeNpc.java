@@ -30,10 +30,13 @@ public class TradeNpc {
         this.npcName = npcName != null ? npcName : "PNJ sans nom"; // Valeur par défaut
         this.npcData = npcData != null ? npcData : new HashMap<>(); // Prévenir null
         this.texts = (ArrayList<String>) this.npcData.getOrDefault("Texts", new ArrayList<>());
-        this.texture = (String) this.npcData.getOrDefault("Texture", "textures/entity/"+npcName.toLowerCase()+".png");
+        this.texture = (String) this.npcData.getOrDefault("Texture", "textures/entity/" + npcName.toLowerCase() + ".png");
         this.tradeCategory = tradeCategory != null ? tradeCategory : "null";
-        this.pos = pos != null ? pos : new BlockPos(0,0,0);
+        this.pos = pos != null ? pos : new BlockPos(0, 0, 0);
+
+        LOGGER.info("PNJ créé sans ID : " + this.npcName + " | Texture : " + this.texture);
     }
+
     public TradeNpc(String npcId, String npcName, Map<String, Object> npcData, String tradeCategory, BlockPos pos) {
         this.npcId = npcId;
         this.npcName = npcName != null ? npcName : "PNJ sans nom"; // Valeur par défaut
@@ -41,7 +44,9 @@ public class TradeNpc {
         this.texts = (ArrayList<String>) this.npcData.getOrDefault("Texts", new ArrayList<>());
         this.texture = (String) this.npcData.getOrDefault("Texture", "textures/entity/banker.png");
         this.tradeCategory = tradeCategory != null ? tradeCategory : "null";
-        this.pos = pos != null ? pos : new BlockPos(0,0,0);
+        this.pos = pos != null ? pos : new BlockPos(0, 0, 0);
+
+        LOGGER.info("PNJ créé avec ID : " + this.npcId + " (" + this.npcName + ") | Texture : " + this.texture);
     }
 
 

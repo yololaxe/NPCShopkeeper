@@ -20,6 +20,8 @@ import java.util.List;
 
 public class PointDefiningModeProcedure {
 
+
+
     private static final Logger LOGGER = LogManager.getLogger(PointDefiningModeProcedure.class);
     public static final HashMap<ServerPlayer, PointDefiningModeProcedure> activeModes = new HashMap<>();
 
