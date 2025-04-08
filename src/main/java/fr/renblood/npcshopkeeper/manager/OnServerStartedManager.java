@@ -8,28 +8,23 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import org.apache.commons.logging.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
-import java.nio.file.Path;
-import java.util.Map;
-import java.util.UUID;
-
-import static com.mojang.text2speech.Narrator.LOGGER;
+import java.util.*;
 
 public class OnServerStartedManager {
     private static final Logger LOGGER = LogManager.getLogger(JsonTradeFileManager.class);
-    public static String PATH= "";
+    public static String PATH = "";
     public static String PATH_HISTORY = "";
-    public static String PATH_CONSTANT= "";
-    public static String PATH_PRICE= "";
-    public static String PATH_COMMERCIAL= "";
-    public static String PATH_NPCS= "";
-
+    public static String PATH_CONSTANT = "";
+    public static String PATH_PRICE = "";
+    public static String PATH_COMMERCIAL = "";
+    public static String PATH_NPCS = "";
 
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
@@ -53,44 +48,47 @@ public class OnServerStartedManager {
 
             ServerLevel world = server.overworld();
 
-            // --- CHARGEMENT DES PNJs ---
+            // --- CHARGEMENT DES PNJs DEPUIS LE FICHIER JSON ---
             Map<UUID, TradeNpc> tradeNpcsMap = JsonTradeFileManager.loadTradeNpcsFromJson(world);
-            if (!tradeNpcsMap.isEmpty()) {
-                for (Map.Entry<UUID, TradeNpc> entry : tradeNpcsMap.entrySet()) {
-                    TradeNpc tradeNpc = entry.getValue();
-                    BlockPos pos = tradeNpc.getPos();
+            Set<UUID> expectedUUIDs = tradeNpcsMap.keySet();
 
-                    TradeNpcEntity npcEntity = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
-                    npcEntity.setTradeNpc(tradeNpc);
-                    npcEntity.setPos(pos.getX(), pos.getY(), pos.getZ());
-
-                    world.addFreshEntity(npcEntity);
+            // --- SUPPRESSION DES PNJs NON ENREGISTRÉS ---
+            List<TradeNpcEntity> existingEntities = world.getEntitiesOfClass(TradeNpcEntity.class, new AABB(Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY,
+                    Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY));
+            for (TradeNpcEntity entity : existingEntities) {
+                UUID uuid = entity.getUUID();
+                if (!expectedUUIDs.contains(uuid)) {
+                    LOGGER.warn("❌ PNJ inconnu supprimé : " + uuid + " (" + entity.getName().getString() + ")");
+                    entity.discard();
+                } else {
+                    LOGGER.info("✅ PNJ déjà présent : " + uuid + " (" + entity.getName().getString() + ")");
                 }
-                LOGGER.info("Tous les PNJs ont été chargés avec succès !");
-            } else {
-                LOGGER.warn("Aucun PNJ trouvé dans le fichier JSON.");
+            }
+
+            // --- AJOUT DES PNJs MANQUANTS ---
+            for (Map.Entry<UUID, TradeNpc> entry : tradeNpcsMap.entrySet()) {
+                UUID uuid = entry.getKey();
+                TradeNpc tradeNpc = entry.getValue();
+
+                boolean alreadyPresent = world.getEntitiesOfClass(
+                                TradeNpcEntity.class,
+                                new AABB(Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY,
+                                        Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY))
+                        .stream().anyMatch(e -> e.getUUID().equals(uuid));
+
+
+                if (!alreadyPresent) {
+                    TradeNpcEntity npcEntity = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
+                    npcEntity.setUUID(uuid);
+                    npcEntity.setTradeNpc(tradeNpc);
+                    npcEntity.setPos(tradeNpc.getPos().getX(), tradeNpc.getPos().getY(), tradeNpc.getPos().getZ());
+                    world.addFreshEntity(npcEntity);
+                    LOGGER.info("📦 PNJ ajouté au monde : " + uuid + " (" + tradeNpc.getNpcName() + ")");
+                }
             }
 
             GlobalNpcManager.loadNpcData();
-            LOGGER.info("PNJs init terminée.");
-
-            // --- CHARGEMENT DES ROUTES COMMERCIALES ---
-            File folder = new File("commercial_road");
-            if (folder.exists() && folder.isDirectory()) {
-                File[] files = folder.listFiles((dir, name) -> name.endsWith(".json"));
-                if (files != null) {
-                    for (File file : files) {
-                        CommercialRoad road = JsonTradeFileManager.loadRoadFromFile(file.toPath());
-                        if (road != null) {
-                            NpcSpawnerManager.startSpawningForRoad(world, road);
-                            LOGGER.info("Route commerciale chargée : " + road.getName());
-                        }
-                    }
-                }
-            } else {
-                LOGGER.warn("Le dossier commercial_road est introuvable ou vide.");
-            }
-
+            LOGGER.info("✅ Initialisation des PNJs terminée.");
         } else {
             LOGGER.error("Le serveur est null dans l'événement onServerStarted");
         }
@@ -104,6 +102,4 @@ public class OnServerStartedManager {
             LOGGER.info("Le fichier {} existe à l'emplacement : {}", description, path);
         }
     }
-
-
 }

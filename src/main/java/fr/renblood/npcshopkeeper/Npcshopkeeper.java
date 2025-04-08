@@ -64,7 +64,7 @@ public class Npcshopkeeper {
         onServerStarted(event);
         System.out.println("Evénement onServerStarting exécuté !");
         LOGGER.info("Evénement onServerStarting exécuté !");
-        updateAllRoads(event.getServer().overworld());
+//        updateAllRoads(event.getServer().overworld());
     }
 
     public Npcshopkeeper() {

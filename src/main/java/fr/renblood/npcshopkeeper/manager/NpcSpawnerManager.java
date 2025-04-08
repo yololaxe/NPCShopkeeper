@@ -138,14 +138,8 @@ public class NpcSpawnerManager {
                     LOGGER.warn("⚠️ Entité déjà référencée dans roadNPCs, annulation du spawn.");
                     continue;
                 }
-
-                try {
-                    level.addFreshEntity(npcEntity);
-                    LOGGER.info("✅ Entité ajoutée avec succès !");
-                } catch (Exception e) {
-                    LOGGER.error("❌ Échec lors de l'ajout de l'entité : " + e.getMessage());
-                    e.printStackTrace();
-                }
+                level.addFreshEntity(npcEntity);
+                level.broadcastEntityEvent(npcEntity, (byte)60); // ou autre code bidon
 
                 roadNPCs.put(point, npcEntity);
                 road.getNpcEntities().add(npcEntity);
