@@ -14,7 +14,6 @@ public class RoadTickScheduler {
     private static final Map<CommercialRoad, Integer> timers = new HashMap<>();
     private static final Logger LOGGER = LogManager.getLogger(RoadTickScheduler.class);
     public static void tick(ServerLevel level) {
-//        LOGGER.info("⏱️ RoadTickScheduler tick()");
 
         for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
             int current = timers.getOrDefault(road, -42);

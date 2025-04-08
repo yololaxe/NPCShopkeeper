@@ -55,16 +55,13 @@ public class Npcshopkeeper {
 
     public static final String MODID = "npcshopkeeper";
     public static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
-
-
-    public static final ArrayList<CommercialRoad> COMMERCIAL_ROADS = new ArrayList<>();
+    public static ArrayList<CommercialRoad> COMMERCIAL_ROADS = new ArrayList<>();
 
     @SubscribeEvent
     public void onServerStarting(ServerStartedEvent event) {
         onServerStarted(event);
         System.out.println("Evénement onServerStarting exécuté !");
         LOGGER.info("Evénement onServerStarting exécuté !");
-//        updateAllRoads(event.getServer().overworld());
     }
 
     public Npcshopkeeper() {
@@ -94,11 +91,6 @@ public class Npcshopkeeper {
         event.enqueueWork(() -> {
             EntityRenderers.register(TRADE_NPC_ENTITY.get(), TradeNpcRenderer::new);
         });
-    }
-    public static void updateAllRoads(ServerLevel world) {
-        for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
-            NpcSpawnerManager.updateSpawn(world, road);
-        }
     }
 
 

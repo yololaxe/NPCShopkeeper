@@ -14,6 +14,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import org.apache.logging.log4j.Logger;
@@ -339,7 +340,10 @@ public class JsonTradeFileManager {
                 tradeNpcEntity.remove(Entity.RemovalReason.DISCARDED);
                 LOGGER.info("NPC avec l'UUID : " + id + " supprimé avec succès.");
 
-                // Mettre à jour la route commerciale associée
+                // ➕ Supprimer ce PNJ de la route dans le fichier commercial
+                JsonTradeFileManager.removeNpcFromRoadJson(entityUuid);
+
+                // ➕ Mettre à jour la route si besoin
                 updateCommercialRoadAfterRemoval(tradeNpcEntity);
             } else {
                 LOGGER.warn("L'entité avec l'UUID : " + id + " n'est pas une instance de TradeNpcEntity.");
@@ -405,83 +409,6 @@ public class JsonTradeFileManager {
         LOGGER.warn("Aucun trade avec l'ID " + id + " n'a été trouvé.");
         return null;
     }
-
-//
-//    public static Pair<Boolean, TradeHistory> checkTradeStatusForPlayer(ServerPlayer player, String tradeName) {
-//        JsonObject jsonObject = readJsonFile(Path.of(pathHistory));
-//
-//        if (jsonObject.has("history")) {
-//            JsonArray historyArray = jsonObject.getAsJsonArray("history");
-//
-//            // Parcourir l'historique des trades pour ce joueur
-//            for (JsonElement tradeElement : historyArray) {
-//                JsonObject tradeObject = tradeElement.getAsJsonObject();
-//
-//                // Vérifier si le trade appartient à ce joueur
-//                JsonArray playersArray = tradeObject.getAsJsonArray("players");
-//                boolean isPlayerInTrade = false;
-//
-//                for (JsonElement playerElement : playersArray) {
-//                    String playerName = playerElement.getAsString();
-//                    if (playerName.equals(player.getName().getString())) {
-//                        isPlayerInTrade = true;
-//                        break;
-//                    }
-//                }
-//                if (!isPlayerInTrade) {
-//                    continue;
-//                }
-//
-//                String tradeId = tradeObject.get("id").getAsString();
-//                String npcId = tradeObject.get("npcId").getAsString();
-//                String npcName = tradeObject.get("npcName").getAsString();
-//                String currentTradeName = tradeObject.get("tradeName").getAsString();
-//
-//                // Vérifier si le nom du trade correspond à celui recherché
-//                if (currentTradeName.equalsIgnoreCase(tradeName)) {
-//                    boolean isFinished = tradeObject.get("isFinished").getAsBoolean();
-//
-//                    // Récupérer les tradeItems
-//                    List<Map<String, Object>> tradeItems = new ArrayList<>();
-//                    if (tradeObject.has("trades")) {
-//                        JsonArray tradesArray = tradeObject.getAsJsonArray("trades");
-//
-//                        for (JsonElement tradeItemElement : tradesArray) {
-//                            JsonObject tradeItemObject = tradeItemElement.getAsJsonObject();
-//                            Map<String, Object> tradeItemMap = new HashMap<>();
-//
-//                            String item = tradeItemObject.get("item").getAsString();
-//                            int quantity = tradeItemObject.get("quantity").getAsInt();
-//                            int price = tradeItemObject.get("price").getAsInt();
-//
-//                            tradeItemMap.put("item", item);
-//                            tradeItemMap.put("quantity", quantity);
-//                            tradeItemMap.put("price", price);
-//
-//                            tradeItems.add(tradeItemMap);
-//                        }
-//                    }
-//
-//                    // Si le trade n'est pas terminé, renvoyer true et le TradeHistory complet
-//                    if (!isFinished) {
-//                        List<String> playersList = new ArrayList<>();
-//                        for (JsonElement playerElement : playersArray) {
-//                            playersList.add(playerElement.getAsString());
-//                        }
-//                        int totalPrice = tradeObject.has("totalPrice") ? tradeObject.get("totalPrice").getAsInt() : 0;
-//                        LOGGER.info("Le joueur " + player.getName().getString() + " a un trade non terminé pour " + tradeName);
-//                        return Pair.of(true, new TradeHistory(playersList, tradeName, isFinished, tradeId, tradeItems, totalPrice, npcId, npcName));
-//                    }
-//
-//                    // Si le trade est terminé, on passe à la recherche d'un autre trade du même nom
-//                }
-//            }
-//        }
-//
-//        LOGGER.warn("Aucun trade non terminé trouvé pour le joueur " + player.getName().getString() + " et le trade " + tradeName);
-//        return Pair.of(false, new TradeHistory(new ArrayList<>(), "", true, "", new ArrayList<>(), 0, "", "")); // Si aucun trade non terminé trouvé, renvoyer false et un trade vide
-//    }
-
 
     public static List<String> readCategoryNames() {
         List<String> categories = new ArrayList<>();
@@ -661,85 +588,74 @@ public class JsonTradeFileManager {
     }
 
 
-    public static void saveRoadToFile(CommercialRoad road) {
-        JsonObject jsonObject = new JsonObject();
-        jsonObject.addProperty("id", road.getId());
-        jsonObject.addProperty("name", road.getName());
-        jsonObject.addProperty("category", road.getCategory());
-        jsonObject.addProperty("minTimer", road.getMinTimer());
-        jsonObject.addProperty("maxTimer", road.getMaxTimer());
+    public static void saveRoadToFile(CommercialRoad newRoad) {
+        JsonArray roadsArray = new JsonArray();
+        Path filePath = Paths.get(pathCommercial);
+
+        // Étape 1 : Charger le fichier existant s’il existe
+        if (Files.exists(filePath)) {
+            try (Reader reader = Files.newBufferedReader(filePath)) {
+                JsonElement root = JsonParser.parseReader(reader);
+                if (root.isJsonObject() && root.getAsJsonObject().has("roads")) {
+                    roadsArray = root.getAsJsonObject().getAsJsonArray("roads");
+                }
+            } catch (IOException e) {
+                LOGGER.error("Erreur lors de la lecture du fichier commercial_road.json", e);
+            }
+        }
+
+        // Étape 2 : Convertir la route en JsonObject
+        JsonObject newRoadJson = new JsonObject();
+        newRoadJson.addProperty("id", newRoad.getId());
+        newRoadJson.addProperty("name", newRoad.getName());
+        newRoadJson.addProperty("category", newRoad.getCategory());
+        newRoadJson.addProperty("minTimer", newRoad.getMinTimer());
+        newRoadJson.addProperty("maxTimer", newRoad.getMaxTimer());
 
         JsonArray positionsArray = new JsonArray();
-        for (BlockPos pos : road.getPositions()) {
+        for (BlockPos pos : newRoad.getPositions()) {
             JsonObject posObject = new JsonObject();
             posObject.addProperty("x", pos.getX());
             posObject.addProperty("y", pos.getY());
             posObject.addProperty("z", pos.getZ());
             positionsArray.add(posObject);
         }
-        jsonObject.add("positions", positionsArray);
+        newRoadJson.add("positions", positionsArray);
 
         JsonArray npcEntitiesArray = new JsonArray();
-        for (TradeNpcEntity npc : road.getNpcEntities()) {
+        for (TradeNpcEntity npc : newRoad.getNpcEntities()) {
             JsonObject npcObject = new JsonObject();
             npcObject.addProperty("uuid", npc.getUUID().toString());
             npcEntitiesArray.add(npcObject);
         }
-        jsonObject.add("npcEntities", npcEntitiesArray);
+        newRoadJson.add("npcEntities", npcEntitiesArray);
 
-        // 🔁 Écriture dans un seul fichier : commercial_road.json
-        Path filePath = Paths.get(pathCommercial);
-
-        try (Writer writer = Files.newBufferedWriter(filePath)) {
-            writer.write(jsonObject.toString());
-        } catch (IOException e) {
-            LOGGER.error("Erreur lors de la sauvegarde de la route commerciale : " + road.getId(), e);
-        }
-    }
-
-
-    public static CommercialRoad loadRoadFromFile(ServerPlayer player) {
-        JsonObject jsonObject = readJsonFile(Path.of(pathCommercial));
-
-        String id = jsonObject.get("id").getAsString();
-        String name = jsonObject.get("name").getAsString();
-        String category = jsonObject.get("category").getAsString();
-        int minTimer = jsonObject.get("minTimer").getAsInt();
-        int maxTimer = jsonObject.get("maxTimer").getAsInt();
-
-        ArrayList<BlockPos> positions = new ArrayList<>();
-        JsonArray positionsArray = jsonObject.getAsJsonArray("positions");
-        for (JsonElement posElement : positionsArray) {
-            JsonObject posObject = posElement.getAsJsonObject();
-            int x = posObject.get("x").getAsInt();
-            int y = posObject.get("y").getAsInt();
-            int z = posObject.get("z").getAsInt();
-            positions.add(new BlockPos(x, y, z));
-        }
-
-        ArrayList<TradeNpcEntity> npcEntities = new ArrayList<>();
-        JsonArray npcEntitiesArray = jsonObject.getAsJsonArray("npcEntities");
-        for (JsonElement npcElement : npcEntitiesArray) {
-            JsonObject npcObject = npcElement.getAsJsonObject();
-            UUID uuid = UUID.fromString(npcObject.get("uuid").getAsString());
-            Entity npc = player.serverLevel().getEntity(uuid); // Charger l'entité si disponible
-            if (npc instanceof TradeNpcEntity tradeNpcEntity) {
-                npcEntities.add(tradeNpcEntity);
+        // Étape 3 : Remplacer la route existante si elle a le même ID
+        JsonArray updatedRoads = new JsonArray();
+        boolean found = false;
+        for (JsonElement element : roadsArray) {
+            JsonObject obj = element.getAsJsonObject();
+            if (obj.has("id") && obj.get("id").getAsString().equals(newRoad.getId())) {
+                updatedRoads.add(newRoadJson);  // Remplacement
+                found = true;
+            } else {
+                updatedRoads.add(obj);  // Conserver les autres
             }
         }
-
-        return new CommercialRoad(id, name, category, positions, npcEntities, minTimer, maxTimer);
-
-    }
-    public static List<TradeNpc> getAllTradeNpcs() {
-        List<TradeNpc> tradeNpcList = new ArrayList<>();
-        Map<UUID, TradeNpc> npcsMap = loadTradeNpcsFromJson(null); // Le paramètre Level n’est pas utilisé en réalité
-
-        if (npcsMap != null) {
-            tradeNpcList.addAll(npcsMap.values());
+        if (!found) {
+            updatedRoads.add(newRoadJson); // Ajout si non existant
         }
 
-        return tradeNpcList;
+        // Étape 4 : Sauvegarder le fichier
+        JsonObject root = new JsonObject();
+        root.add("roads", updatedRoads);
+
+        try (Writer writer = Files.newBufferedWriter(filePath)) {
+            writer.write(root.toString());
+            LOGGER.info("✅ Route commerciale sauvegardée : " + newRoad.getName());
+        } catch (IOException e) {
+            LOGGER.error("Erreur lors de l'enregistrement de la route commerciale : " + newRoad.getId(), e);
+        }
     }
 
 
@@ -870,47 +786,106 @@ public class JsonTradeFileManager {
 
         return tradeNpcsMap;  // Return the map of TradeNpc objects
     }
-    public static CommercialRoad loadRoadFromFile(Path filePath) {
+
+    public static ArrayList<CommercialRoad> loadAllCommercialRoads(ServerLevel world) {
+        ArrayList<CommercialRoad> commercialRoads = new ArrayList<>();
+        Path filePath = Paths.get(pathCommercial);
         JsonObject jsonObject = readJsonFile(filePath);
 
-        if (jsonObject == null) return null;
+        if (jsonObject == null || !jsonObject.has("roads") || !jsonObject.get("roads").isJsonArray()) {
+            LOGGER.warn("Aucune route commerciale trouvée dans le fichier JSON.");
+            return commercialRoads;
+        }
 
-        try {
-            String id = jsonObject.get("id").getAsString();
-            String name = jsonObject.get("name").getAsString();
-            String category = jsonObject.get("category").getAsString();
-            int minTimer = jsonObject.get("minTimer").getAsInt();
-            int maxTimer = jsonObject.get("maxTimer").getAsInt();
+        JsonArray roadsArray = jsonObject.getAsJsonArray("roads");
 
-            ArrayList<BlockPos> positions = new ArrayList<>();
-            JsonArray positionsArray = jsonObject.getAsJsonArray("positions");
-            for (JsonElement posElement : positionsArray) {
-                JsonObject posObject = posElement.getAsJsonObject();
-                int x = posObject.get("x").getAsInt();
-                int y = posObject.get("y").getAsInt();
-                int z = posObject.get("z").getAsInt();
-                positions.add(new BlockPos(x, y, z));
-            }
+        for (JsonElement element : roadsArray) {
+            JsonObject roadObj = element.getAsJsonObject();
+            try {
+                String id = roadObj.get("id").getAsString();
+                String name = roadObj.get("name").getAsString();
+                String category = roadObj.get("category").getAsString();
+                int minTimer = roadObj.get("minTimer").getAsInt();
+                int maxTimer = roadObj.get("maxTimer").getAsInt();
 
-            ArrayList<TradeNpcEntity> npcEntities = new ArrayList<>();
-            if (jsonObject.has("npcEntities")) {
-                JsonArray npcArray = jsonObject.getAsJsonArray("npcEntities");
-                for (JsonElement npcElement : npcArray) {
-                    JsonObject npcObj = npcElement.getAsJsonObject();
-                    // ici, on ignore le chargement des entités physiques
-                    // on ne garde que les positions
-                    if (npcObj.has("uuid")) {
-                        // tu peux rajouter une logique de recoupement avec ActiveNpcManager si besoin
+                ArrayList<BlockPos> positions = new ArrayList<>();
+                JsonArray posArray = roadObj.getAsJsonArray("positions");
+                for (JsonElement posElem : posArray) {
+                    JsonObject posObj = posElem.getAsJsonObject();
+                    int x = posObj.get("x").getAsInt();
+                    int y = posObj.get("y").getAsInt();
+                    int z = posObj.get("z").getAsInt();
+                    positions.add(new BlockPos(x, y, z));
+                }
+
+                ArrayList<TradeNpcEntity> npcEntities = new ArrayList<>();
+                HashMap<BlockPos, Mob> roadMap = new HashMap<>();
+
+                if (roadObj.has("npcEntities")) {
+                    JsonArray npcArray = roadObj.getAsJsonArray("npcEntities");
+                    for (JsonElement npcElement : npcArray) {
+                        JsonObject npcObj = npcElement.getAsJsonObject();
+                        if (npcObj.has("uuid")) {
+                            UUID npcUuid = UUID.fromString(npcObj.get("uuid").getAsString());
+                            Entity entity = world.getEntity(npcUuid);
+                            if (entity instanceof TradeNpcEntity tradeNpcEntity) {
+                                npcEntities.add(tradeNpcEntity);
+                                BlockPos pos = tradeNpcEntity.blockPosition();
+                                roadMap.put(pos, tradeNpcEntity);
+                                LOGGER.info("🔁 PNJ réassigné à la route : " + tradeNpcEntity.getName().getString());
+                            } else {
+                                LOGGER.warn("⚠️ Aucun TradeNpcEntity trouvé pour l'UUID : " + npcUuid);
+                            }
+                        }
                     }
                 }
+
+                CommercialRoad road = new CommercialRoad(id, name, category, positions, npcEntities, minTimer, maxTimer);
+                commercialRoads.add(road);
+
+                // 🔐 Ajout dans activeNPCs ici
+                NpcSpawnerManager.activeNPCs.put(road, roadMap);
+
+            } catch (Exception e) {
+                LOGGER.error("❌ Erreur lors du traitement d'une route commerciale.", e);
+            }
+        }
+
+        LOGGER.info("✅ Chargement de " + commercialRoads.size() + " routes commerciales depuis le fichier JSON.");
+        return commercialRoads;
+    }
+    public static void removeNpcFromRoadJson(UUID npcUuid) {
+        Path filePath = Paths.get(pathCommercial);
+        JsonObject jsonObject = readJsonFile(filePath);
+
+        if (!jsonObject.has("roads")) return;
+
+        JsonArray roadsArray = jsonObject.getAsJsonArray("roads");
+
+        for (JsonElement roadElement : roadsArray) {
+            JsonObject roadObj = roadElement.getAsJsonObject();
+            if (!roadObj.has("npcEntities")) continue;
+
+            JsonArray npcArray = roadObj.getAsJsonArray("npcEntities");
+            JsonArray updatedNpcArray = new JsonArray();
+            boolean removed = false;
+
+            for (JsonElement npcElement : npcArray) {
+                JsonObject npcObj = npcElement.getAsJsonObject();
+                if (npcObj.has("uuid") && npcObj.get("uuid").getAsString().equals(npcUuid.toString())) {
+                    removed = true;
+                    continue; // On ignore ce PNJ pour le supprimer
+                }
+                updatedNpcArray.add(npcObj);
             }
 
-            return new CommercialRoad(id, name, category, positions, npcEntities, minTimer, maxTimer);
-        } catch (Exception e) {
-            LOGGER.error("Erreur lors du chargement de la route commerciale : " + filePath, e);
-            return null;
+            if (removed) {
+                roadObj.add("npcEntities", updatedNpcArray);
+                LOGGER.info("🗑️ PNJ supprimé de la route : " + npcUuid);
+            }
         }
-    }
 
+        writeJsonFile(filePath, jsonObject);
+    }
 
 }

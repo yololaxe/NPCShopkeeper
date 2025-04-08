@@ -1,6 +1,6 @@
 package fr.renblood.npcshopkeeper.manager;
 
-import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
+import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
@@ -86,9 +86,12 @@ public class OnServerStartedManager {
                     LOGGER.info("📦 PNJ ajouté au monde : " + uuid + " (" + tradeNpc.getNpcName() + ")");
                 }
             }
-
             GlobalNpcManager.loadNpcData();
             LOGGER.info("✅ Initialisation des PNJs terminée.");
+            Npcshopkeeper.COMMERCIAL_ROADS = JsonTradeFileManager.loadAllCommercialRoads(world);
+
+
+
         } else {
             LOGGER.error("Le serveur est null dans l'événement onServerStarted");
         }

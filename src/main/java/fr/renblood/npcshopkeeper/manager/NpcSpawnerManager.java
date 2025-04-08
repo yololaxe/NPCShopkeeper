@@ -157,17 +157,4 @@ public class NpcSpawnerManager {
             LOGGER.error("❌ Tous les points sont occupés : aucun PNJ spawné.");
         }
     }
-
-
-
-
-    public static void startSpawningForRoad(ServerLevel level, CommercialRoad road) {
-        if (road == null || level == null) return;
-
-        trySpawnNpcForRoad(level, road); // ✅ Spawner au moment de la création
-        RoadTickScheduler.registerRoad(road); // ✅ Et laisser le vrai scheduler gérer le reste
-    }
-
-
-
 }
