@@ -1,15 +1,16 @@
-package fr.renblood.npcshopkeeper.manager;
+package fr.renblood.npcshopkeeper.data.io;
 
 import com.google.gson.*;
 import com.ibm.icu.impl.Pair;
-import fr.renblood.npcshopkeeper.data.Trade.Trade;
-import fr.renblood.npcshopkeeper.data.Trade.TradeHistory;
-import fr.renblood.npcshopkeeper.data.Trade.TradeItem;
-import fr.renblood.npcshopkeeper.data.Trade.TradeResult;
+import fr.renblood.npcshopkeeper.data.trade.Trade;
+import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
+import fr.renblood.npcshopkeeper.data.trade.TradeItem;
+import fr.renblood.npcshopkeeper.data.trade.TradeResult;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
-import fr.renblood.npcshopkeeper.init.EntityInit;
+import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
+import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,9 +28,10 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Function;
 
 import static fr.renblood.npcshopkeeper.data.commercial.CommercialRoad.updateCommercialRoadAfterRemoval;
-import static fr.renblood.npcshopkeeper.manager.OnServerStartedManager.*;
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.*;
 
 public class JsonTradeFileManager {
 
@@ -38,10 +40,11 @@ public class JsonTradeFileManager {
     public static String pathHistory = PATH_HISTORY;
     public static String pathConstant = PATH_CONSTANT;
     public static String pathCommercial = PATH_COMMERCIAL;
-
+    public static String pathNpcs = PATH_NPCS;
 
     // Méthode pour lire un fichier JSON
-    public static JsonObject readJsonFile(Path filePath) {
+    public static JsonObject readJsonFile(String read_path) {
+        Path filePath = Path.of(read_path);
         try {
             // Vérifier si le fichier existe
             if (!Files.exists(filePath)) {
@@ -69,109 +72,50 @@ public class JsonTradeFileManager {
         }
     }
 
-
     // Méthode pour écrire dans un fichier JSON
-    private static void writeJsonFile(Path filePath, JsonObject jsonObject) {
+    private static void writeJsonFile(String write_path, JsonObject jsonObject) {
+        Path filePath = Path.of(write_path);
         try (FileWriter writer = new FileWriter(filePath.toFile())) {
-            writer.write(jsonObject.toString());
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            writer.write(gson.toJson(jsonObject));
         } catch (IOException e) {
             LOGGER.error("Erreur lors de l'écriture du fichier JSON : " + e.getMessage());
         }
     }
 
-    // Lire les noms des trades depuis le fichier JSON
-    public static List<String> readTradeNames() {
 
-        JsonObject jsonObject = readJsonFile(Path.of(path));
-
-        List<String> tradeNames = new ArrayList<>();
-        if (jsonObject.has("trades")) {
-            JsonArray tradeArray = jsonObject.getAsJsonArray("trades");
-            tradeArray.forEach(tradeElement -> {
-                String name = tradeElement.getAsJsonObject().get("Name").getAsString();
-                tradeNames.add(name);
-            });
-            LOGGER.info("Total des trades trouvés : " + tradeNames.size());
-        } else {
-            LOGGER.warn("Aucun trade trouvé dans le fichier JSON. + path :" + path);
-        }
-        return tradeNames;
-    }
-
-    // Méthode pour vérifier si un trade avec un nom spécifique existe déjà dans le fichier JSON
-//    public static boolean checkTradeName(String newTradeName) {
-//        JsonObject jsonObject = readJsonFile(Path.of(path));
-//
-//        if (jsonObject.has("trades")) {
-//            JsonArray tradeArray = jsonObject.getAsJsonArray("trades");
-//            for (JsonElement tradeElement : tradeArray) {
-//                String existingTradeName = tradeElement.getAsJsonObject().get("Name").getAsString();
-//                if (existingTradeName.equalsIgnoreCase(newTradeName)) {
-//                    LOGGER.warn("Un trade avec le nom " + newTradeName + " existe déjà.");
-//                    return false; // Nom déjà utilisé
-//                }
-//            }
-//        }
-//        return true; // Nom valide
-//    }
-
-    // Récupérer la liste des trades depuis le fichier JSON
-//    public static List<Trade> getTradeList() {
-//        List<Trade> tradeList = new ArrayList<>();
-//        JsonObject jsonObject = readJsonFile(Path.of(path));
-//
-//        if (jsonObject.has("trades")) {
-//            JsonArray tradeArray = jsonObject.getAsJsonArray("trades");
-//            tradeArray.forEach(tradeElement -> {
-//                JsonObject tradeObject = tradeElement.getAsJsonObject();
-//                String name = tradeObject.get("Name").getAsString();
-//                String category = tradeObject.get("Category").getAsString();
-//                List<TradeItem> tradeItems = new ArrayList<>();
-//                JsonArray tradesArray = tradeObject.getAsJsonArray("trades");
-//                tradesArray.forEach(itemElement -> {
-//                    JsonObject itemObject = itemElement.getAsJsonObject();
-//                    tradeItems.add(new TradeItem(itemObject.get("item").getAsString(),
-//                            itemObject.get("min").getAsInt(),
-//                            itemObject.get("max").getAsInt()));
-//                });
-//                TradeResult tradeResult = null;
-//                if (tradeObject.has("result") && tradeObject.get("result").isJsonObject()) {
-//                    JsonObject resultObject = tradeObject.getAsJsonObject("result");
-//                    tradeResult = new TradeResult(resultObject.get("item").getAsString(),
-//                            resultObject.get("quantity").getAsInt());
-//                }
-//                tradeList.add(new Trade(name, category, tradeItems, tradeResult));
-//            });
-//        } else {
-//            LOGGER.warn("Le fichier JSON est vide.");
-//        }
-//        LOGGER.info("Nombre de trades récupérés : " + tradeList.size());
-//        return tradeList;
-//    }
-    public static Set<String> getAllCategory() {
-        Set<String> categories = new HashSet<>();
-        JsonObject jsonObject = readJsonFile(Path.of(path));
+    private static <T> List<T> extractFromTrades(String field, Function<JsonObject, T> extractor) {
+        List<T> result = new ArrayList<>();
+        JsonObject jsonObject = readJsonFile(path);
 
         if (jsonObject.has("trades")) {
             JsonArray tradeArray = jsonObject.getAsJsonArray("trades");
             for (JsonElement tradeElement : tradeArray) {
                 JsonObject tradeObject = tradeElement.getAsJsonObject();
-                if (tradeObject.has("Category")) {
-                    categories.add(tradeObject.get("Category").getAsString());
+                if (tradeObject.has(field)) {
+                    result.add(extractor.apply(tradeObject));
                 }
             }
-            LOGGER.info("Catégories trouvées : " + categories);
-        } else {
-            LOGGER.warn("Aucune catégorie trouvée dans le fichier JSON.");
         }
 
-        return categories;
+        return result;
+    }
+    public static List<String> readTradeNames() {
+        return extractFromTrades("Name", obj -> obj.get("Name").getAsString());
     }
 
+    public static Set<String> getAllCategory() {
+        return new HashSet<>(extractFromTrades("Category", obj -> obj.get("Category").getAsString()));
+    }
+
+    public static List<String> readCategoryNames() {
+        return extractFromTrades("Category", obj -> obj.get("Category").getAsString())
+                .stream().distinct().toList();
+    }
 
     // Récupérer un trade spécifique par son nom
     public static Trade getTradeByName(String tradeName) {
-        JsonObject jsonObject = readJsonFile(Path.of(path));
+        JsonObject jsonObject = readJsonFile(path);
 
         if (jsonObject.has("trades")) {
             JsonArray tradeArray = jsonObject.getAsJsonArray("trades");
@@ -204,9 +148,89 @@ public class JsonTradeFileManager {
     }
 
     // Méthode pour enregistrer le début d'un trade
+
+
+    private static boolean containsPlayer(JsonArray playersArray, String playerName) {
+        for (JsonElement element : playersArray) {
+            if (element.getAsString().equals(playerName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    // Méthode pour supprimer le PNJ associé au trade
+    public static void removeNpc(ServerPlayer player, String id) {
+        ServerLevel level = player.serverLevel();
+        UUID entityUuid = UUID.fromString(id);
+        Entity entity = level.getEntity(entityUuid);
+
+        if (entity != null) {
+            if (entity instanceof TradeNpcEntity tradeNpcEntity) {
+                tradeNpcEntity.remove(Entity.RemovalReason.DISCARDED);
+                LOGGER.info("NPC avec l'UUID : " + id + " supprimé avec succès.");
+
+                // ➕ Supprimer ce PNJ de la route dans le fichier commercial
+                JsonTradeFileManager.removeNpcFromRoadJson(entityUuid);
+
+                // ➕ Mettre à jour la route si besoin
+                updateCommercialRoadAfterRemoval(tradeNpcEntity);
+            } else {
+                LOGGER.warn("L'entité avec l'UUID : " + id + " n'est pas une instance de TradeNpcEntity.");
+            }
+        } else {
+            LOGGER.warn("Aucune entité trouvée avec l'UUID : " + id + ".");
+        }
+    }
+
+
+
+    public static List<Trade> getTradesByCategory(String category) {
+        List<Trade> trades = new ArrayList<>();
+        JsonObject jsonObject = readJsonFile(path);
+
+        if (jsonObject.has("trades")) {
+            JsonArray tradeArray = jsonObject.getAsJsonArray("trades");
+            tradeArray.forEach(tradeElement -> {
+                JsonObject tradeObject = tradeElement.getAsJsonObject();
+
+                // Vérification que la catégorie correspond
+                if (tradeObject.has("Category") && tradeObject.get("Category").getAsString().equals(category)) {
+                    String name = tradeObject.has("Name") ? tradeObject.get("Name").getAsString() : "Unknown";
+
+                    // Récupération des items de trade
+                    List<TradeItem> tradeItems = new ArrayList<>();
+                    if (tradeObject.has("trades")) {
+                        JsonArray tradesArray = tradeObject.getAsJsonArray("trades");
+                        tradesArray.forEach(itemElement -> {
+                            JsonObject itemObject = itemElement.getAsJsonObject();
+                            String item = itemObject.has("item") ? itemObject.get("item").getAsString() : "minecraft:air";
+                            int min = itemObject.has("min") ? itemObject.get("min").getAsInt() : 0;
+                            int max = itemObject.has("max") ? itemObject.get("max").getAsInt() : 0;
+                            tradeItems.add(new TradeItem(item, min, max));
+                        });
+                    }
+
+                    // Récupération du résultat du trade (peut être null)
+                    TradeResult tradeResult = null;
+                    if (tradeObject.has("result") && !tradeObject.get("result").isJsonNull()) {
+                        JsonObject resultObject = tradeObject.getAsJsonObject("result");
+                        String resultItem = resultObject.has("item") ? resultObject.get("item").getAsString() : "minecraft:air";
+                        int quantity = resultObject.has("quantity") ? resultObject.get("quantity").getAsInt() : 1;
+                        tradeResult = new TradeResult(resultItem, quantity);
+                    }
+
+                    // Ajout du trade à la liste
+                    trades.add(new Trade(name, category, tradeItems, tradeResult));
+                }
+            });
+        }
+        return trades;
+    }
+    /////////////////////////////////////////////TRADES HISTORY/////////////////////////////////////////////
+
     public static void logTradeStart(ServerPlayer player, String tradeName, String id, List<Map<String, Object>> tradeItems, int totalPrice, List<Player> players, String npcId, String npcName) {
         //Path path = Paths.get(player.getServer().getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/trade_history.json").toString());
-        JsonObject jsonObject = readJsonFile(Path.of(pathHistory));
+        JsonObject jsonObject = readJsonFile(pathHistory);
 
         JsonArray historyArray = jsonObject.has("history") ? jsonObject.getAsJsonArray("history") : new JsonArray();
         boolean tradeExists = false;
@@ -278,7 +302,7 @@ public class JsonTradeFileManager {
 
         // Sauvegarder le fichier JSON
         jsonObject.add("history", historyArray);
-        writeJsonFile(Path.of(pathHistory), jsonObject);
+        writeJsonFile((pathHistory), jsonObject);
 
         if (tradeExists) {
             LOGGER.info("Un trade non terminé avec le NPC " + npcName + " a été mis à jour avec de nouveaux joueurs.");
@@ -286,22 +310,11 @@ public class JsonTradeFileManager {
             LOGGER.info("Un nouveau trade loggué pour le joueur " + player.getName().getString() + " et le NPC " + npcName);
         }
     }
-
-    private static boolean containsPlayer(JsonArray playersArray, String playerName) {
-        for (JsonElement element : playersArray) {
-            if (element.getAsString().equals(playerName)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
     // Méthode pour marquer un trade comme terminé
     public static void markTradeAsFinished(ServerPlayer player, String id) {
         // Obtenir le chemin du fichier trade_history.json
         //Path path = Paths.get(player.getServer().getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/trade_history.json").toString());
-        JsonObject jsonObject = readJsonFile(Path.of(pathHistory));
+        JsonObject jsonObject = readJsonFile(pathHistory);
 
         // Vérifier l'historique des trades
         JsonArray historyArray = jsonObject.getAsJsonArray("history");
@@ -314,7 +327,7 @@ public class JsonTradeFileManager {
 
                 // Marquer le trade comme terminé
                 tradeObject.addProperty("isFinished", true);
-                writeJsonFile(Path.of(pathHistory), jsonObject);
+                writeJsonFile((pathHistory), jsonObject);
                 LOGGER.info("Trade marqué comme terminé pour " + player.getName().getString() + " et le trade " + id);
 
                 // Obtenir le npcId associé au trade
@@ -327,35 +340,8 @@ public class JsonTradeFileManager {
         }
         LOGGER.warn("Aucune entrée trouvée pour le joueur " + player.getName().getString() + " et le trade " + id);
     }
-
-
-    // Méthode pour supprimer le PNJ associé au trade
-    public static void removeNpc(ServerPlayer player, String id) {
-        ServerLevel level = player.serverLevel();
-        UUID entityUuid = UUID.fromString(id);
-        Entity entity = level.getEntity(entityUuid);
-
-        if (entity != null) {
-            if (entity instanceof TradeNpcEntity tradeNpcEntity) {
-                tradeNpcEntity.remove(Entity.RemovalReason.DISCARDED);
-                LOGGER.info("NPC avec l'UUID : " + id + " supprimé avec succès.");
-
-                // ➕ Supprimer ce PNJ de la route dans le fichier commercial
-                JsonTradeFileManager.removeNpcFromRoadJson(entityUuid);
-
-                // ➕ Mettre à jour la route si besoin
-                updateCommercialRoadAfterRemoval(tradeNpcEntity);
-            } else {
-                LOGGER.warn("L'entité avec l'UUID : " + id + " n'est pas une instance de TradeNpcEntity.");
-            }
-        } else {
-            LOGGER.warn("Aucune entité trouvée avec l'UUID : " + id + ".");
-        }
-    }
-
-
     public static TradeHistory getTradeHistoryById(String id) {
-        JsonObject jsonObject = readJsonFile(Path.of(pathHistory));
+        JsonObject jsonObject = readJsonFile(pathHistory);
 
         if (jsonObject.has("history")) {
             JsonArray historyArray = jsonObject.getAsJsonArray("history");
@@ -410,68 +396,9 @@ public class JsonTradeFileManager {
         return null;
     }
 
-    public static List<String> readCategoryNames() {
-        List<String> categories = new ArrayList<>();
-        JsonObject jsonObject = readJsonFile(Path.of(path));
-
-        if (jsonObject.has("trades")) {
-            JsonArray tradeArray = jsonObject.getAsJsonArray("trades");
-            tradeArray.forEach(tradeElement -> {
-                String category = tradeElement.getAsJsonObject().get("Category").getAsString();
-                if (!categories.contains(category)) {
-                    categories.add(category);
-                }
-            });
-        }
-        return categories;
-    }
-
-    public static List<Trade> getTradesByCategory(String category) {
-        List<Trade> trades = new ArrayList<>();
-        JsonObject jsonObject = readJsonFile(Path.of(path));
-
-        if (jsonObject.has("trades")) {
-            JsonArray tradeArray = jsonObject.getAsJsonArray("trades");
-            tradeArray.forEach(tradeElement -> {
-                JsonObject tradeObject = tradeElement.getAsJsonObject();
-
-                // Vérification que la catégorie correspond
-                if (tradeObject.has("Category") && tradeObject.get("Category").getAsString().equals(category)) {
-                    String name = tradeObject.has("Name") ? tradeObject.get("Name").getAsString() : "Unknown";
-
-                    // Récupération des items de trade
-                    List<TradeItem> tradeItems = new ArrayList<>();
-                    if (tradeObject.has("trades")) {
-                        JsonArray tradesArray = tradeObject.getAsJsonArray("trades");
-                        tradesArray.forEach(itemElement -> {
-                            JsonObject itemObject = itemElement.getAsJsonObject();
-                            String item = itemObject.has("item") ? itemObject.get("item").getAsString() : "minecraft:air";
-                            int min = itemObject.has("min") ? itemObject.get("min").getAsInt() : 0;
-                            int max = itemObject.has("max") ? itemObject.get("max").getAsInt() : 0;
-                            tradeItems.add(new TradeItem(item, min, max));
-                        });
-                    }
-
-                    // Récupération du résultat du trade (peut être null)
-                    TradeResult tradeResult = null;
-                    if (tradeObject.has("result") && !tradeObject.get("result").isJsonNull()) {
-                        JsonObject resultObject = tradeObject.getAsJsonObject("result");
-                        String resultItem = resultObject.has("item") ? resultObject.get("item").getAsString() : "minecraft:air";
-                        int quantity = resultObject.has("quantity") ? resultObject.get("quantity").getAsInt() : 1;
-                        tradeResult = new TradeResult(resultItem, quantity);
-                    }
-
-                    // Ajout du trade à la liste
-                    trades.add(new Trade(name, category, tradeItems, tradeResult));
-                }
-            });
-        }
-        return trades;
-    }
-
     public static Pair<Boolean, TradeHistory> checkTradeStatusForNpc(String npcId) {
         LOGGER.info("Début de la vérification du statut du trade pour le NPC : " + npcId);
-        JsonObject jsonObject = readJsonFile(Path.of(pathHistory));
+        JsonObject jsonObject = readJsonFile(pathHistory);
 
         if (jsonObject.has("history")) {
             JsonArray historyArray = jsonObject.getAsJsonArray("history");
@@ -548,9 +475,9 @@ public class JsonTradeFileManager {
         TradeHistory tradeHistory = new TradeHistory(new ArrayList<>(), "", true, "", new ArrayList<>(), 0, "", "");
         return Pair.of(false, tradeHistory);
     }
-
+    /////////////////////////////////////////////CONSTANT/////////////////////////////////////////////
     public static Map<String, Map<String, Object>> getPnjData() {
-        JsonObject jsonObject = readJsonFile(Path.of(pathConstant));
+        JsonObject jsonObject = readJsonFile(pathConstant);
         Map<String, Map<String, Object>> npcMap = new HashMap<>();
 
         if (jsonObject == null || !jsonObject.has("npcs") || !jsonObject.get("npcs").isJsonObject()) {
@@ -586,7 +513,136 @@ public class JsonTradeFileManager {
         LOGGER.info("Données PNJs chargées avec succès depuis le fichier JSON.");
         return npcMap;
     }
+    /////////////////////////////////////////////TRADE NPCS/////////////////////////////////////////////
+    public static void addTradeNpcToJson(TradeNpc npc) {
+        try {
+            JsonObject json = readJsonFile(pathNpcs);
+            if (!json.has("npcs")) {
+                json.add("npcs", new JsonArray());
+            }
 
+            JsonArray npcsArray = json.getAsJsonArray("npcs");
+
+            // Vérifier si le NPC existe déjà
+            boolean npcExists = false;
+            for (JsonElement element : npcsArray) {
+                JsonObject npcObject = element.getAsJsonObject();
+                if (npcObject.get("id").getAsString().equals(npc.getNpcId())) {
+                    npcExists = true;
+                    break;
+                }
+            }
+
+            if (npcExists) {
+                LOGGER.warn("Le NPC avec l'ID " + npc.getNpcId() + " est déjà enregistré.");
+                return;
+            }
+
+            // Ajouter le nouveau NPC
+            JsonObject npcObject = new JsonObject();
+            npcObject.addProperty("id", npc.getNpcId());
+            npcObject.addProperty("name", npc.getNpcName());
+            npcObject.addProperty("texture", npc.getTexture());
+            npcObject.addProperty("x", npc.getPos().getX());
+            npcObject.addProperty("y", npc.getPos().getY());
+            npcObject.addProperty("z", npc.getPos().getZ());
+            npcObject.addProperty("category", npc.getTradeCategory());
+
+            npcsArray.add(npcObject);
+            writeJsonFile((pathNpcs), json);
+
+            LOGGER.info("NPC ajouté avec succès au fichier JSON : " + npc.getNpcId());
+
+            // Activation du PNJ
+            GlobalNpcManager.activateNpc(new TradeNpc(npc.getNpcId(), npc.getNpcName(), npc.getNpcData(), npc.getTradeCategory(), npc.getPos()));
+            LOGGER.info("PNJ avec ID " + npc.getNpcId() + " activé avec succès.");
+        } catch (Exception e) {
+            LOGGER.error("Erreur lors de l'ajout d'un PNJ dans le fichier JSON : ", e);
+        }
+    }
+
+
+    public static void removeTradeNpcFromJson(String npcId) {
+        try {
+            JsonObject json = readJsonFile(pathNpcs);
+
+            if (!json.has("npcs")) {
+                LOGGER.warn("Aucun NPC trouvé pour suppression dans le fichier JSON.");
+                return;
+            }
+
+            JsonArray npcsArray = json.getAsJsonArray("npcs");
+            JsonArray updatedArray = new JsonArray();
+
+            boolean found = false;
+            for (JsonElement element : npcsArray) {
+                JsonObject npcObject = element.getAsJsonObject();
+                if (!npcObject.get("id").getAsString().equals(npcId)) {
+                    updatedArray.add(npcObject);
+                } else {
+                    found = true;
+                }
+            }
+
+            if (found) {
+                json.add("npcs", updatedArray);
+                writeJsonFile((pathNpcs), json);
+                LOGGER.info("NPC supprimé avec succès du fichier JSON : " + npcId);
+            } else {
+                LOGGER.warn("Aucun NPC avec l'ID " + npcId + " trouvé dans le fichier JSON.");
+            }
+        } catch (Exception e) {
+            LOGGER.error("Erreur lors de la suppression d'un PNJ du fichier JSON : ", e);
+        }
+    }
+
+    public static Map<UUID, TradeNpc> loadTradeNpcsFromJson(Level world) {
+        Map<UUID, TradeNpc> tradeNpcsMap = new HashMap<>();
+
+        if (world.isClientSide) {
+            LOGGER.warn("Tentative de charger des PNJs côté client. Ignoré...");
+            return tradeNpcsMap;
+        }
+
+        try {
+            JsonObject json = readJsonFile(pathNpcs);
+            if (!json.has("npcs")) {
+                LOGGER.warn("Aucun PNJ trouvé dans le fichier JSON.");
+                return tradeNpcsMap;
+            }
+
+            JsonArray npcsArray = json.getAsJsonArray("npcs");
+
+            for (JsonElement element : npcsArray) {
+                JsonObject npcObject = element.getAsJsonObject();
+
+                String npcId = npcObject.get("id").getAsString();
+                String name = npcObject.get("name").getAsString();
+                String category = npcObject.get("category").getAsString();
+                int x = npcObject.get("x").getAsInt();
+                int y = npcObject.get("y").getAsInt();
+                int z = npcObject.get("z").getAsInt();
+
+                UUID uuid;
+                try {
+                    uuid = UUID.fromString(npcId);
+                } catch (IllegalArgumentException e) {
+                    LOGGER.error("UUID invalide pour le PNJ : " + npcId);
+                    continue;
+                }
+
+                // Create and store TradeNpc in map
+                TradeNpc tradeNpc = new TradeNpc(npcId, name, GlobalNpcManager.getNpcData(name), category, new BlockPos(x, y, z));
+                tradeNpcsMap.put(uuid, tradeNpc);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Erreur lors du chargement des PNJs depuis le fichier JSON : ", e);
+        }
+
+        return tradeNpcsMap;  // Return the map of TradeNpc objects
+    }
+
+    /////////////////////////////////////////////COMMERCIAL ROAD/////////////////////////////////////////////
 
     public static void saveRoadToFile(CommercialRoad newRoad) {
         JsonArray roadsArray = new JsonArray();
@@ -658,139 +714,9 @@ public class JsonTradeFileManager {
         }
     }
 
-
-    public static void addTradeNpcToJson(TradeNpc npc) {
-        try {
-            JsonObject json = readJsonFile(Path.of(PATH_NPCS));
-            if (!json.has("npcs")) {
-                json.add("npcs", new JsonArray());
-            }
-
-            JsonArray npcsArray = json.getAsJsonArray("npcs");
-
-            // Vérifier si le NPC existe déjà
-            boolean npcExists = false;
-            for (JsonElement element : npcsArray) {
-                JsonObject npcObject = element.getAsJsonObject();
-                if (npcObject.get("id").getAsString().equals(npc.getNpcId())) {
-                    npcExists = true;
-                    break;
-                }
-            }
-
-            if (npcExists) {
-                LOGGER.warn("Le NPC avec l'ID " + npc.getNpcId() + " est déjà enregistré.");
-                return;
-            }
-
-            // Ajouter le nouveau NPC
-            JsonObject npcObject = new JsonObject();
-            npcObject.addProperty("id", npc.getNpcId());
-            npcObject.addProperty("name", npc.getNpcName());
-            npcObject.addProperty("texture", npc.getTexture());
-            npcObject.addProperty("x", npc.getPos().getX());
-            npcObject.addProperty("y", npc.getPos().getY());
-            npcObject.addProperty("z", npc.getPos().getZ());
-            npcObject.addProperty("category", npc.getTradeCategory());
-
-            npcsArray.add(npcObject);
-            writeJsonFile(Path.of(PATH_NPCS), json);
-
-            LOGGER.info("NPC ajouté avec succès au fichier JSON : " + npc.getNpcId());
-
-            // Activation du PNJ
-            GlobalNpcManager.activateNpc(new TradeNpc(npc.getNpcId(), npc.getNpcName(), npc.getNpcData(), npc.getTradeCategory(), npc.getPos()));
-            LOGGER.info("PNJ avec ID " + npc.getNpcId() + " activé avec succès.");
-        } catch (Exception e) {
-            LOGGER.error("Erreur lors de l'ajout d'un PNJ dans le fichier JSON : ", e);
-        }
-    }
-
-
-    public static void removeTradeNpcFromJson(String npcId) {
-        try {
-            JsonObject json = readJsonFile(Path.of(PATH_NPCS));
-
-            if (!json.has("npcs")) {
-                LOGGER.warn("Aucun NPC trouvé pour suppression dans le fichier JSON.");
-                return;
-            }
-
-            JsonArray npcsArray = json.getAsJsonArray("npcs");
-            JsonArray updatedArray = new JsonArray();
-
-            boolean found = false;
-            for (JsonElement element : npcsArray) {
-                JsonObject npcObject = element.getAsJsonObject();
-                if (!npcObject.get("id").getAsString().equals(npcId)) {
-                    updatedArray.add(npcObject);
-                } else {
-                    found = true;
-                }
-            }
-
-            if (found) {
-                json.add("npcs", updatedArray);
-                writeJsonFile(Path.of(PATH_NPCS), json);
-                LOGGER.info("NPC supprimé avec succès du fichier JSON : " + npcId);
-            } else {
-                LOGGER.warn("Aucun NPC avec l'ID " + npcId + " trouvé dans le fichier JSON.");
-            }
-        } catch (Exception e) {
-            LOGGER.error("Erreur lors de la suppression d'un PNJ du fichier JSON : ", e);
-        }
-    }
-
-    public static Map<UUID, TradeNpc> loadTradeNpcsFromJson(Level world) {
-        Map<UUID, TradeNpc> tradeNpcsMap = new HashMap<>();
-
-        if (world.isClientSide) {
-            LOGGER.warn("Tentative de charger des PNJs côté client. Ignoré...");
-            return tradeNpcsMap;
-        }
-
-        try {
-            JsonObject json = readJsonFile(Path.of(PATH_NPCS));
-            if (!json.has("npcs")) {
-                LOGGER.warn("Aucun PNJ trouvé dans le fichier JSON.");
-                return tradeNpcsMap;
-            }
-
-            JsonArray npcsArray = json.getAsJsonArray("npcs");
-
-            for (JsonElement element : npcsArray) {
-                JsonObject npcObject = element.getAsJsonObject();
-
-                String npcId = npcObject.get("id").getAsString();
-                String name = npcObject.get("name").getAsString();
-                String category = npcObject.get("category").getAsString();
-                Integer x = npcObject.get("x").getAsInt();
-                Integer y = npcObject.get("y").getAsInt();
-                Integer z = npcObject.get("z").getAsInt();
-
-                UUID uuid;
-                try {
-                    uuid = UUID.fromString(npcId);
-                } catch (IllegalArgumentException e) {
-                    LOGGER.error("UUID invalide pour le PNJ : " + npcId);
-                    continue;
-                }
-
-                // Create and store TradeNpc in map
-                TradeNpc tradeNpc = new TradeNpc(npcId, name, GlobalNpcManager.getNpcData(name), category, new BlockPos(x, y, z));
-                tradeNpcsMap.put(uuid, tradeNpc);
-            }
-        } catch (Exception e) {
-            LOGGER.error("Erreur lors du chargement des PNJs depuis le fichier JSON : ", e);
-        }
-
-        return tradeNpcsMap;  // Return the map of TradeNpc objects
-    }
-
     public static ArrayList<CommercialRoad> loadAllCommercialRoads(ServerLevel world) {
         ArrayList<CommercialRoad> commercialRoads = new ArrayList<>();
-        Path filePath = Paths.get(pathCommercial);
-        JsonObject jsonObject = readJsonFile(filePath);
+        JsonObject jsonObject = readJsonFile(pathCommercial);
 
         if (jsonObject == null || !jsonObject.has("roads") || !jsonObject.get("roads").isJsonArray()) {
             LOGGER.warn("Aucune route commerciale trouvée dans le fichier JSON.");
@@ -855,8 +781,7 @@ public class JsonTradeFileManager {
         return commercialRoads;
     }
     public static void removeNpcFromRoadJson(UUID npcUuid) {
-        Path filePath = Paths.get(pathCommercial);
-        JsonObject jsonObject = readJsonFile(filePath);
+        JsonObject jsonObject = readJsonFile(pathCommercial);
 
         if (!jsonObject.has("roads")) return;
 
@@ -885,7 +810,7 @@ public class JsonTradeFileManager {
             }
         }
 
-        writeJsonFile(filePath, jsonObject);
+        writeJsonFile(pathCommercial, jsonObject);
     }
 
 }

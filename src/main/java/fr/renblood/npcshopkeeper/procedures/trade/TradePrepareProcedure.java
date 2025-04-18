@@ -1,10 +1,10 @@
-package fr.renblood.npcshopkeeper.procedures;
+package fr.renblood.npcshopkeeper.procedures.trade;
 
 import com.ibm.icu.impl.Pair;
-import fr.renblood.npcshopkeeper.data.Trade.TradeHistory;
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
-import fr.renblood.npcshopkeeper.data.Trade.Trade;
-import fr.renblood.npcshopkeeper.manager.MoneyCalculator;
+import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
+import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.data.trade.Trade;
+import fr.renblood.npcshopkeeper.manager.trade.MoneyCalculator;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -19,8 +19,8 @@ import net.minecraft.world.item.Items;
 import java.util.*;
 import java.util.function.Supplier;
 
-import static fr.renblood.npcshopkeeper.manager.JsonTradeFileManager.*;
-import static fr.renblood.npcshopkeeper.manager.PriceReferenceManager.findReferenceByItem;
+import static fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager.*;
+import static fr.renblood.npcshopkeeper.manager.trade.PriceReferenceManager.findReferenceByItem;
 
 
 public class TradePrepareProcedure {

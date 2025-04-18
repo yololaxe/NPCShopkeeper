@@ -1,4 +1,4 @@
-package fr.renblood.npcshopkeeper.data.Price;
+package fr.renblood.npcshopkeeper.data.price;
 
 import net.minecraft.world.item.Item;
 

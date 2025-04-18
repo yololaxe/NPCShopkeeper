@@ -1,6 +1,6 @@
 package fr.renblood.npcshopkeeper.command;
 
-import fr.renblood.npcshopkeeper.procedures.CreateTradeCommandProcedure;
+import fr.renblood.npcshopkeeper.procedures.trade.CreateTradeCommandProcedure;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;

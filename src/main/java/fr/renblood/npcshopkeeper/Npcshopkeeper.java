@@ -5,24 +5,18 @@ import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModItems;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModTabs;
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
-import fr.renblood.npcshopkeeper.manager.NpcSpawnerManager;
+import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.world.WorldEventHandler;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.level.Level;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.LogicalSidedProvider;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.LogicalSide;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -45,7 +39,7 @@ import java.util.function.Supplier;
 
 import static fr.renblood.npcshopkeeper.init.EntityInit.ENTITY_TYPES;
 import static fr.renblood.npcshopkeeper.init.EntityInit.TRADE_NPC_ENTITY;
-import static fr.renblood.npcshopkeeper.manager.OnServerStartedManager.onServerStarted;
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.onServerStarted;
 
 // The value here should match an entry in the META-INF/mods.toml file
 

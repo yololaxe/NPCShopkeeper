@@ -1,4 +1,4 @@
-package fr.renblood.npcshopkeeper.procedures;
+package fr.renblood.npcshopkeeper.procedures.route;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -9,7 +9,7 @@ import net.minecraft.world.level.Level;
 
 import java.util.HashMap;
 
-import static fr.renblood.npcshopkeeper.manager.GlobalNpcManager.getDataSize;
+import static fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.getDataSize;
 
 public class ValidNpcShopkeeperWandGuiProcedure {
 	public static void execute(Entity entity, HashMap guistate, String category) {

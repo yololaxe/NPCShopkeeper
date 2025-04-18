@@ -1,10 +1,11 @@
-package fr.renblood.npcshopkeeper.manager;
+package fr.renblood.npcshopkeeper.manager.server;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
-import net.minecraft.core.BlockPos;
+import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.storage.LevelResource;

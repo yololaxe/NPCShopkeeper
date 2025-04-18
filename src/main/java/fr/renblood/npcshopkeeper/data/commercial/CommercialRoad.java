@@ -2,15 +2,9 @@ package fr.renblood.npcshopkeeper.data.commercial;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
-import fr.renblood.npcshopkeeper.manager.NpcSpawnerManager;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.Mob;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.UUID;
 
 import static com.mojang.text2speech.Narrator.LOGGER;

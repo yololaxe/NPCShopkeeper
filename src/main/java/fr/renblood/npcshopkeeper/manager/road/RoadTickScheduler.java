@@ -1,8 +1,8 @@
-package fr.renblood.npcshopkeeper.manager;
+package fr.renblood.npcshopkeeper.manager.road;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
-import fr.renblood.npcshopkeeper.procedures.PointDefiningModeProcedure;
+import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
 import net.minecraft.server.level.ServerLevel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

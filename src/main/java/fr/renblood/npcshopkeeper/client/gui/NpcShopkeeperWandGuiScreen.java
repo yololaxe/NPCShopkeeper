@@ -20,7 +20,7 @@ import java.util.HashMap;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
-import static fr.renblood.npcshopkeeper.manager.GlobalNpcManager.getDataSize;
+import static fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.getDataSize;
 
 public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopkeeperWandGuiMenu> {
 	private final static HashMap<String, Object> guistate = NpcShopkeeperWandGuiMenu.guistate;

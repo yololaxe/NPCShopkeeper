@@ -1,4 +1,4 @@
-package fr.renblood.npcshopkeeper.procedures;
+package fr.renblood.npcshopkeeper.procedures.trade;
 
 import fr.renblood.npcshopkeeper.world.inventory.CreateTradeMenu;
 import net.minecraftforge.network.NetworkHooks;

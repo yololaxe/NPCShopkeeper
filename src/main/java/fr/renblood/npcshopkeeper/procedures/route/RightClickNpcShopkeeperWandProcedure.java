@@ -1,4 +1,4 @@
-package fr.renblood.npcshopkeeper.procedures;
+package fr.renblood.npcshopkeeper.procedures.route;
 
 import fr.renblood.npcshopkeeper.world.inventory.NpcShopkeeperWandGuiMenu;
 import net.minecraft.world.MenuProvider;
@@ -9,7 +9,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Inventory;
 

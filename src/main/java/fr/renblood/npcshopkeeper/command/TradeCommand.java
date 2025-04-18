@@ -5,9 +5,8 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import fr.renblood.npcshopkeeper.Npcshopkeeper;
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
-import fr.renblood.npcshopkeeper.procedures.TradeCommandProcedure;
+import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.procedures.trade.TradeCommandProcedure;
 
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -20,8 +19,6 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.CommandSourceStack;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.List;

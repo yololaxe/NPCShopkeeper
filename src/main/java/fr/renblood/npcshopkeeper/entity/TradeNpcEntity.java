@@ -1,12 +1,12 @@
 package fr.renblood.npcshopkeeper.entity;
 
 import com.ibm.icu.impl.Pair;
-import fr.renblood.npcshopkeeper.data.Trade.Trade;
-import fr.renblood.npcshopkeeper.data.Trade.TradeHistory;
+import fr.renblood.npcshopkeeper.data.trade.Trade;
+import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
-import fr.renblood.npcshopkeeper.manager.GlobalNpcManager;
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
-import fr.renblood.npcshopkeeper.procedures.TradeCommandProcedure;
+import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
+import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.procedures.trade.TradeCommandProcedure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;

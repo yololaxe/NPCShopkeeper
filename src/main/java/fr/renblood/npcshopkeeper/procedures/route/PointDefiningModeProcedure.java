@@ -1,10 +1,9 @@
-package fr.renblood.npcshopkeeper.procedures;
+package fr.renblood.npcshopkeeper.procedures.route;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
-import fr.renblood.npcshopkeeper.manager.NpcSpawnerManager;
-import fr.renblood.npcshopkeeper.manager.RoadTickScheduler;
+import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.manager.road.RoadTickScheduler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;

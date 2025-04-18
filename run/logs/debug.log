@@ -773,23 +773,23 @@ java.lang.IllegalAccessException: class io.netty.util.internal.PlatformDependent
 [07avr.2025 12:01:57.691] [Render thread/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Preparing spawn area: 87%
 [07avr.2025 12:01:58.199] [Render thread/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Preparing spawn area: 96%
 [07avr.2025 12:01:58.412] [Server thread/INFO] [net.minecraftforge.server.permission.PermissionAPI/]: Successfully initialized permission handler forge:default_handler
-[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Chemin complet du fichier trade.json après démarrage : .\saves\New World\.\npcshopkeeper\trade.json
-[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Chemin complet du fichier trade_history.json après démarrage : .\saves\New World\.\npcshopkeeper\trade_history.json
-[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Chemin complet du fichier constant.json après démarrage : .\saves\New World\.\npcshopkeeper\constant.json
-[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Chemin complet du fichier price_references.json après démarrage : .\saves\New World\.\npcshopkeeper\price_references.json
-[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Chemin complet du fichier price_references.json après démarrage : .\saves\New World\.\npcshopkeeper\commercial_road.json
-[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Chemin complet du fichier trades_npcs.json après démarrage : .\saves\New World\.\npcshopkeeper\trades_npcs.json
-[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Le fichier trade.json existe à l'emplacement : .\saves\New World\.\npcshopkeeper\trade.json
-[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Le fichier trade_history.json existe à l'emplacement : .\saves\New World\.\npcshopkeeper\trade_history.json
-[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Le fichier constant.json existe à l'emplacement : .\saves\New World\.\npcshopkeeper\constant.json
-[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Le fichier price_references.json existe à l'emplacement : .\saves\New World\.\npcshopkeeper\price_references.json
-[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Le fichier price_references.json existe à l'emplacement : .\saves\New World\.\npcshopkeeper\commercial_road.json
-[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Le fichier trades_npcs.json existe à l'emplacement : .\saves\New World\.\npcshopkeeper\trades_npcs.json
+[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Chemin complet du fichier trade.json après démarrage : .\saves\New World\.\npcshopkeeper\trade.json
+[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Chemin complet du fichier trade_history.json après démarrage : .\saves\New World\.\npcshopkeeper\trade_history.json
+[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Chemin complet du fichier constant.json après démarrage : .\saves\New World\.\npcshopkeeper\constant.json
+[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Chemin complet du fichier price_references.json après démarrage : .\saves\New World\.\npcshopkeeper\price_references.json
+[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Chemin complet du fichier price_references.json après démarrage : .\saves\New World\.\npcshopkeeper\commercial_road.json
+[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Chemin complet du fichier trades_npcs.json après démarrage : .\saves\New World\.\npcshopkeeper\trades_npcs.json
+[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Le fichier trade.json existe à l'emplacement : .\saves\New World\.\npcshopkeeper\trade.json
+[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Le fichier trade_history.json existe à l'emplacement : .\saves\New World\.\npcshopkeeper\trade_history.json
+[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Le fichier constant.json existe à l'emplacement : .\saves\New World\.\npcshopkeeper\constant.json
+[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Le fichier price_references.json existe à l'emplacement : .\saves\New World\.\npcshopkeeper\price_references.json
+[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Le fichier price_references.json existe à l'emplacement : .\saves\New World\.\npcshopkeeper\commercial_road.json
+[07avr.2025 12:01:58.415] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Le fichier trades_npcs.json existe à l'emplacement : .\saves\New World\.\npcshopkeeper\trades_npcs.json
 [07avr.2025 12:01:58.416] [Render thread/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Time elapsed: 8740 ms
-[07avr.2025 12:01:58.416] [Server thread/WARN] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Aucun PNJ trouvé dans le fichier JSON au chargement du serveur.
-[07avr.2025 12:01:58.417] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: Données PNJs chargées avec succès depuis le fichier JSON.
-[07avr.2025 12:01:58.417] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.GlobalNpcManager/]: Données PNJ chargées avec succès. Total PNJs : 10
-[07avr.2025 12:01:58.417] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.JsonTradeFileManager/]: PNJs initialisés avec succès.
+[07avr.2025 12:01:58.416] [Server thread/WARN] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Aucun PNJ trouvé dans le fichier JSON au chargement du serveur.
+[07avr.2025 12:01:58.417] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: Données PNJs chargées avec succès depuis le fichier JSON.
+[07avr.2025 12:01:58.417] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager/]: Données PNJ chargées avec succès. Total PNJs : 10
+[07avr.2025 12:01:58.417] [Server thread/INFO] [fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager/]: PNJs initialisés avec succès.
 [07avr.2025 12:01:58.417] [Server thread/INFO] [fr.renblood.npcshopkeeper.Npcshopkeeper/]: Evénement onServerStarting exécuté !
 [07avr.2025 12:01:58.433] [Server thread/DEBUG] [io.netty.buffer.AbstractByteBuf/]: -Dio.netty.buffer.checkAccessible: true
 [07avr.2025 12:01:58.433] [Server thread/DEBUG] [io.netty.buffer.AbstractByteBuf/]: -Dio.netty.buffer.checkBounds: true
@@ -874,7 +874,7 @@ java.lang.IllegalAccessException: class io.netty.util.internal.PlatformDependent
 [07avr.2025 12:02:49.728] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Unknown or incomplete command, see below for error
 [07avr.2025 12:02:49.728] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] ...tery_sherd<--[HERE]
 [07avr.2025 12:02:52.045] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] [Debug]: Advanced tooltips: shown
-[07avr.2025 12:02:56.515] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.PriceReferenceManager/]: Référence de prix ajoutée pour l'item : minecraft:snow
+[07avr.2025 12:02:56.515] [Server thread/INFO] [fr.renblood.npcshopkeeper.manager.trade.PriceReferenceManager/]: Référence de prix ajoutée pour l'item : minecraft:snow
 [07avr.2025 12:02:56.522] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Référence de prix ajoutée pour l'item : minecraft:snow min : 1 max : 2
 [07avr.2025 12:03:07.428] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] minecraft:snow
 [07avr.2025 12:03:07.474] [Server thread/INFO] [net.minecraft.server.network.ServerGamePacketListenerImpl/]: Dev lost connection: Internal Exception: java.lang.IndexOutOfBoundsException: readerIndex(17) + length(1) exceeds writerIndex(17): UnpooledByteBufAllocator$InstrumentedUnpooledUnsafeHeapByteBuf(ridx: 17, widx: 17, cap: 256)

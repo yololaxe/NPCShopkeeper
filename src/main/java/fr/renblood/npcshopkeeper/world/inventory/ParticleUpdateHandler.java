@@ -1,5 +1,5 @@
 package fr.renblood.npcshopkeeper.world.inventory;
-import fr.renblood.npcshopkeeper.procedures.PointDefiningModeProcedure;
+import fr.renblood.npcshopkeeper.procedures.route.PointDefiningModeProcedure;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;

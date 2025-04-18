@@ -1,6 +1,6 @@
 package fr.renblood.npcshopkeeper.world;
 
-import fr.renblood.npcshopkeeper.procedures.PointDefiningModeProcedure;
+import fr.renblood.npcshopkeeper.procedures.route.PointDefiningModeProcedure;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;

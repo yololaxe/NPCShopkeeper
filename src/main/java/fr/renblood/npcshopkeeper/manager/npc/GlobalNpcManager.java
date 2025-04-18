@@ -1,13 +1,13 @@
-package fr.renblood.npcshopkeeper.manager;
+package fr.renblood.npcshopkeeper.manager.npc;
 
+import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
-import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 
-import static fr.renblood.npcshopkeeper.manager.ActiveNpcManager.addActiveNpc;
+import static fr.renblood.npcshopkeeper.manager.npc.ActiveNpcManager.addActiveNpc;
 
 public class GlobalNpcManager {
     private static final Logger LOGGER = LogManager.getLogger(GlobalNpcManager.class);

@@ -1,27 +1,22 @@
 package fr.renblood.npcshopkeeper.command;
 
-import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
-import fr.renblood.npcshopkeeper.manager.ActiveNpcManager;
-import fr.renblood.npcshopkeeper.manager.GlobalNpcManager;
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.manager.npc.ActiveNpcManager;
+import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
+import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-import java.util.ArrayList;
 import java.util.Map;
 
 import static com.mojang.text2speech.Narrator.LOGGER;

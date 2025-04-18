@@ -1,7 +1,6 @@
 package fr.renblood.npcshopkeeper.command;
 
-import fr.renblood.npcshopkeeper.Npcshopkeeper;
-import fr.renblood.npcshopkeeper.procedures.PointDefiningModeProcedure;
+import fr.renblood.npcshopkeeper.procedures.route.PointDefiningModeProcedure;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;

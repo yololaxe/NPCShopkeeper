@@ -1,4 +1,4 @@
-package fr.renblood.npcshopkeeper.procedures;
+package fr.renblood.npcshopkeeper.procedures.trade;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;

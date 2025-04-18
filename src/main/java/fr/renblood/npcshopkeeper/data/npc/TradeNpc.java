@@ -1,13 +1,8 @@
 package fr.renblood.npcshopkeeper.data.npc;
 
-import com.ibm.icu.impl.Pair;
-import fr.renblood.npcshopkeeper.data.Trade.Trade;
-import fr.renblood.npcshopkeeper.data.Trade.TradeHistory;
-import fr.renblood.npcshopkeeper.manager.GlobalNpcManager;
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.data.trade.Trade;
+import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

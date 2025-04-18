@@ -1,4 +1,6 @@
 package fr.renblood.npcshopkeeper.client.gui;
+
+import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.world.inventory.TradeListMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -6,8 +8,7 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.Minecraft;
 import java.util.List;
-import fr.renblood.npcshopkeeper.data.Trade.Trade;
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
 public class SeeTradesScreen extends AbstractContainerScreen<TradeListMenu> {
 
     private final String category;

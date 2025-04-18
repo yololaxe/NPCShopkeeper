@@ -1,4 +1,4 @@
-package fr.renblood.npcshopkeeper.data.Trade;
+package fr.renblood.npcshopkeeper.data.trade;
 
 import java.util.List;
 import java.util.Map;

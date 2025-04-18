@@ -1,12 +1,9 @@
-package fr.renblood.npcshopkeeper.manager;
+package fr.renblood.npcshopkeeper.manager.server;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.util.LogicalSidedProvider;
+import fr.renblood.npcshopkeeper.manager.road.RoadTickScheduler;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.LogicalSide;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraftforge.server.ServerLifecycleHooks;
 

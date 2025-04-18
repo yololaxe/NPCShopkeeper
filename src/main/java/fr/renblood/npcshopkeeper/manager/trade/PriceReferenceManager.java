@@ -1,14 +1,10 @@
-package fr.renblood.npcshopkeeper.manager;
+package fr.renblood.npcshopkeeper.manager.trade;
 
 import com.google.gson.*;
 import com.ibm.icu.impl.Pair;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.LevelResource;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.server.ServerLifecycleHooks;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -18,8 +14,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-import static fr.renblood.npcshopkeeper.manager.JsonTradeFileManager.readJsonFile;
-import static fr.renblood.npcshopkeeper.manager.OnServerStartedManager.PATH_PRICE;
+import static fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager.readJsonFile;
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH_PRICE;
 
 public class PriceReferenceManager {
 
@@ -41,7 +37,7 @@ public class PriceReferenceManager {
 
     // Chercher une référence par nom d'item
     public static Pair<Integer, Integer> findReferenceByItem(String itemName, Player player) {
-        JsonObject jsonObject = readJsonFile(Path.of(pathPrice));
+        JsonObject jsonObject = readJsonFile(pathPrice);
 
         if (jsonObject.has("references")) {
             JsonArray referencesArray = jsonObject.getAsJsonArray("references");
@@ -63,7 +59,7 @@ public class PriceReferenceManager {
     // Créer une nouvelle référence
     public static boolean createPriceReference(String item, int min, int max, Player player) {
         try {
-            Path path = Paths.get(player.getServer().getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/price_references.json").toString());
+            String path = player.getServer().getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/price_references.json").toString();
             JsonObject jsonObject = readJsonFile(path);
 
 
@@ -103,7 +99,7 @@ public class PriceReferenceManager {
 
     // Modifier une référence existante
     public static void updateReference(String itemName, int newMinPrice, int newMaxPrice) {
-        JsonObject jsonObject = readJsonFile(Path.of(pathPrice));
+        JsonObject jsonObject = readJsonFile(pathPrice);
 
         if (jsonObject.has("references")) {
             JsonArray referencesArray = jsonObject.getAsJsonArray("references");
@@ -124,7 +120,7 @@ public class PriceReferenceManager {
     // Récupérer toutes les références sous forme de liste
     public static List<JsonObject> getAllReferences() {
         List<JsonObject> references = new ArrayList<>();
-        JsonObject jsonObject = readJsonFile(Path.of(pathPrice));
+        JsonObject jsonObject = readJsonFile(pathPrice);
 
         if (jsonObject.has("references")) {
             JsonArray referencesArray = jsonObject.getAsJsonArray("references");

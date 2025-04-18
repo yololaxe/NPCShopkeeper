@@ -1,9 +1,9 @@
-package fr.renblood.npcshopkeeper.procedures;
+package fr.renblood.npcshopkeeper.procedures.trade;
 
-import fr.renblood.npcshopkeeper.data.Trade.TradeHistory;
-import fr.renblood.npcshopkeeper.data.Trade.TradeResult;
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
-import fr.renblood.npcshopkeeper.manager.MoneyCalculator;
+import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
+import fr.renblood.npcshopkeeper.data.trade.TradeResult;
+import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.manager.trade.MoneyCalculator;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -18,7 +18,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.function.Supplier;
 import java.util.Map;
 
-import static fr.renblood.npcshopkeeper.manager.JsonTradeFileManager.*;
+import static fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager.*;
 
 
 public class TradeProcedure {

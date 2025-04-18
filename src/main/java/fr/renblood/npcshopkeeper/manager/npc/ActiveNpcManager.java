@@ -1,4 +1,4 @@
-package fr.renblood.npcshopkeeper.manager;
+package fr.renblood.npcshopkeeper.manager.npc;
 
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import org.apache.logging.log4j.LogManager;

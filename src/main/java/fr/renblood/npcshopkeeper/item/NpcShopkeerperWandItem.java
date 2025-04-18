@@ -1,7 +1,7 @@
 package fr.renblood.npcshopkeeper.item;
 
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
-import fr.renblood.npcshopkeeper.procedures.RightClickNpcShopkeeperWandProcedure;
+import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.procedures.route.RightClickNpcShopkeeperWandProcedure;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;

@@ -2,7 +2,7 @@
 package fr.renblood.npcshopkeeper.network;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
-import fr.renblood.npcshopkeeper.procedures.TradeProcedure;
+import fr.renblood.npcshopkeeper.procedures.trade.TradeProcedure;
 import fr.renblood.npcshopkeeper.world.inventory.TradeMenu;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;

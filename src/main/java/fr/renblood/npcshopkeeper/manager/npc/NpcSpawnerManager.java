@@ -1,27 +1,19 @@
-package fr.renblood.npcshopkeeper.manager;
+package fr.renblood.npcshopkeeper.manager.npc;
 
-import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
+import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.Reader;
 import java.io.Writer;
-import java.lang.reflect.Type;
 import java.util.*;
 
 public class NpcSpawnerManager {
@@ -38,7 +30,7 @@ public class NpcSpawnerManager {
     }
 
 
-    static int getRandomTime(int min, int max) {
+    public static int getRandomTime(int min, int max) {
         return random.nextInt(max - min + 1) + min;
     }
 

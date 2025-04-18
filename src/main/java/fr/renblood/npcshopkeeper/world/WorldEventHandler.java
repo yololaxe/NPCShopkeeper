@@ -1,12 +1,7 @@
 package fr.renblood.npcshopkeeper.world;
 
 
-import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
-import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
-import fr.renblood.npcshopkeeper.init.EntityInit;
-import fr.renblood.npcshopkeeper.manager.JsonTradeFileManager;
-import fr.renblood.npcshopkeeper.manager.NpcSpawnerManager;
-import net.minecraft.core.BlockPos;
+import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.storage.LevelResource;
@@ -18,10 +13,6 @@ import net.minecraftforge.fml.common.Mod;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Map;
-import java.util.UUID;
-
-import static com.mojang.text2speech.Narrator.LOGGER;
 
 @Mod.EventBusSubscriber
 public class WorldEventHandler {

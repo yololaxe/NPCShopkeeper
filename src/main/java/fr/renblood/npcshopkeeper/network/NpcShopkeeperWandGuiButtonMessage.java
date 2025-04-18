@@ -2,7 +2,7 @@ package fr.renblood.npcshopkeeper.network;
 
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
-import fr.renblood.npcshopkeeper.procedures.ValidNpcShopkeeperWandGuiProcedure;
+import fr.renblood.npcshopkeeper.procedures.route.ValidNpcShopkeeperWandGuiProcedure;
 import fr.renblood.npcshopkeeper.world.inventory.NpcShopkeeperWandGuiMenu;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -16,7 +16,6 @@ import net.minecraft.core.BlockPos;
 
 
 import java.util.function.Supplier;
-import java.util.HashMap;
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 public class NpcShopkeeperWandGuiButtonMessage {
