@@ -1,5 +1,7 @@
 package fr.renblood.npcshopkeeper.data.trade;
 
+import com.google.gson.JsonObject;
+
 public class TradeResult {
     private String item;
     private int quantity;
@@ -36,5 +38,17 @@ public class TradeResult {
                 "item='" + item + '\'' +
                 ", quantity=" + quantity +
                 '}';
+    }
+
+    public JsonObject toJson() {
+        JsonObject o = new JsonObject();
+        o.addProperty("item", item);
+        o.addProperty("quantity", quantity);
+        return o;
+    }
+
+    public static TradeResult fromJson(JsonObject o) {
+        return new TradeResult(o.get("item").getAsString(),
+                o.get("quantity").getAsInt());
     }
 }

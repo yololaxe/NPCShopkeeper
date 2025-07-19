@@ -5,7 +5,7 @@ import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
 import fr.renblood.npcshopkeeper.manager.npc.ActiveNpcManager;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
-import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
@@ -20,6 +20,8 @@ import net.minecraftforge.fml.common.Mod;
 import java.util.Map;
 
 import static com.mojang.text2speech.Narrator.LOGGER;
+import fr.renblood.npcshopkeeper.data.io.JsonRepository;
+import java.nio.file.Paths;
 
 @Mod.EventBusSubscriber
 public class SpawnTradeNpcCommand {
@@ -101,48 +103,13 @@ public class SpawnTradeNpcCommand {
                     return 0;
                 }
                 ActiveNpcManager.printActiveNpcs();
-                JsonTradeFileManager.addTradeNpcToJson(modelNpc); // Enregistrement dans le fichier JSON
-//
-//                npc.setInitialized(false);
-//                npc.isCreated = true;
-//                npc.initializeNpcData();
-
-                // Configuration du PNJ
-//                npc.setTradeCategory(category);
-//                npc.setPos(position.getX(), position.getY(), position.getZ());
-//                npc.setPosition(position);
-//                npc.setNpcId(npc.getStringUUID());
-//                npc.setNpcName(npcName);
-//                npc.setNpcData(npcData);
-//                npc.setTexts((ArrayList<String>) npcData.getOrDefault("Texts", new ArrayList<>()));
-
-//                // Vérification et définition de la texture
-//                String texture = (String) npcData.getOrDefault("texture", null);
-//                if (texture == null || texture.isEmpty()) {
-//                    LOGGER.error("Texture manquante ou invalide pour le PNJ : " + npc.getNpcId());
-//                    source.sendFailure(Component.literal("Invalid or missing texture for NPC: " + npc.getNpcName()));
-//                    return 0;
-//                }
-//                npc.setTexture(texture);
-//                npc.setTexture(texture);
-//                LOGGER.info("Texture assignée au PNJ : " + texture);
-
-//                // Vérification si un PNJ avec le même UUID ou position existe déjà VERIF QUIL N'Y EST PAS 2 PNJS
-//                boolean npcExists = source.getLevel().getEntitiesOfClass(TradeNpcEntity.class, npc.getBoundingBox().inflate(1.0)).stream()
-//                        .anyMatch(existingNpc -> existingNpc.getNpcId().equals(npc.getNpcId()));
-//                if (npcExists) {
-//                    LOGGER.warn("Un PNJ avec le même UUID existe déjà à cette position.");
-//                    source.sendFailure(Component.literal("NPC with the same ID already exists at this location."));
-//                    return 0;
-//                }
-//
-//                // Ajout du PNJ au système
-//
-//
-//
-//                LOGGER.info("PNJ ajouté avec succès : " + npcName + " (ID: " + modelNpc.getNpcId() + ")");
-//                source.sendSuccess(() -> Component.literal("[Step 4] Spawned trade NPC at " +
-//                        position.getX() + ", " + position.getY() + ", " + position.getZ()), true);
+                JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
+                        Paths.get(JsonFileManager.pathNpcs),  // chemin vers npcshopkeeper/npcs.json
+                        "npcs",                              // clé racine dans le JSON
+                        TradeNpc::fromJson,                  // désérialiseur
+                        TradeNpc::toJson                     // sérialiseur
+                );
+                npcRepo.add(modelNpc);// Enregistrement dans le fichier JSON
 
             }
         } catch (Exception e) {

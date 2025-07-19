@@ -1,5 +1,10 @@
 package fr.renblood.npcshopkeeper.data.trade;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
+import java.util.ArrayList;
 import java.util.List;
 
 public class Trade {
@@ -61,4 +66,38 @@ public class Trade {
                 ", result=" + result +
                 '}';
     }
+    public JsonObject toJson() {
+        JsonObject o = new JsonObject();
+        o.addProperty("Name", name);
+        o.addProperty("Category", category);
+
+        JsonArray arr = new JsonArray();
+        for (TradeItem ti : trades) arr.add(ti.toJson());
+        o.add("trades", arr);
+
+        if (result != null) o.add("result", result.toJson());
+        return o;
+    }
+
+    public static Trade fromJson(JsonObject o) {
+        String name     = o.get("Name").getAsString();
+        String category = o.get("Category").getAsString();
+
+        List<TradeItem> items = new ArrayList<>();
+        JsonArray arr = o.getAsJsonArray("trades");
+        for (JsonElement e : arr) {
+            if (e.isJsonObject()) {
+                items.add(TradeItem.fromJson(e.getAsJsonObject()));
+            }
+        }
+
+        TradeResult res = null;
+        // only parse "result" if it's actually a JSON object
+        if (o.has("result") && o.get("result").isJsonObject()) {
+            res = TradeResult.fromJson(o.getAsJsonObject("result"));
+        }
+
+        return new Trade(name, category, items, res);
+    }
+
 }

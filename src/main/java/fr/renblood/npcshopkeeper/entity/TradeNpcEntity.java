@@ -1,11 +1,12 @@
 package fr.renblood.npcshopkeeper.entity;
 
 import com.ibm.icu.impl.Pair;
+import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
+import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
-import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.procedures.trade.TradeCommandProcedure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -34,6 +35,7 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 
+import java.nio.file.Paths;
 import java.util.*;
 
 ;
@@ -108,8 +110,20 @@ public class TradeNpcEntity extends Villager {
         if (this.npcName != null) {
             GlobalNpcManager.deactivateNpc(this.npcName);
         }
-        JsonTradeFileManager.removeTradeNpcFromJson(this.getNpcId()); // Supprimer le PNJ du JSON
+
+        // on charge tous les TradeNpc, on filtre celui qu'on supprime, puis on réécrit
+        JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
+                Paths.get(JsonFileManager.pathNpcs),
+                "npcs",
+                TradeNpc::fromJson,
+                TradeNpc::toJson
+        );
+        var remaining = npcRepo.loadAll().stream()
+                .filter(n -> !n.getNpcId().equals(this.getNpcId()))
+                .toList();
+        npcRepo.saveAll(remaining);
     }
+
 
     @Override
     protected void registerGoals() {
@@ -119,70 +133,101 @@ public class TradeNpcEntity extends Villager {
 
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
-        System.out.println("Début de la méthode mobInteract");
+        // Affichage d’un texte aléatoire si défini
         if (this.texts != null && !this.texts.isEmpty()) {
-            // Sélectionner un texte aléatoire
-            String randomText = this.texts.get(new Random().nextInt(this.texts.size()));
+            String randomText = this.texts.get(RandomSource.create().nextInt(this.texts.size()));
             player.displayClientMessage(Component.literal(randomText), false);
         } else {
             player.displayClientMessage(Component.literal("Ce PNJ n'a rien à dire pour le moment."), false);
         }
-        if (!this.level().isClientSide) {
-            if (player instanceof ServerPlayer serverPlayer) {
-                try {
-                    // Vérifier si un trade existe déjà pour ce PNJ
-                    Pair<Boolean, TradeHistory> tradeStatus = JsonTradeFileManager.checkTradeStatusForNpc(this.npcId);
-                    position = serverPlayer.blockPosition();
 
-                    if (tradeStatus.first) {
-                        // Si un trade existe, récupérer ses détails
-                        tradeHistory = tradeStatus.second;
-                        if (tradeHistory == null || tradeHistory.getTradeName() == null || tradeHistory.getTradeItems().isEmpty()) {
-                            serverPlayer.displayClientMessage(Component.literal("Erreur : données de trade manquantes pour le PNJ."), true);
-                            LOGGER.error("Données de trade manquantes pour le PNJ : " + this.npcId);
-                            return InteractionResult.FAIL;
-                        }
+        // Côté serveur : gérer le trade
+        if (!this.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
+            try {
+                // 1) Charger l’historique des trades
+                JsonRepository<TradeHistory> historyRepo = new JsonRepository<>(
+                        Paths.get(JsonFileManager.pathHistory),
+                        "history",
+                        TradeHistory::fromJson,
+                        TradeHistory::toJson
+                );
+                List<TradeHistory> histories = historyRepo.loadAll();
 
-                        // Utiliser le trade existant
-                        String existingTradeName = tradeHistory.getTradeName();
-                        serverPlayer.displayClientMessage(Component.literal("Un trade existant a été trouvé : " + existingTradeName), true);
+                // 2) Chercher un trade non terminé pour ce PNJ
+                Optional<TradeHistory> ongoing = histories.stream()
+                        .filter(th -> !th.isFinished() && th.getNpcId().equals(this.npcId))
+                        .findFirst();
 
-
-                        TradeCommandProcedure.execute(
-                                this.level(), position.getX(), position.getY(), position.getZ(),
-                                existingTradeName, serverPlayer, this.npcId, this.npcName
+                if (ongoing.isPresent()) {
+                    // Trade existant : reprendre
+                    this.tradeHistory = ongoing.get();
+                    String existingTradeName = this.tradeHistory.getTradeName();
+                    serverPlayer.displayClientMessage(
+                            Component.literal("Reprise du trade : " + existingTradeName),
+                            true
+                    );
+                    TradeCommandProcedure.execute(
+                            this.level(),
+                            serverPlayer.getX(), serverPlayer.getY(), serverPlayer.getZ(),
+                            existingTradeName,
+                            serverPlayer,
+                            this.npcId,
+                            this.npcName
+                    );
+                } else {
+                    // Nouveau trade : en choisir un au hasard dans la catégorie
+                    if (this.tradeCategory != null && !this.tradeCategory.isEmpty()) {
+                        JsonRepository<Trade> tradeRepo = new JsonRepository<>(
+                                Paths.get(JsonFileManager.path),
+                                "trades",
+                                Trade::fromJson,
+                                Trade::toJson
                         );
-                    } else {
-                        // Sinon, créer un nouveau trade aléatoire
-                        if (this.tradeCategory != null) {
-                            List<Trade> trades = JsonTradeFileManager.getTradesByCategory(this.tradeCategory);
+                        List<Trade> available = tradeRepo.loadAll().stream()
+                                .filter(t -> t.getCategory().equalsIgnoreCase(this.tradeCategory))
+                                .toList();
 
-                            if (!trades.isEmpty()) {
-                                trade = trades.get(new Random().nextInt(trades.size()));
-                                serverPlayer.displayClientMessage(Component.literal("Nouveau trade généré : " + trade.getName()), true);
-
-
-                                TradeCommandProcedure.execute(
-                                        this.level(), position.getX(), position.getY(), position.getZ(),
-                                        trade.getName(), serverPlayer, this.npcId, this.npcName
-                                );
-                            } else {
-                                serverPlayer.displayClientMessage(Component.literal("Aucun trade trouvé dans cette catégorie : " + tradeCategory), true);
-                            }
+                        if (!available.isEmpty()) {
+                            this.trade = available.get(RandomSource.create().nextInt(available.size()));
+                            serverPlayer.displayClientMessage(
+                                    Component.literal("Nouveau trade : " + this.trade.getName()),
+                                    true
+                            );
+                            TradeCommandProcedure.execute(
+                                    this.level(),
+                                    serverPlayer.getX(), serverPlayer.getY(), serverPlayer.getZ(),
+                                    this.trade.getName(),
+                                    serverPlayer,
+                                    this.npcId,
+                                    this.npcName
+                            );
                         } else {
-                            serverPlayer.displayClientMessage(Component.literal("Ce PNJ n'a pas de catégorie de trade assignée."), true);
+                            serverPlayer.displayClientMessage(
+                                    Component.literal("Aucun trade dans la catégorie : " + this.tradeCategory),
+                                    true
+                            );
                         }
+                    } else {
+                        serverPlayer.displayClientMessage(
+                                Component.literal("Ce PNJ n'a pas de catégorie de trade assignée."),
+                                true
+                        );
                     }
-                } catch (Exception e) {
-                    serverPlayer.displayClientMessage(Component.literal("Erreur lors de l'exécution de TradeCommandProcedure : " + e.getMessage()), true);
-                    e.printStackTrace();
-                    return InteractionResult.FAIL;
                 }
+            } catch (Exception e) {
+                serverPlayer.displayClientMessage(
+                        Component.literal("Erreur lors de l'échange : " + e.getMessage()),
+                        true
+                );
+                LOGGER.error("Erreur dans mobInteract de TradeNpcEntity", e);
+                return InteractionResult.FAIL;
             }
             return InteractionResult.SUCCESS;
         }
+
         return super.mobInteract(player, hand);
     }
+
 
 
     @Override

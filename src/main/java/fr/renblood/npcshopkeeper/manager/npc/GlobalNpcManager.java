@@ -1,6 +1,6 @@
 package fr.renblood.npcshopkeeper.manager.npc;
 
-import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,6 +8,8 @@ import org.apache.logging.log4j.Logger;
 import java.util.*;
 
 import static fr.renblood.npcshopkeeper.manager.npc.ActiveNpcManager.addActiveNpc;
+
+import com.google.gson.*;
 
 public class GlobalNpcManager {
     private static final Logger LOGGER = LogManager.getLogger(GlobalNpcManager.class);
@@ -23,20 +25,42 @@ public class GlobalNpcManager {
     // Charger les données du fichier JSON au démarrage
     public static void loadNpcData() {
         npcDataMap.clear();
-        Map<String, Map<String, Object>> loadedData = JsonTradeFileManager.getPnjData();
-        if (loadedData.isEmpty()) {
-            LOGGER.error("Aucune donnée PNJ chargée depuis le JSON !");
+        inactiveNpcs.clear();
+        activeNpcs.clear();
+
+        JsonObject root = JsonFileManager.readJsonFile(JsonFileManager.pathConstant);
+        if (!root.has("npcs") || !root.get("npcs").isJsonObject()) {
+            LOGGER.error("Aucune clé 'npcs' valide dans : " + JsonFileManager.pathConstant);
             return;
         }
 
-        npcDataMap.putAll(loadedData);
-        inactiveNpcs.clear();
-        inactiveNpcs.addAll(npcDataMap.keySet());
-        activeNpcs.clear();
+        JsonObject npcsObj = root.getAsJsonObject("npcs");
+        for (Map.Entry<String, JsonElement> entry : npcsObj.entrySet()) {
+            String name = entry.getKey();
+            JsonObject o = entry.getValue().getAsJsonObject();
+
+            String texture = o.has("Texture")
+                    ? o.get("Texture").getAsString()
+                    : "textures/entity/banker.png";
+
+            List<String> texts = new ArrayList<>();
+            if (o.has("Texts") && o.get("Texts").isJsonArray()) {
+                for (JsonElement t : o.getAsJsonArray("Texts")) {
+                    if (t.isJsonPrimitive()) {
+                        texts.add(t.getAsString());
+                    }
+                }
+            }
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("Texture", texture);
+            data.put("Texts", texts);
+
+            npcDataMap.put(name, data);
+            inactiveNpcs.add(name);
+        }
 
         LOGGER.info("Données PNJ chargées avec succès. Total PNJs : " + npcDataMap.size());
-
-        // Synchroniser avec ActiveNpcManager
     }
 
     public static void activateNpc(TradeNpc npc) {

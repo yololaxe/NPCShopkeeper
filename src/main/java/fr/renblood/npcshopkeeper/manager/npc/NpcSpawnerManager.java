@@ -2,10 +2,11 @@ package fr.renblood.npcshopkeeper.manager.npc;
 
 import com.google.gson.Gson;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
+import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
+import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
-import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
@@ -15,6 +16,13 @@ import org.apache.logging.log4j.Logger;
 import java.io.FileWriter;
 import java.io.Writer;
 import java.util.*;
+
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 public class NpcSpawnerManager {
 
@@ -75,71 +83,63 @@ public class NpcSpawnerManager {
     public static void trySpawnNpcForRoad(ServerLevel level, CommercialRoad road) {
         LOGGER.info("🔍 Tentative de spawn pour la route : " + road.getName());
 
-        if (!activeNPCs.containsKey(road)) {
-            LOGGER.warn("❗ Route non enregistrée dans activeNPCs, ajout...");
-            activeNPCs.put(road, new HashMap<>());
-        }
-
+        activeNPCs.computeIfAbsent(road, r -> new HashMap<>());
         HashMap<BlockPos, Mob> roadNPCs = activeNPCs.get(road);
 
-        // 🧹 Nettoyer les entités invalides
-        roadNPCs.entrySet().removeIf(entry ->
-                !(entry.getValue() instanceof TradeNpcEntity) || entry.getValue().isRemoved());
-
-        LOGGER.info("➡️ Tentative de spawn pour la route : {}", road.getName());
-        LOGGER.info("Positions : " + road.getPositions());
-        LOGGER.info("Positions occupées (roadNPCs.keySet()) : " + roadNPCs.keySet());
-        LOGGER.info("NPCs actifs (roadNPCs.values()) : " + roadNPCs.values());
+        // Nettoyage des entités invalides
+        roadNPCs.entrySet().removeIf(e ->
+                !(e.getValue() instanceof TradeNpcEntity) || e.getValue().isRemoved()
+        );
 
         boolean spawned = false;
         for (BlockPos point : road.getPositions()) {
             if (!roadNPCs.containsKey(point)) {
                 LOGGER.info("🧭 Point libre trouvé à : " + point);
 
-//                // 🔒 Vérifie s'il y a déjà une entité présente à cette position
-//                List<TradeNpcEntity> alreadyPresent = level.getEntitiesOfClass(
-//                        TradeNpcEntity.class,
-//                        new AABB(point)
-//                );
-//
-//                if (!alreadyPresent.isEmpty()) {
-//                    LOGGER.warn("⚠️ Entité déjà présente à cette position, annulation du spawn.");
-//                    continue;
-//                }
-
                 String npcName = GlobalNpcManager.getRandomInactiveNpc();
                 if (npcName == null) {
                     LOGGER.error("❌ Aucun PNJ inactif disponible.");
                     return;
                 }
-
                 Map<String, Object> npcData = GlobalNpcManager.getNpcData(npcName);
                 if (npcData == null) {
                     LOGGER.error("❌ Aucune donnée trouvée pour le PNJ : " + npcName);
                     return;
                 }
 
+                // Création du modèle et de l'entité
                 TradeNpc modelNpc = new TradeNpc(npcName, npcData, road.getCategory(), point);
-
                 TradeNpcEntity npcEntity = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), level);
                 modelNpc.setNpcId(npcEntity.getStringUUID());
                 npcEntity.setTradeNpc(modelNpc);
 
-                // ✅ Vérifie si l'entité est déjà présente dans roadNPCs (évite les doublons)
-                if (roadNPCs.containsValue(npcEntity)) {
-                    LOGGER.warn("⚠️ Entité déjà référencée dans roadNPCs, annulation du spawn.");
-                    continue;
-                }
                 level.addFreshEntity(npcEntity);
-                level.broadcastEntityEvent(npcEntity, (byte)60); // ou autre code bidon
-
                 roadNPCs.put(point, npcEntity);
                 road.getNpcEntities().add(npcEntity);
-                JsonTradeFileManager.saveRoadToFile(road);
-                JsonTradeFileManager.addTradeNpcToJson(modelNpc);
-//                ActiveNpcManager.addActiveNpc(modelNpc);
 
-                LOGGER.info("✅ PNJ spawné sur la route '" + road.getName() + "' à " + point + " : " + npcName);
+                // --- Persistance de la route mise à jour ---
+                JsonRepository<CommercialRoad> roadRepo = new JsonRepository<>(
+                        Paths.get(JsonFileManager.pathCommercial),
+                        "roads",
+                        json -> CommercialRoad.fromJson(json, level),
+                        CommercialRoad::toJson
+                );
+                List<CommercialRoad> allRoads = roadRepo.loadAll().stream()
+                        .filter(r -> !r.getId().equals(road.getId()))
+                        .collect(Collectors.toList());
+                allRoads.add(road);
+                roadRepo.saveAll(allRoads);
+
+                // --- Persistance du nouveau PNJ ---
+                JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
+                        Paths.get(JsonFileManager.pathNpcs),
+                        "npcs",
+                        TradeNpc::fromJson,
+                        TradeNpc::toJson
+                );
+                npcRepo.add(modelNpc);
+
+                LOGGER.info("✅ PNJ spawné et persistant sur la route '" + road.getName() + "' à " + point + " : " + npcName);
                 spawned = true;
                 break;
             }

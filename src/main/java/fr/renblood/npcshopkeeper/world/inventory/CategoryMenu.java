@@ -1,5 +1,8 @@
 package fr.renblood.npcshopkeeper.world.inventory;
 
+import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
+import fr.renblood.npcshopkeeper.data.io.JsonRepository;
+import fr.renblood.npcshopkeeper.data.trade.Trade;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -8,15 +11,30 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ObjectHolder;
 
+import java.nio.file.Paths;
+import java.util.List;
+
 
 public class CategoryMenu extends AbstractContainerMenu {
 
     public static final MenuType<CategoryMenu> CATEGORY_MENU = null;
+    private final List<String> categories;
 
     // Constructor
     public CategoryMenu(int id, Inventory playerInventory) {
         super(CATEGORY_MENU, id);
-
+        JsonRepository<Trade> repo = new JsonRepository<>(
+                Paths.get(JsonFileManager.path),
+                "trades",
+                Trade::fromJson,
+                Trade::toJson
+        );
+        this.categories = repo
+                .loadAll()
+                .stream()
+                .map(Trade::getCategory)
+                .distinct()
+                .toList();
         // Add player inventory slots (3 rows x 9 slots)
         for (int row = 0; row < 3; ++row) {
             for (int col = 0; col < 9; ++col) {
@@ -29,7 +47,9 @@ public class CategoryMenu extends AbstractContainerMenu {
             this.addSlot(new Slot(playerInventory, col, 8 + col * 18, 142));
         }
     }
-
+    public List<String> getCategories() {
+        return categories;
+    }
     // Handle quick move logic (Shift-clicking an item)
     @Override
     public ItemStack quickMoveStack(Player player, int index) {

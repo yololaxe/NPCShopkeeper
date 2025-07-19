@@ -1,5 +1,9 @@
 package fr.renblood.npcshopkeeper.data.trade;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,5 +50,25 @@ public class TradeList {
             }
         }
         return false;
+    }
+
+    public JsonObject toJson() {
+        JsonObject o = new JsonObject();
+        JsonArray arr = new JsonArray();
+        for (Trade t : trades) {
+            arr.add(t.toJson());
+        }
+        o.add("trades", arr);
+        return o;
+    }
+
+    public static TradeList fromJson(JsonObject o) {
+        List<Trade> items = new ArrayList<>();
+        if (o.has("trades")) {
+            for (JsonElement e : o.getAsJsonArray("trades")) {
+                items.add(Trade.fromJson(e.getAsJsonObject()));
+            }
+        }
+        return new TradeList(items);
     }
 }

@@ -1,10 +1,13 @@
 package fr.renblood.npcshopkeeper.procedures.trade;
 
 import com.ibm.icu.impl.Pair;
-import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
-import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.data.io.JsonRepository;
+import fr.renblood.npcshopkeeper.data.io.JsonFileManager; // for path constants
+import fr.renblood.npcshopkeeper.data.price.TradeItemInfo;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
+import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
 import fr.renblood.npcshopkeeper.manager.trade.MoneyCalculator;
+import fr.renblood.npcshopkeeper.manager.trade.PriceReferenceManager;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -15,115 +18,165 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.LevelAccessor;
 
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.function.Supplier;
 
-import static fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager.*;
-import static fr.renblood.npcshopkeeper.manager.trade.PriceReferenceManager.findReferenceByItem;
-
-
 public class TradePrepareProcedure {
-	public static void execute(Entity entity, String cleanTradeName, String npcId, String npcName) {
-		if (entity == null) return;
+    public static void execute(Entity entity,
+                               String cleanTradeName,
+                               String npcId,
+                               String npcName) {
+        if (!(entity instanceof ServerPlayer _player)) return;
+        if (_player.containerMenu == null) return;
 
-		// Check if the entity is a player
-		if (entity instanceof ServerPlayer _player) {
+        // 1️⃣ Load all trades and find the one we want
+        JsonRepository<Trade> tradeRepo = new JsonRepository<>(
+                Paths.get(JsonFileManager.path),
+                "trades",
+                Trade::fromJson,
+                Trade::toJson
+        );
+        Trade trade = tradeRepo.loadAll().stream()
+                .filter(t -> t.getName().equals(cleanTradeName))
+                .findFirst()
+                .orElse(null);
+        if (trade == null) {
+            _player.displayClientMessage(
+                    Component.literal("Trade inconnu : " + cleanTradeName),
+                    false
+            );
+            return;
+        }
 
-			// Check if the containerMenu exists
-			if (_player.containerMenu != null) {
+        // 2️⃣ Load history and check for an existing open trade for this NPC
+        JsonRepository<TradeHistory> historyRepo = new JsonRepository<>(
+                Paths.get(JsonFileManager.pathHistory),
+                "history",
+                TradeHistory::fromJson,
+                TradeHistory::toJson
+        );
+        List<TradeHistory> allHistories = historyRepo.loadAll();
+        Optional<TradeHistory> ongoing = allHistories.stream()
+                .filter(h -> !h.isFinished() && h.getNpcId().equals(npcId))
+                .findFirst();
 
-				// Check if containerMenu is an instance of TradeMenu or any expected class
-				if (_player.containerMenu instanceof Supplier _current && _current.get() instanceof Map _slots) {
-					Trade trade = getTradeByName(cleanTradeName);
-					Pair<Boolean, TradeHistory> checkAndHistory = checkTradeStatusForNpc(npcId);
-					String id = checkAndHistory.first ? checkAndHistory.second.getId() : UUID.randomUUID().toString();
-					TradeHistory tradeHistory = checkAndHistory.second;
-					boolean checkExist = checkAndHistory.first;
+        boolean checkExist = ongoing.isPresent();
+        TradeHistory tradeHistory = ongoing.orElse(null);
+        String id = checkExist
+                ? tradeHistory.getId()
+                : UUID.randomUUID().toString();
 
-					final int[] slotID = {0};
-					List<Map<String, Object>> tradeItems = new ArrayList<>(); // Store trade data
-					Random random = new Random();
+        // 3️⃣ Prepare slots
+        Object menu = _player.containerMenu;
+        if (!(menu instanceof Supplier<?> sup && sup.get() instanceof Map<?, ?> _slots)) {
+            _player.displayClientMessage(
+                    Component.literal("containerMenu invalide pour le trade"),
+                    false
+            );
+            return;
+        }
+        @SuppressWarnings("unchecked")
+        Map<Integer, Slot> slots = (Map<Integer, Slot>) sup.get();
 
-					// Retrieve trade items if the trade already exists
-					List<Map<String, Object>> existingTradeItems = checkExist ? tradeHistory.getTradeItems() : null;
+        Random rnd = new Random();
+        List<TradeItemInfo> tradeItems = new ArrayList<>();
+        // 4️⃣ Fill item slots
+        int slotIndex = 0;
+        for (var tItem : trade.getTrades()) {
+            final int price, qty;
+            List<TradeItemInfo> existingItems = checkExist
+                    ? tradeHistory.getTradeItems()
+                    : Collections.emptyList();
 
-					trade.getTrades().forEach(tradeItem -> {
-						int priceTradeItem;
-						int quantity;
-						ResourceLocation itemResource = new ResourceLocation(tradeItem.getItem());
-						Item item = BuiltInRegistries.ITEM.get(itemResource);
-						ItemStack _setstack = new ItemStack(item).copy();
+            if (checkExist) {
+                // reuse existing
+                TradeItemInfo info = existingItems.get(slotIndex / 2);
+                price = info.getPrice();
+                qty   = info.getQuantity();
+            } else {
+                // compute fresh
+                Pair<Integer,Integer> minMax = PriceReferenceManager.findReferenceByItem(
+                        tItem.getItem(), _player
+                );
+                price = new Random()
+                        .nextInt(minMax.second - minMax.first + 1)
+                        + minMax.first;
+                qty   = tItem.getMin() +
+                        new Random().nextInt(tItem.getMax() - tItem.getMin() + 1);
+            }
 
-						// Calculate price and quantity
-						if (!checkExist) {
-							Pair<Integer, Integer> minMax = findReferenceByItem(tradeItem.getItem(), _player);
-							priceTradeItem = random.nextInt(minMax.second - minMax.first + 1) + minMax.first;
-							quantity = tradeItem.getMin() + random.nextInt(tradeItem.getMax() - tradeItem.getMin() + 1);
-						} else {
-							priceTradeItem = (int) existingTradeItems.get(slotID[0] / 2).get("price");
-							quantity = (int) existingTradeItems.get(slotID[0] / 2).get("quantity");
-						}
+            // now we know price & qty for sure:
+            ItemStack stack = new ItemStack(
+                    BuiltInRegistries.ITEM.get(new ResourceLocation(tItem.getItem())),
+                    qty
+            );
+            slots.get(slotIndex).set(stack);
 
-						// Set the item in the slot
-						_setstack.setCount(quantity);
-						((Slot) _slots.get(slotID[0])).set(_setstack);
+            // add a typed TradeItemInfo
+            tradeItems.add(new TradeItemInfo(
+                    tItem.getItem(),
+                    qty,
+                    price
+            ));
 
-						// Add trade item to the list
-						Map<String, Object> tradeMap = new HashMap<>();
-						tradeMap.put("price", priceTradeItem);
-						tradeMap.put("item", tradeItem.getItem());
-						tradeMap.put("quantity", quantity);
-						tradeItems.add(tradeMap);
+            slotIndex += 2;
+        }
 
-						slotID[0] += 2;
-					});
 
-					// Set the trade category in slot 12
-					ResourceLocation categoryResource = new ResourceLocation(trade.getCategory());
-					Item categoryItem = BuiltInRegistries.ITEM.get(categoryResource);
-					ItemStack categorySetStack = new ItemStack(categoryItem).copy();
-					categorySetStack.setHoverName(Component.literal(trade.getName() + " " + id));
-					((Slot) _slots.get(12)).set(categorySetStack);
+        // 5️⃣ Set the “category” slot (12)
+        ItemStack catStack = new ItemStack(
+                BuiltInRegistries.ITEM.get(new ResourceLocation(trade.getCategory()))
+        );
+        catStack.setHoverName(Component.literal(trade.getName() + " " + id));
+        slots.get(12).set(catStack);
 
-					// Set the coins in the slots
-					int totalMoneyInCopper = checkExist ? tradeHistory.getTotalPrice() : MoneyCalculator.calculateTotalMoneyFromTrade(tradeItems);
-					int[] coins = MoneyCalculator.getIntInCoins(totalMoneyInCopper);
+        // 6️⃣ Set coins
+        List<Map<String,Object>> flat = tradeItems.stream().map(info -> {
+            Map<String,Object> m = new HashMap<>();
+            m.put("item",     info.getItem());
+            m.put("quantity", info.getQuantity());
+            m.put("price",    info.getPrice());
+            return m;
+        }).toList();
 
-					Item goldCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:gold_coin"));
-					Item silverCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:silver_coin"));
-					Item bronzeCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:bronze_coin"));
-					Item copperCoin = Items.COPPER_INGOT;
+        int totalCopper = MoneyCalculator.calculateTotalMoneyFromTrade(flat);
 
-					ItemStack[] coinStacks = {
-							new ItemStack(goldCoin, coins[0]), // Gold
-							new ItemStack(silverCoin, coins[1]), // Silver
-							new ItemStack(bronzeCoin, coins[2]), // Bronze
-							new ItemStack(copperCoin, coins[3]) // Copper
-					};
+        int[] coins = MoneyCalculator.getIntInCoins(totalCopper);
+        Item[] coinItems = {
+                BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:gold_coin")),
+                BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:silver_coin")),
+                BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:bronze_coin")),
+                Items.COPPER_INGOT
+        };
+        int coinSlot = 13;
+        for (int i = 0; i < coins.length && coinSlot <= 14; i++) {
+            if (coins[i] > 0) {
+                slots.get(coinSlot).set(new ItemStack(coinItems[i], coins[i]));
+                coinSlot++;
+            }
+        }
 
-					int slotIndex = 13;
-					for (int i = 0; i < coinStacks.length && slotIndex <= 14; i++) {
-						if (coinStacks[i].getCount() > 0) {
-							((Slot) _slots.get(slotIndex)).set(coinStacks[i]);
-							slotIndex++;
-						}
-					}
-
-					// Log trade start if it's a new trade
-					if (!checkExist) {
-						_player.displayClientMessage(Component.literal("Début de l'enregistrement dans History"), false);
-						ArrayList<Player> players = new ArrayList<>(); // Append new player
-						if (!players.contains(_player)) players.add(_player);
-						JsonTradeFileManager.logTradeStart(_player, cleanTradeName, id, tradeItems, totalMoneyInCopper, players, npcId, npcName);
-					}
-
-				} else {
-					_player.displayClientMessage(Component.literal("containerMenu is not an instance of TradeMenu"), false);
-				}
-			} else {
-				_player.displayClientMessage(Component.literal("containerMenu is null"), false);
-			}
-		}
-	}
+        // 7️⃣ Log the start of a new trade if needed
+        if (!checkExist) {
+            _player.displayClientMessage(
+                    Component.literal("Enregistrement du trade dans l'historique…"),
+                    false
+            );
+            var newHistory = new TradeHistory(
+                    List.of(_player.getGameProfile().getName()),
+                    cleanTradeName,
+                    false,
+                    id,
+                    tradeItems,
+                    totalCopper,
+                    npcId,
+                    npcName
+            );
+            historyRepo.add(newHistory);
+        }
+    }
 }

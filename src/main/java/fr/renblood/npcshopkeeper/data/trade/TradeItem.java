@@ -1,5 +1,7 @@
 package fr.renblood.npcshopkeeper.data.trade;
 
+import com.google.gson.JsonObject;
+
 public class TradeItem {
     private String item;
     private int min;
@@ -47,5 +49,21 @@ public class TradeItem {
                 ", min=" + min +
                 ", max=" + max +
                 '}';
+    }
+
+    public JsonObject toJson() {
+        JsonObject o = new JsonObject();
+        o.addProperty("item", item);
+        o.addProperty("min", min);
+        o.addProperty("max", max);
+        return o;
+    }
+
+    public static TradeItem fromJson(JsonObject o) {
+        return new TradeItem(
+                o.get("item").getAsString(),
+                o.get("min").getAsInt(),
+                o.get("max").getAsInt()
+        );
     }
 }

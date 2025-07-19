@@ -1,10 +1,16 @@
 package fr.renblood.npcshopkeeper.data.commercial;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static com.mojang.text2speech.Narrator.LOGGER;
@@ -102,6 +108,76 @@ public class CommercialRoad {
         }
     }
 
+    public JsonObject toJson() {
+        JsonObject o = new JsonObject();
+        o.addProperty("id", id);
+        o.addProperty("name", name);
+        o.addProperty("category", category);
+        o.addProperty("minTimer", minTimer);
+        o.addProperty("maxTimer", maxTimer);
 
+        JsonArray posArr = new JsonArray();
+        for (BlockPos p : positions) {
+            JsonObject pj = new JsonObject();
+            pj.addProperty("x", p.getX());
+            pj.addProperty("y", p.getY());
+            pj.addProperty("z", p.getZ());
+            posArr.add(pj);
+        }
+        o.add("positions", posArr);
+
+        JsonArray npcArr = new JsonArray();
+        for (TradeNpcEntity npc : npcEntities) {
+            JsonObject nj = new JsonObject();
+            nj.addProperty("uuid", npc.getUUID().toString());
+            npcArr.add(nj);
+        }
+        o.add("npcEntities", npcArr);
+
+        return o;
+    }
+
+    /**
+     * Désérialise une route depuis le JsonObject.
+     * @param o      l’objet JSON
+     * @param world  le ServerLevel pour retrouver les entités
+     */
+    public static CommercialRoad fromJson(JsonObject o, ServerLevel world) {
+        String id       = o.get("id").getAsString();
+        String name     = o.get("name").getAsString();
+        String category = o.get("category").getAsString();
+        int minTimer    = o.get("minTimer").getAsInt();
+        int maxTimer    = o.get("maxTimer").getAsInt();
+
+        // positions
+        List<BlockPos> positions = new ArrayList<>();
+        for (JsonElement e : o.getAsJsonArray("positions")) {
+            JsonObject pj = e.getAsJsonObject();
+            positions.add(
+                    new BlockPos(
+                            pj.get("x").getAsInt(),
+                            pj.get("y").getAsInt(),
+                            pj.get("z").getAsInt()
+                    )
+            );
+        }
+
+        // npcEntities
+        List<TradeNpcEntity> npcEntities = new ArrayList<>();
+        if (o.has("npcEntities")) {
+            for (JsonElement e : o.getAsJsonArray("npcEntities")) {
+                String uuid = e.getAsJsonObject().get("uuid").getAsString();
+                Entity ent = world.getEntity(UUID.fromString(uuid));
+                if (ent instanceof TradeNpcEntity tne) {
+                    npcEntities.add(tne);
+                }
+            }
+        }
+
+        return new CommercialRoad(id, name, category,
+                new ArrayList<>(positions),
+                new ArrayList<>(npcEntities),
+                minTimer, maxTimer);
+    }
 
 }

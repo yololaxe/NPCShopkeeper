@@ -5,7 +5,6 @@ import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModItems;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModTabs;
-import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
 import fr.renblood.npcshopkeeper.world.WorldEventHandler;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.network.FriendlyByteBuf;
@@ -30,8 +29,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.AbstractMap;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -41,86 +40,90 @@ import static fr.renblood.npcshopkeeper.init.EntityInit.ENTITY_TYPES;
 import static fr.renblood.npcshopkeeper.init.EntityInit.TRADE_NPC_ENTITY;
 import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.onServerStarted;
 
-// The value here should match an entry in the META-INF/mods.toml file
-
-@Mod("npcshopkeeper")
+@Mod(Npcshopkeeper.MODID)
 public class Npcshopkeeper {
-    public static final Logger LOGGER = LogManager.getLogger(Npcshopkeeper.class);
-
     public static final String MODID = "npcshopkeeper";
-    public static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
-    public static ArrayList<CommercialRoad> COMMERCIAL_ROADS = new ArrayList<>();
+    public static final Logger LOGGER = LogManager.getLogger(MODID);
+
+    public static final DeferredRegister<MenuType<?>> MENUS =
+            DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
+
+    /** Changed to List<> to avoid immutable-to-ArrayList casting errors */
+    public static List<CommercialRoad> COMMERCIAL_ROADS = List.of();
+
+    public Npcshopkeeper() {
+        // Register to the Forge event bus
+        MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(WorldEventHandler.class);
+
+        IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
+        modBus.addListener(this::commonSetup);
+
+        ENTITY_TYPES.register(modBus);
+        MENUS.register(modBus);
+        NpcshopkeeperModItems.REGISTRY.register(modBus);
+        NpcshopkeeperModMenus.REGISTRY.register(modBus);
+        NpcshopkeeperModTabs.REGISTRY.register(modBus);
+    }
 
     @SubscribeEvent
     public void onServerStarting(ServerStartedEvent event) {
         onServerStarted(event);
-        System.out.println("Evénement onServerStarting exécuté !");
-        LOGGER.info("Evénement onServerStarting exécuté !");
-    }
-
-    public Npcshopkeeper() {
-        // Start of user code block mod constructor
-        // End of user code block mod constructor
-
-        MinecraftForge.EVENT_BUS.register(this);
-        IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
-
-        bus.addListener(this::commonSetup);
-        MinecraftForge.EVENT_BUS.register(WorldEventHandler.class);
-        MinecraftForge.EVENT_BUS.register(JsonTradeFileManager.class);
-        ENTITY_TYPES.register(bus);
-        MENUS.register(bus);
-        NpcshopkeeperModItems.REGISTRY.register(bus);
-        NpcshopkeeperModMenus.REGISTRY.register(bus);
-        NpcshopkeeperModTabs.REGISTRY.register(bus);
-        MinecraftForge.EVENT_BUS.register(Npcshopkeeper.class);
-
-
-        // Start of user code block mod init
-        // End of user code block mod init
-
+        LOGGER.info("Event onServerStarting executed!");
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
-        event.enqueueWork(() -> {
-            EntityRenderers.register(TRADE_NPC_ENTITY.get(), TradeNpcRenderer::new);
-        });
+        event.enqueueWork(() ->
+                EntityRenderers.register(
+                        TRADE_NPC_ENTITY.get(),
+                        TradeNpcRenderer::new
+                )
+        );
     }
 
-
-    // Start of user code block mod methods
-    // End of user code block mod methods
+    // Network channel setup
     private static final String PROTOCOL_VERSION = "1";
-    public static final SimpleChannel PACKET_HANDLER = NetworkRegistry.newSimpleChannel(new ResourceLocation(MODID, MODID), () -> PROTOCOL_VERSION, PROTOCOL_VERSION::equals, PROTOCOL_VERSION::equals);
+    public static final SimpleChannel PACKET_HANDLER =
+            NetworkRegistry.newSimpleChannel(
+                    new ResourceLocation(MODID, "network"),
+                    () -> PROTOCOL_VERSION,
+                    PROTOCOL_VERSION::equals,
+                    PROTOCOL_VERSION::equals
+            );
     private static int messageID = 0;
 
-    public static <T> void addNetworkMessage(Class<T> messageType, BiConsumer<T, FriendlyByteBuf> encoder, Function<FriendlyByteBuf, T> decoder, BiConsumer<T, Supplier<NetworkEvent.Context>> messageConsumer) {
-        PACKET_HANDLER.registerMessage(messageID, messageType, encoder, decoder, messageConsumer);
-        messageID++;
+    public static <T> void addNetworkMessage(
+            Class<T> messageType,
+            BiConsumer<T, FriendlyByteBuf> encoder,
+            Function<FriendlyByteBuf, T> decoder,
+            BiConsumer<T, Supplier<NetworkEvent.Context>> consumer
+    ) {
+        PACKET_HANDLER.registerMessage(
+                messageID++,
+                messageType,
+                encoder,
+                decoder,
+                consumer
+        );
     }
 
-    private static final Collection<AbstractMap.SimpleEntry<Runnable, Integer>> workQueue = new ConcurrentLinkedQueue<>();
+    // Simple server-scheduled work queue
+    private static final Collection<AbstractMap.SimpleEntry<Runnable,Integer>> workQueue =
+            new ConcurrentLinkedQueue<>();
 
-    public static void queueServerWork(int tick, Runnable action) {
-        if (Thread.currentThread().getThreadGroup() == SidedThreadGroups.SERVER)
-            workQueue.add(new AbstractMap.SimpleEntry<>(action, tick));
+    public static void queueServerWork(int ticks, Runnable action) {
+        if (Thread.currentThread().getThreadGroup() == SidedThreadGroups.SERVER) {
+            workQueue.add(new AbstractMap.SimpleEntry<>(action, ticks));
+        }
     }
 
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return; // Limitez à une phase.
-
-        // Récupérez l'instance du serveur depuis l'événement
+        if (event.phase != TickEvent.Phase.END) return;
         MinecraftServer server = event.getServer();
         if (server == null) return;
-
-        // Accédez au monde principal (Overworld)
-//        ServerLevel overworld = server.overworld();
-//        if (overworld != null) {
-//            updateAllRoads(overworld);
-//        }
+        // You can run scheduled work here, or spawn logic, etc.
     }
-
 
 
 

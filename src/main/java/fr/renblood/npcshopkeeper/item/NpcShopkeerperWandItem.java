@@ -1,6 +1,9 @@
 package fr.renblood.npcshopkeeper.item;
 
-import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.data.io.JsonFileManager; // pour path
+import fr.renblood.npcshopkeeper.data.io.JsonRepository;
+import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.procedures.route.RightClickNpcShopkeeperWandProcedure;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -13,6 +16,8 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.InteractionHand;
 
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.nio.file.Paths;
 
 public class NpcShopkeerperWandItem extends Item {
 	public NpcShopkeerperWandItem() {
@@ -21,35 +26,79 @@ public class NpcShopkeerperWandItem extends Item {
 
 	@Override
 	public InteractionResultHolder<ItemStack> use(Level world, Player entity, InteractionHand hand) {
-		ItemStack offHandItem = entity.getOffhandItem(); // Récupère l'objet dans la main secondaire
+		ItemStack wand = entity.getItemInHand(hand);
 
-		// Vérifier si l'objet en main secondaire est vide
-		if (offHandItem.isEmpty()) {
-			if (!world.isClientSide) { // Vérifier côté serveur pour éviter les duplications
-				entity.displayClientMessage(Component.literal("Vous devez tenir un objet dans votre main secondaire."), true);
-			}
-			return InteractionResultHolder.pass(entity.getItemInHand(hand));
+		// 1) If client, do nothing more here
+		if (world.isClientSide) {
+			// Let the server handle it
+			return InteractionResultHolder.success(wand);
 		}
 
-		// Vérifier si l'objet appartient à une catégorie valide
-		Set<String> validCategories = JsonTradeFileManager.getAllCategory();
-		String itemId = offHandItem.getItem().builtInRegistryHolder().key().location().toString(); // ID complet de l'objet
+		// Now we know we're on the logical server side
+		if (!(entity instanceof ServerPlayer serverPlayer)) {
+			return InteractionResultHolder.pass(wand);
+		}
+
+		// 2) Offhand check
+		ItemStack offhand = serverPlayer.getOffhandItem();
+		if (offhand.isEmpty()) {
+			serverPlayer.displayClientMessage(
+					Component.literal("Vous devez tenir un objet dans votre main secondaire."),
+					true
+			);
+			return InteractionResultHolder.pass(wand);
+		}
+
+		String itemId = offhand.getItem()
+				.builtInRegistryHolder()
+				.key()
+				.location()
+				.toString();
+
+		// 3) Load valid categories **only once**, on the server
+		Set<String> validCategories;
+		try {
+			validCategories = new JsonRepository<>(
+					Paths.get(JsonFileManager.path),
+					"trades",
+					Trade::fromJson,
+					Trade::toJson
+			).loadAll().stream()
+					.map(Trade::getCategory)
+					.collect(Collectors.toSet());
+		} catch (Exception e) {
+			// Log to server console — the client needn't see this
+			Npcshopkeeper.LOGGER.error("Impossible de charger trades.json pour récupérer les catégories", e);
+			serverPlayer.displayClientMessage(
+					Component.literal("Erreur interne lors du chargement des catégories."),
+					true
+			);
+			return InteractionResultHolder.fail(wand);
+		}
+
+		// 4) Check category
 		if (!validCategories.contains(itemId)) {
-			if (!world.isClientSide) {
-				entity.displayClientMessage(Component.literal("Cet objet n'est pas valide pour créer une route commerciale."), true);
-			}
-			return InteractionResultHolder.pass(entity.getItemInHand(hand));
+			serverPlayer.displayClientMessage(
+					Component.literal("Cet objet n'est pas valide pour créer une route commerciale."),
+					true
+			);
+			return InteractionResultHolder.pass(wand);
 		}
 
-		// Si tout est valide, ouvrir le GUI en passant la catégorie
-		if (!world.isClientSide) {
-			if (entity instanceof ServerPlayer serverPlayer) {
-				// Appeler la procédure en lui passant la catégorie
-				RightClickNpcShopkeeperWandProcedure.executeWithCategory(world, entity.getX(), entity.getY(), entity.getZ(), serverPlayer, itemId);
-				serverPlayer.displayClientMessage(Component.literal("Début de la création de la route commerciale."), true);
-			}
-		}
+		// 5) Finally do your normal route-creation logic
+		RightClickNpcShopkeeperWandProcedure.executeWithCategory(
+				world,
+				serverPlayer.getX(),
+				serverPlayer.getY(),
+				serverPlayer.getZ(),
+				serverPlayer,
+				itemId
+		);
+		serverPlayer.displayClientMessage(
+				Component.literal("Début de la création de la route commerciale."),
+				true
+		);
 
-		return InteractionResultHolder.success(entity.getItemInHand(hand));
+		return InteractionResultHolder.success(wand);
 	}
 }

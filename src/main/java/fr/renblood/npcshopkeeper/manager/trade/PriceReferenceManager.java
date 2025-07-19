@@ -10,11 +10,10 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-import static fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager.readJsonFile;
+import static fr.renblood.npcshopkeeper.data.io.JsonFileManager.readJsonFile;
 import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH_PRICE;
 
 public class PriceReferenceManager {

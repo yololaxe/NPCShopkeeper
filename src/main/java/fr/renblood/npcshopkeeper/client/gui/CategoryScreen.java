@@ -6,7 +6,7 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.Minecraft;
 import java.util.List;
-import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
+import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import net.minecraft.world.entity.player.Inventory;
 
 public class CategoryScreen extends AbstractContainerScreen<CategoryMenu> {
@@ -17,7 +17,7 @@ public class CategoryScreen extends AbstractContainerScreen<CategoryMenu> {
         super(container, inventory, text);
         this.imageWidth = 176;
         this.imageHeight = 166;
-        this.categories = JsonTradeFileManager.readCategoryNames(); // Get category names from your manager
+        this.categories = menu.getCategories(); // Get category names from your manager
     }
 
     @Override

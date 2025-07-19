@@ -1,7 +1,9 @@
 package fr.renblood.npcshopkeeper.data.npc;
 
+import com.google.gson.JsonObject;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
+import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
 import net.minecraft.core.BlockPos;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -121,6 +123,40 @@ public class TradeNpc {
         this.pos = pos;
     }
 
+    public JsonObject toJson() {
+        JsonObject o = new JsonObject();
+        o.addProperty("id",        npcId);
+        o.addProperty("name",      npcName);
+        o.addProperty("texture",   texture);
+        o.addProperty("category",  tradeCategory);
+        o.addProperty("x",         pos.getX());
+        o.addProperty("y",         pos.getY());
+        o.addProperty("z",         pos.getZ());
+        return o;
+    }
 
+    /**
+     * Désérialise un TradeNpc depuis le JsonObject.
+     * Utilise GlobalNpcManager pour récupérer npcData si besoin.
+     */
+    public static TradeNpc fromJson(JsonObject o) {
+        String id       = o.get("id").getAsString();
+        String name     = o.get("name").getAsString();
+        String texture  = o.has("texture")  ? o.get("texture").getAsString()  : null;
+        String category = o.has("category") ? o.get("category").getAsString() : null;
+        int x = o.get("x").getAsInt();
+        int y = o.get("y").getAsInt();
+        int z = o.get("z").getAsInt();
+
+        Map<String, Object> npcData =
+                GlobalNpcManager.getNpcData(name);
+        TradeNpc npc = new TradeNpc(id, name, npcData,
+                category,
+                new BlockPos(x, y, z));
+        if (texture != null) {
+            npc.setTexture(texture);
+        }
+        return npc;
+    }
 
 }

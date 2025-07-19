@@ -1,5 +1,11 @@
 package fr.renblood.npcshopkeeper.data.trade;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import fr.renblood.npcshopkeeper.data.price.TradeItemInfo;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -8,14 +14,14 @@ public class TradeHistory {
     private String tradeName;
     private boolean isFinished;
     private String id;
-    private List<Map<String, Object>> tradeItems;
+    private List<TradeItemInfo> tradeItems;
     private int totalPrice;
     private String npcId;
     private String npcName;
 
 
     // Constructeur
-    public TradeHistory(List<String> player, String tradeName, boolean isFinished, String ID, List<Map<String, Object>> tradeItems, int totalPrice, String npcId, String npcName) {
+    public TradeHistory(List<String> player, String tradeName, boolean isFinished, String ID, List<TradeItemInfo> tradeItems, int totalPrice, String npcId, String npcName) {
         this.player = player;
         this.tradeName = tradeName;
         this.isFinished = isFinished;
@@ -58,11 +64,11 @@ public class TradeHistory {
     public void setFinished(boolean finished) {
         isFinished = finished;
     }
-    public List<Map<String, Object>> getTradeItems() {
+    public List<TradeItemInfo> getTradeItems() {
         return tradeItems;
     }
 
-    public void setTradeItems(List<Map<String, Object>> tradeItems) {
+    public void setTradeItems(List<TradeItemInfo> tradeItems) {
         this.tradeItems = tradeItems;
     }
     public int getTotalPrice() {
@@ -98,5 +104,60 @@ public class TradeHistory {
                 ", totalPrice=" + totalPrice +
                 ", tradeItems=" + tradeItems +
                 '}';
+    }
+
+    public JsonObject toJson() {
+        JsonObject o = new JsonObject();
+
+        JsonArray pArr = new JsonArray();
+        for (String p : player) {
+            pArr.add(p);
+        }
+        o.add("players", pArr);
+
+        o.addProperty("tradeName",  tradeName);
+        o.addProperty("isFinished", isFinished);
+        o.addProperty("id",         id);
+
+        JsonArray itemsArr = new JsonArray();
+        for (TradeItemInfo ti : tradeItems) {
+            itemsArr.add(ti.toJson());
+        }
+        o.add("tradeItems", itemsArr);
+
+        o.addProperty("totalPrice", totalPrice);
+        o.addProperty("npcId",      npcId);
+        o.addProperty("npcName",    npcName);
+
+        return o;
+    }
+
+    public static TradeHistory fromJson(JsonObject o) {
+        List<String> players = new ArrayList<>();
+        for (JsonElement e : o.getAsJsonArray("players")) {
+            players.add(e.getAsString());
+        }
+
+        String tradeName  = o.get("tradeName").getAsString();
+        boolean isFinished= o.get("isFinished").getAsBoolean();
+        String id         = o.get("id").getAsString();
+
+        List<TradeItemInfo> items = new ArrayList<>();
+        for (JsonElement e : o.getAsJsonArray("tradeItems")) {
+            items.add(TradeItemInfo.fromJson(e.getAsJsonObject()));
+        }
+
+        int totalPrice   = o.get("totalPrice").getAsInt();
+        String npcId     = o.get("npcId").getAsString();
+        String npcName   = o.get("npcName").getAsString();
+
+        return new TradeHistory(players,
+                tradeName,
+                isFinished,
+                id,
+                items,
+                totalPrice,
+                npcId,
+                npcName);
     }
 }

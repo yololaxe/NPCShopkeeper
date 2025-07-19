@@ -1,5 +1,6 @@
 package fr.renblood.npcshopkeeper.client.gui;
 
+import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.world.inventory.TradeListMenu;
 import net.minecraft.client.gui.GuiGraphics;
@@ -8,18 +9,18 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.Minecraft;
 import java.util.List;
-import fr.renblood.npcshopkeeper.data.io.JsonTradeFileManager;
+
 public class SeeTradesScreen extends AbstractContainerScreen<TradeListMenu> {
 
     private final String category;
     private final List<Trade> trades; // This holds trades for the selected category
 
     public SeeTradesScreen(int id, String category) {
-        super(new TradeListMenu(id, Minecraft.getInstance().player.getInventory()),
+        super(new TradeListMenu(id, Minecraft.getInstance().player.getInventory(), category),
                 Minecraft.getInstance().player.getInventory(),
                 Component.literal(category));
         this.category = category;
-        this.trades = JsonTradeFileManager.getTradesByCategory(category); // Récupérer les trades
+        this.trades = this.menu.getTrades(); // Récupérer les trades
         this.imageWidth = 176;
         this.imageHeight = 166;
     }

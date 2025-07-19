@@ -26,8 +26,11 @@ public class NpcshopkeeperModMenus {
 			() -> IForgeMenuType.create((windowId, inv, data) -> new CategoryMenu(windowId, inv)));
 	public static final RegistryObject<MenuType<CategoryMenu>> CATEGORY = REGISTRY.register("category",
 			() -> IForgeMenuType.create((windowId, inv, data) -> new CategoryMenu(windowId, inv)));
-	public static final RegistryObject<MenuType<TradeListMenu>> TRADE_LIST_MENU = REGISTRY.register("trade_list_menu",
-			() -> IForgeMenuType.create((windowId, inv, data) -> new TradeListMenu(windowId, inv)));
+	public static final RegistryObject<MenuType<TradeListMenu>> TRADE_LIST_MENU =
+			REGISTRY.register("trade_list_menu", () ->
+					IForgeMenuType.create(TradeListMenu::new
+					)
+			);
 	public static final RegistryObject<MenuType<NpcShopkeeperWandGuiMenu>> NPC_SHOPKEEPER_WAND_GUI = REGISTRY.register("npc_shopkeeper_wand_gui", () -> IForgeMenuType.create(NpcShopkeeperWandGuiMenu::new));
 
 
