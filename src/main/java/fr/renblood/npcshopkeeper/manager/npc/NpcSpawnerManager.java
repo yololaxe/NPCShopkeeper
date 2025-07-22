@@ -7,6 +7,7 @@ import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
+import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
@@ -23,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
+
+import static fr.renblood.npcshopkeeper.Npcshopkeeper.COMMERCIAL_ROADS;
 
 public class NpcSpawnerManager {
 
@@ -81,49 +84,68 @@ public class NpcSpawnerManager {
     }
 
     public static void trySpawnNpcForRoad(ServerLevel world, CommercialRoad road) {
+        // 1) Récupère (ou crée) la map des PNJ actifs pour cette route
         var roadMap = activeNPCs.computeIfAbsent(road, r -> new HashMap<>());
-        // 1) on vide les entrées invalides
+
+        // 2) Nettoie les entrées invalides (PNJ supprimés ou non-TradeNpcEntity)
         roadMap.entrySet().removeIf(e ->
                 !(e.getValue() instanceof TradeNpcEntity) || e.getValue().isRemoved()
         );
 
-        // 2) on cherche le premier point libre
+        boolean anySpawned = false;
+
+        // 3) Pour chaque point libre de la route, on spawn un nouveau PNJ
         for (BlockPos pt : road.getPositions()) {
-            if (roadMap.containsKey(pt)) continue;
+            if (roadMap.containsKey(pt)) {
+                continue;
+            }
 
             LOGGER.info("🧭 Spawn NPC sur route '{}' au point {}", road.getName(), pt);
 
-            // ── On récupère un PNJ inactif et ses datas ─────────────────────
+            // 3.a) Récupère un PNJ inactif
             String npcName = GlobalNpcManager.getRandomInactiveNpc();
             if (npcName == null) {
-                LOGGER.error("❌ Aucun PNJ inactif disponible.");
-                return;
+                LOGGER.error("❌ Aucun PNJ inactif disponible pour spawn.");
+                break;
             }
-            var npcData = GlobalNpcManager.getNpcData(npcName);
+            Map<String, Object> npcData = GlobalNpcManager.getNpcData(npcName);
 
-            // ── On crée le modèle et l’entité ───────────────────────────────
+            // 3.b) Construit le modèle TradeNpc et marque-le comme 'routeNpc'
             TradeNpc modelNpc = new TradeNpc(npcName, npcData, road.getCategory(), pt);
-            TradeNpcEntity npcEnt = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
+            modelNpc.setRouteNpc(true);
 
-            // IMPORTANT : on donne l’UUID au modèle avant d’initialiser l’entité
+            // 3.c) Crée et initialise l'entité
+            TradeNpcEntity npcEnt = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
             modelNpc.setNpcId(npcEnt.getStringUUID());
-            // initialise texture, nom, position, etc.
             npcEnt.setTradeNpc(modelNpc);
             npcEnt.setPos(pt.getX(), pt.getY(), pt.getZ());
-
-            // 3) on l’ajoute au monde et à nos maps
             world.addFreshEntity(npcEnt);
+
+            // 3.d) Ajoute en mémoire
             roadMap.put(pt, npcEnt);
             road.getNpcEntities().add(npcEnt);
 
-            // 4) on persiste la nouvelle route + le nouveau PNJ (si tu veux)
-            // … JsonRepository.saveAll / .add comme tu as configuré
+            // 3.e) **Persiste la route commerciale** pour enregistrer ce nouveau PNJ
+            JsonRepository<CommercialRoad> roadRepo = new JsonRepository<>(
+                    Paths.get(OnServerStartedManager.PATH_COMMERCIAL),
+                    "roads",
+                    json -> CommercialRoad.fromJson(json, world),
+                    CommercialRoad::toJson
+            );
+            // On écrase tout : on enregistre l’ensemble des routes,
+            // dont celle-ci, maintenant enrichie de son nouveau PNJ
+            roadRepo.saveAll(COMMERCIAL_ROADS);
 
-            LOGGER.info("✅ PNJ spawné sur la route '{}' au point {} : {}", road.getName(), pt, npcName);
-            return;  // un seul spawn par tick
+            LOGGER.info("✅ PNJ '{}' spawné et route '{}' mise à jour dans JSON", npcName, road.getName());
+            anySpawned = true;
         }
 
-        LOGGER.info("⚠️ Tous les points sont occupés sur la route '{}'", road.getName());
+        if (!anySpawned) {
+            LOGGER.info("⚠️ Tous les points sont occupés sur la route '{}'", road.getName());
+        }
+
     }
+
+
 
 }

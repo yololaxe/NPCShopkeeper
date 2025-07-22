@@ -120,6 +120,7 @@ public class PointDefiningModeProcedure {
 
         // puis scheduler pour les suivants
         RoadTickScheduler.registerRoad(road);
+        repo.saveAll(Npcshopkeeper.COMMERCIAL_ROADS);
 
         player.displayClientMessage(Component.literal("Route créée : "+name),false);
         stop(player);
