@@ -2,8 +2,7 @@ package fr.renblood.npcshopkeeper.procedures.route;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
-import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
-import fr.renblood.npcshopkeeper.data.io.JsonRepository;
+import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
 import fr.renblood.npcshopkeeper.manager.road.RoadTickScheduler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -14,7 +13,6 @@ import net.minecraft.world.level.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,22 +26,19 @@ public class PointDefiningModeProcedure {
 
     private final ServerPlayer player;
     private final Level world;
-    private final int maxPoints;
-    private final int minTimer;
-    private final int maxTimer;
-    private final List<BlockPos> positions;
-    private final String category;
+    private final int maxPoints, minTimer, maxTimer;
+    private final List<BlockPos> positions = new ArrayList<>();
+    private final String category, name;
 
     // Constructeur
-    private final String name;
-
-    public PointDefiningModeProcedure(ServerPlayer player, Level world, int maxPoints, int minTimer, int maxTimer, String category, String name) {
+    private PointDefiningModeProcedure(ServerPlayer player, Level world,
+                                        int maxPoints, int minTimer, int maxTimer,
+                                        String category, String name) {
         this.player = player;
         this.world = world;
         this.maxPoints = maxPoints;
         this.minTimer = minTimer;
         this.maxTimer = maxTimer;
-        this.positions = new ArrayList<>();
         this.category = category;
         this.name = name;
     }
@@ -75,14 +70,12 @@ public class PointDefiningModeProcedure {
 
     // Ajouter un point
     public void placePoint(BlockPos pos) {
-        if (positions.size() >= maxPoints) {
-            player.displayClientMessage(Component.literal("Vous avez déjà placé le nombre maximal de points."), false);
+        if (positions.size()>=maxPoints) {
+            player.displayClientMessage(Component.literal("Max points atteints"),false);
             return;
         }
-
-        BlockPos point = pos.above(); // Ajouter y+1
-        positions.add(point);
-        player.displayClientMessage(Component.literal("Point placé à : " + point.toShortString()), false);
+        positions.add(pos.above());
+        player.displayClientMessage(Component.literal("Point ajouté : "+pos.above()),false);
     }
 
     // Retirer le dernier point
@@ -105,66 +98,31 @@ public class PointDefiningModeProcedure {
 
     // Terminer et enregistrer la route
     public void finish() {
-        LOGGER.info("Début de la procédure finish pour le joueur : {}", player.getName().getString());
-
-        if (positions.size() != maxPoints) {
-            LOGGER.warn("Points insuffisants : {}/{}", positions.size(), maxPoints);
-            player.displayClientMessage(
-                    Component.literal("Vous n'avez pas placé tous les points requis. (" + positions.size() + "/" + maxPoints + ")"),
-                    false
-            );
+        if (positions.size()!=maxPoints) {
+            player.displayClientMessage(Component.literal("Points insuffisants"),false);
             return;
         }
-
-        // 1) Construction de la route
-        String id = CommercialRoad.generateUniqueId();
-        LOGGER.info("ID de la route généré : {}", id);
-
-        CommercialRoad newRoad = new CommercialRoad(
-                id,
-                name,
-                category,
+        var id = CommercialRoad.generateUniqueId();
+        var road = new CommercialRoad(id, name, category,
                 new ArrayList<>(positions),
-                new ArrayList<>(), // pas encore de NPCs
-                minTimer,
-                maxTimer
+                new ArrayList<>(),
+                minTimer, maxTimer);
+        Npcshopkeeper.COMMERCIAL_ROADS.add(road);
+
+        // Sauvegarde
+        var repo = new fr.renblood.npcshopkeeper.data.io.JsonRepository<>(
+                java.nio.file.Paths.get(fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH_COMMERCIAL),
+                "roads",
+                json -> CommercialRoad.fromJson(json,(ServerLevel)world),
+                CommercialRoad::toJson
         );
+        NpcSpawnerManager.trySpawnNpcForRoad((ServerLevel)world, road);
 
-        // 2) Ajout à la liste globale
-        Npcshopkeeper.COMMERCIAL_ROADS.add(newRoad);
-        LOGGER.info("Route ajoutée à la liste globale : {}", name);
+        // puis scheduler pour les suivants
+        RoadTickScheduler.registerRoad(road);
 
-        // 3) Persistance via JsonRepository
-        try {
-            JsonRepository<CommercialRoad> roadRepo = new JsonRepository<>(
-                    Paths.get(JsonFileManager.pathCommercial),
-                    "roads",
-                    json -> CommercialRoad.fromJson(json, (ServerLevel) world),
-                    CommercialRoad::toJson
-            );
-            // Remplace complètement l’ancien fichier par la liste mise à jour
-            roadRepo.saveAll(Npcshopkeeper.COMMERCIAL_ROADS);
-            LOGGER.info("Route sauvegardée dans commercial_road.json via JsonRepository");
-        } catch (Exception e) {
-            LOGGER.error("Erreur lors de la sauvegarde de la route :", e);
-            player.displayClientMessage(
-                    Component.literal("Erreur d'enregistrement de la route : " + e.getMessage()),
-                    true
-            );
-            return;
-        }
-
-        // 4) Enregistrement différé du spawn
-        LOGGER.info("Lancement du spawn différé via RoadTickScheduler");
-        RoadTickScheduler.registerRoad(newRoad);
-
-        player.displayClientMessage(
-                Component.literal("Route commerciale enregistrée avec succès : " + newRoad.getName()),
-                false
-        );
+        player.displayClientMessage(Component.literal("Route créée : "+name),false);
         stop(player);
-
-        LOGGER.info("Fin de la procédure finish pour le joueur : {}", player.getName().getString());
     }
 
 

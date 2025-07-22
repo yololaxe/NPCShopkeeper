@@ -1,78 +1,103 @@
+// src/main/java/fr/renblood/npcshopkeeper/world/WorldEventHandler.java
 package fr.renblood.npcshopkeeper.world;
 
-
+import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
+import fr.renblood.npcshopkeeper.data.io.JsonRepository;
+import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
+import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
+import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.storage.LevelResource;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.UUID;
 
-@Mod.EventBusSubscriber
+@Mod.EventBusSubscriber(modid = Npcshopkeeper.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class WorldEventHandler {
+    private static final Logger LOGGER = LogManager.getLogger(WorldEventHandler.class);
 
     @SubscribeEvent
     public static void onServerStarting(ServerStartingEvent event) {
         MinecraftServer server = event.getServer();
-        if (server != null) {
-            // Chemin vers le dossier de sauvegarde du monde
-            File worldSaveFolder = server.getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper").toFile();
-
-            // Initialisation des fichiers nécessaires
-            initializeFile(worldSaveFolder, "trade.json", "{\"trades\": []}");
-            initializeFile(worldSaveFolder, "trade_history.json", "{\"history\": []}");
-            initializeFile(worldSaveFolder, "price_references.json", "{\"references\": []}");
-            initializeFile(worldSaveFolder, "commercial_road.json", "{\"roads\": []}");
-            initializeFile(worldSaveFolder, "trades_npcs.json", "{\"npcs\": []}");
-            initializeFile(worldSaveFolder, "constant.json", getDefaultConstantJson());
-
-
-
-
-
-//            NpcSpawnerManager.loadNpcData(); // Charger les données des PNJs
-//            NpcSpawner.spawnAllNpcs(world);
-        }
+        if (server == null) return;
+        File folder = server.getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper").toFile();
+        initializeFile(folder, "trade.json",         "{\"trades\": []}");
+        initializeFile(folder, "trade_history.json", "{\"history\": []}");
+        initializeFile(folder, "price_references.json", "{\"references\": []}");
+        initializeFile(folder, "commercial_road.json",  "{\"roads\": []}");
+        initializeFile(folder, "trades_npcs.json",     "{\"npcs\": []}");
+        initializeFile(folder, "constant.json",         getDefaultConstantJson());
     }
 
     @SubscribeEvent
     public static void onWorldSave(LevelEvent.Save event) {
-        // Vérifie que le monde est bien un monde de type serveur
         if (event.getLevel() instanceof ServerLevel serverLevel) {
-            // Appelle la méthode pour sauvegarder les données des PNJs
             NpcSpawnerManager.saveNpcData(serverLevel);
         }
     }
 
-    private static void initializeFile(File folder, String fileName, String defaultContent) {
-        File file = new File(folder, fileName);
+    @SubscribeEvent
+    public static void onEntityJoin(EntityJoinLevelEvent evt) {
+        if (!(evt.getLevel() instanceof ServerLevel world)) return;
+        Entity entity = evt.getEntity();
+        if (!(entity instanceof TradeNpcEntity npcEnt)) return;
+
+        TradeNpc model = new JsonRepository<>(
+                Paths.get(OnServerStartedManager.PATH_NPCS),
+                "npcs",
+                TradeNpc::fromJson,
+                TradeNpc::toJson
+        ).loadAll().stream()
+                .filter(n -> n.getNpcId().equals(npcEnt.getUUID().toString()))
+                .findFirst().orElse(null);
+
+        if (model == null) {
+            LOGGER.warn("onEntityJoin: aucun modèle TradeNpc trouvé pour UUID {}", npcEnt.getUUID());
+        } else {
+            LOGGER.info("onEntityJoin: modèle trouvé pour {} → name='{}', texture='{}', routeNpc={}",
+                    npcEnt.getUUID(),
+                    model.getNpcName(),
+                    model.getTexture(),
+                    model.isRouteNpc()
+            );
+            npcEnt.setTradeNpc(model);
+            LOGGER.info("onEntityJoin: appliqué à l'entité {} → ent.getTradeNpc().getTexture()='{}'",
+                    npcEnt.getUUID(),
+                    npcEnt.getTradeNpc().getTexture()
+            );
+        }
+    }
+
+    private static void initializeFile(File folder, String name, String content) {
+        File file = new File(folder, name);
         if (!file.exists()) {
-            try {
-                // Créer le dossier npcshopkeeper s'il n'existe pasB
-                if (!folder.exists()) {
-                    folder.mkdirs();
-                }
-
-                // Créer le fichier et écrire le contenu par défaut
-                file.createNewFile();
-                try (FileWriter writer = new FileWriter(file)) {
-                    writer.write(defaultContent);
-                }
-
-                System.out.println("Le fichier " + fileName + " a été créé dans le dossier du monde.");
+            folder.mkdirs();
+            try (FileWriter w = new FileWriter(file)) {
+                w.write(content);
+                LOGGER.info("Créé {} dans {}", name, folder);
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.error("Erreur lors de la création de {}", name, e);
             }
         }
     }
 
-    private static String getDefaultConstantJson() {
+
+
+private static String getDefaultConstantJson() {
         // Contenu JSON par defaut pour constant.json
         return """
         {

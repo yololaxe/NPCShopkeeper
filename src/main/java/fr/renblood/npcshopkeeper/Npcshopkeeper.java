@@ -5,11 +5,13 @@ import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModItems;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModTabs;
+import fr.renblood.npcshopkeeper.manager.road.RoadTickScheduler;
 import fr.renblood.npcshopkeeper.world.WorldEventHandler;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
@@ -29,6 +31,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -49,7 +52,7 @@ public class Npcshopkeeper {
             DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
 
     /** Changed to List<> to avoid immutable-to-ArrayList casting errors */
-    public static List<CommercialRoad> COMMERCIAL_ROADS = List.of();
+    public static List<CommercialRoad> COMMERCIAL_ROADS = new ArrayList<>();
 
     public Npcshopkeeper() {
         // Register to the Forge event bus
@@ -120,9 +123,6 @@ public class Npcshopkeeper {
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        MinecraftServer server = event.getServer();
-        if (server == null) return;
-        // You can run scheduled work here, or spawn logic, etc.
     }
 
 

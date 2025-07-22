@@ -20,32 +20,40 @@ public class TradeNpc {
     private Trade trade;
     private TradeHistory tradeHistory;
     private BlockPos pos;
+    private boolean routeNpc;
 
     private static final Logger LOGGER = LogManager.getLogger(TradeNpc.class);
 
     public TradeNpc(String npcName, Map<String, Object> npcData, String tradeCategory, BlockPos pos) {
-        this.npcName = npcName != null ? npcName : "PNJ sans nom"; // Valeur par défaut
-        this.npcData = npcData != null ? npcData : new HashMap<>(); // Prévenir null
+        this.npcName = npcName != null ? npcName : "PNJ sans nom";
+        this.npcData = npcData != null ? npcData : new HashMap<>();
         this.texts = (ArrayList<String>) this.npcData.getOrDefault("Texts", new ArrayList<>());
         this.texture = (String) this.npcData.getOrDefault("Texture", "textures/entity/" + npcName.toLowerCase() + ".png");
         this.tradeCategory = tradeCategory != null ? tradeCategory : "null";
         this.pos = pos != null ? pos : new BlockPos(0, 0, 0);
-
-        LOGGER.info("PNJ créé sans ID : " + this.npcName + " | Texture : " + this.texture);
+        this.routeNpc = false;
+        LOGGER.info("PNJ créé sans ID : {} | Texture : {}", this.npcName, this.texture);
     }
 
     public TradeNpc(String npcId, String npcName, Map<String, Object> npcData, String tradeCategory, BlockPos pos) {
         this.npcId = npcId;
-        this.npcName = npcName != null ? npcName : "PNJ sans nom"; // Valeur par défaut
-        this.npcData = npcData != null ? npcData : new HashMap<>(); // Prévenir null
+        this.npcName = npcName != null ? npcName : "PNJ sans nom";
+        this.npcData = npcData != null ? npcData : new HashMap<>();
         this.texts = (ArrayList<String>) this.npcData.getOrDefault("Texts", new ArrayList<>());
         this.texture = (String) this.npcData.getOrDefault("Texture", "textures/entity/" + npcName.toLowerCase() + ".png");
         this.tradeCategory = tradeCategory != null ? tradeCategory : "null";
         this.pos = pos != null ? pos : new BlockPos(0, 0, 0);
-
-        LOGGER.info("PNJ créé avec ID : " + this.npcId + " (" + this.npcName + ") | Texture : " + this.texture);
+        this.routeNpc = false;
+        LOGGER.info("PNJ créé avec ID : {} ({}) | Texture : {}", this.npcId, this.npcName, this.texture);
     }
 
+    public boolean isRouteNpc() {
+        return this.routeNpc;
+    }
+
+    public void setRouteNpc(boolean routeNpc) {
+        this.routeNpc = routeNpc;
+    }
 
     public String getNpcId() {
         return npcId;
@@ -132,29 +140,22 @@ public class TradeNpc {
         o.addProperty("x",         pos.getX());
         o.addProperty("y",         pos.getY());
         o.addProperty("z",         pos.getZ());
+        o.addProperty("routeNpc",  routeNpc);
         return o;
     }
 
-    /**
-     * Désérialise un TradeNpc depuis le JsonObject.
-     * Utilise GlobalNpcManager pour récupérer npcData si besoin.
-     */
     public static TradeNpc fromJson(JsonObject o) {
         String id       = o.get("id").getAsString();
         String name     = o.get("name").getAsString();
-        String texture  = o.has("texture")  ? o.get("texture").getAsString()  : null;
-        String category = o.has("category") ? o.get("category").getAsString() : null;
+        String category = o.get("category").getAsString();
         int x = o.get("x").getAsInt();
         int y = o.get("y").getAsInt();
         int z = o.get("z").getAsInt();
 
-        Map<String, Object> npcData =
-                GlobalNpcManager.getNpcData(name);
-        TradeNpc npc = new TradeNpc(id, name, npcData,
-                category,
-                new BlockPos(x, y, z));
-        if (texture != null) {
-            npc.setTexture(texture);
+        Map<String, Object> npcData = GlobalNpcManager.getNpcData(name);
+        TradeNpc npc = new TradeNpc(id, name, npcData, category, new BlockPos(x, y, z));
+        if (o.has("routeNpc")) {
+            npc.setRouteNpc(o.get("routeNpc").getAsBoolean());
         }
         return npc;
     }

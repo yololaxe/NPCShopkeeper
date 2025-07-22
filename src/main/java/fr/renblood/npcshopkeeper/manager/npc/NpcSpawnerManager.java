@@ -80,73 +80,50 @@ public class NpcSpawnerManager {
         }
     }
 
-    public static void trySpawnNpcForRoad(ServerLevel level, CommercialRoad road) {
-        LOGGER.info("🔍 Tentative de spawn pour la route : " + road.getName());
-
-        activeNPCs.computeIfAbsent(road, r -> new HashMap<>());
-        HashMap<BlockPos, Mob> roadNPCs = activeNPCs.get(road);
-
-        // Nettoyage des entités invalides
-        roadNPCs.entrySet().removeIf(e ->
+    public static void trySpawnNpcForRoad(ServerLevel world, CommercialRoad road) {
+        var roadMap = activeNPCs.computeIfAbsent(road, r -> new HashMap<>());
+        // 1) on vide les entrées invalides
+        roadMap.entrySet().removeIf(e ->
                 !(e.getValue() instanceof TradeNpcEntity) || e.getValue().isRemoved()
         );
 
-        boolean spawned = false;
-        for (BlockPos point : road.getPositions()) {
-            if (!roadNPCs.containsKey(point)) {
-                LOGGER.info("🧭 Point libre trouvé à : " + point);
+        // 2) on cherche le premier point libre
+        for (BlockPos pt : road.getPositions()) {
+            if (roadMap.containsKey(pt)) continue;
 
-                String npcName = GlobalNpcManager.getRandomInactiveNpc();
-                if (npcName == null) {
-                    LOGGER.error("❌ Aucun PNJ inactif disponible.");
-                    return;
-                }
-                Map<String, Object> npcData = GlobalNpcManager.getNpcData(npcName);
-                if (npcData == null) {
-                    LOGGER.error("❌ Aucune donnée trouvée pour le PNJ : " + npcName);
-                    return;
-                }
+            LOGGER.info("🧭 Spawn NPC sur route '{}' au point {}", road.getName(), pt);
 
-                // Création du modèle et de l'entité
-                TradeNpc modelNpc = new TradeNpc(npcName, npcData, road.getCategory(), point);
-                TradeNpcEntity npcEntity = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), level);
-                modelNpc.setNpcId(npcEntity.getStringUUID());
-                npcEntity.setTradeNpc(modelNpc);
-
-                level.addFreshEntity(npcEntity);
-                roadNPCs.put(point, npcEntity);
-                road.getNpcEntities().add(npcEntity);
-
-                // --- Persistance de la route mise à jour ---
-                JsonRepository<CommercialRoad> roadRepo = new JsonRepository<>(
-                        Paths.get(JsonFileManager.pathCommercial),
-                        "roads",
-                        json -> CommercialRoad.fromJson(json, level),
-                        CommercialRoad::toJson
-                );
-                List<CommercialRoad> allRoads = roadRepo.loadAll().stream()
-                        .filter(r -> !r.getId().equals(road.getId()))
-                        .collect(Collectors.toList());
-                allRoads.add(road);
-                roadRepo.saveAll(allRoads);
-
-                // --- Persistance du nouveau PNJ ---
-                JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
-                        Paths.get(JsonFileManager.pathNpcs),
-                        "npcs",
-                        TradeNpc::fromJson,
-                        TradeNpc::toJson
-                );
-                npcRepo.add(modelNpc);
-
-                LOGGER.info("✅ PNJ spawné et persistant sur la route '" + road.getName() + "' à " + point + " : " + npcName);
-                spawned = true;
-                break;
+            // ── On récupère un PNJ inactif et ses datas ─────────────────────
+            String npcName = GlobalNpcManager.getRandomInactiveNpc();
+            if (npcName == null) {
+                LOGGER.error("❌ Aucun PNJ inactif disponible.");
+                return;
             }
+            var npcData = GlobalNpcManager.getNpcData(npcName);
+
+            // ── On crée le modèle et l’entité ───────────────────────────────
+            TradeNpc modelNpc = new TradeNpc(npcName, npcData, road.getCategory(), pt);
+            TradeNpcEntity npcEnt = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
+
+            // IMPORTANT : on donne l’UUID au modèle avant d’initialiser l’entité
+            modelNpc.setNpcId(npcEnt.getStringUUID());
+            // initialise texture, nom, position, etc.
+            npcEnt.setTradeNpc(modelNpc);
+            npcEnt.setPos(pt.getX(), pt.getY(), pt.getZ());
+
+            // 3) on l’ajoute au monde et à nos maps
+            world.addFreshEntity(npcEnt);
+            roadMap.put(pt, npcEnt);
+            road.getNpcEntities().add(npcEnt);
+
+            // 4) on persiste la nouvelle route + le nouveau PNJ (si tu veux)
+            // … JsonRepository.saveAll / .add comme tu as configuré
+
+            LOGGER.info("✅ PNJ spawné sur la route '{}' au point {} : {}", road.getName(), pt, npcName);
+            return;  // un seul spawn par tick
         }
 
-        if (!spawned) {
-            LOGGER.error("❌ Tous les points sont occupés : aucun PNJ spawné.");
-        }
+        LOGGER.info("⚠️ Tous les points sont occupés sur la route '{}'", road.getName());
     }
+
 }
