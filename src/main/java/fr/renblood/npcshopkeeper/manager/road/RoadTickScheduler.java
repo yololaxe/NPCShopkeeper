@@ -4,44 +4,53 @@ import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@Mod.EventBusSubscriber(modid = Npcshopkeeper.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class RoadTickScheduler {
     private static final Map<CommercialRoad, Integer> timers = new HashMap<>();
     private static final Logger LOGGER = LogManager.getLogger(RoadTickScheduler.class);
-    public static void tick(ServerLevel level) {
 
+    /** appelé chaque tick serveur (Phase.END) */
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        ServerLevel level = event.getServer().overworld();
+        tick(level);
+    }
+
+    public static void tick(ServerLevel level) {
         for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
-            int current = timers.getOrDefault(road, -42);
-            LOGGER.info("⏱️ Tick - Road : " + road.getName() + " | timer=" + current);
+            int current = timers.getOrDefault(road, 0);
+            LOGGER.info("⏱️ Tick - Road : {} | timer={}", road.getName(), current);
 
             if (current <= 0) {
-                LOGGER.info("🔁 Timer écoulé pour : " + road.getName());
-
+                LOGGER.info("🔁 Timer écoulé pour : {}", road.getName());
                 NpcSpawnerManager.trySpawnNpcForRoad(level, road);
 
-                int delay = NpcSpawnerManager.getRandomTime(road.getMinTimer(), road.getMaxTimer()) * 20;
-                timers.put(road, delay);
-
-                LOGGER.info("⏳ Prochain spawn dans " + delay + " ticks pour : " + road.getName());
+                // Reset du timer en ticks (secondes*20)
+                int delaySeconds = NpcSpawnerManager.getRandomTime(road.getMinTimer(), road.getMaxTimer());
+                int delayTicks   = delaySeconds * 20;
+                timers.put(road, delayTicks);
+                LOGGER.info("⏳ Prochain spawn dans {} ticks pour : {}", delayTicks, road.getName());
             } else {
                 timers.put(road, current - 1);
             }
         }
     }
 
-
-
+    /** à appeler dès qu’on ajoute une nouvelle route pour lancer son premier spawn immediat */
     public static void registerRoad(CommercialRoad road) {
         if (!timers.containsKey(road)) {
-            timers.put(road, 0); // Force un tick immédiat
-            LOGGER.info("📥 Route enregistrée dans RoadTickScheduler : " + road.getName());
+            timers.put(road, 0);
+            LOGGER.info("📥 Route enregistrée dans RoadTickScheduler : {}", road.getName());
         }
     }
-
-
 }
