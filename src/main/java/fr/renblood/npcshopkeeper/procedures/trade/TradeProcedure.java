@@ -1,18 +1,26 @@
 package fr.renblood.npcshopkeeper.procedures.trade;
 
+import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
+import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
 import fr.renblood.npcshopkeeper.data.trade.TradeResult;
+import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
+import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
+import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import fr.renblood.npcshopkeeper.manager.trade.MoneyCalculator;
+import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.inventory.Slot;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,6 +28,7 @@ import org.apache.logging.log4j.Logger;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class TradeProcedure {
 	private static boolean isProcessingTrade = false;
@@ -68,7 +77,7 @@ public class TradeProcedure {
 		repo.saveAll(all);
 	}
 
-	// ── Main execution ────────────────────────────────────────────────────
+	// ── Main execution ───────────────────────────────────────────────────
 
 	@SuppressWarnings("unchecked")
 	public static void execute(Entity entity) {
@@ -102,79 +111,205 @@ public class TradeProcedure {
 				giveRewards(player, slots, tradeId, tradeName);
 				markTradeAsFinished(player, tradeId);
 				player.containerMenu.broadcastChanges();
+
+				// ── SUPPRESSION DU PNJ À LA FIN DU TRADE ───────────────────────
+				TradeHistory finishedTh = getTradeHistoryById(tradeId);
+				if (finishedTh != null) {
+					// … après markTradeAsFinished + broadcastChanges …
+
+					String npcUuid = finishedTh.getNpcId();
+					ServerLevel serverLevel = (ServerLevel) player.level();
+					Entity ent = serverLevel.getEntity(UUID.fromString(npcUuid));
+					if (ent instanceof TradeNpcEntity npcEnt) {
+						for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
+							// vérifie qu'il était bien sur cette route
+							if (road.getNpcEntities().stream()
+									.anyMatch(e -> e.getUUID().toString().equals(npcUuid))) {
+
+								// 1) retire du JSON et mémoire forte
+								road.removeNpcAndPersist(npcEnt);
+								road.getNpcEntities().removeIf(e ->
+										e.getUUID().equals(npcEnt.getUUID())
+								);
+
+								// 1.1) libère la place côté scheduler, PAR VALEUR
+								var roadMap = NpcSpawnerManager.activeNPCs.get(road);
+								if (roadMap != null) {
+									roadMap.entrySet().removeIf(e ->
+											e.getValue() instanceof TradeNpcEntity
+													&& e.getValue().getUUID().equals(npcEnt.getUUID())
+									);
+								}
+								break;
+							}
+						}
+
+						// 2) despawn
+						npcEnt.discard();
+
+						// 3) supprime du JSON trades_npcs.json et recharge GlobalNpcManager
+						JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
+								Paths.get(OnServerStartedManager.PATH_NPCS),
+								"npcs",
+								TradeNpc::fromJson,
+								TradeNpc::toJson
+						);
+						List<TradeNpc> kept = npcRepo.loadAll().stream()
+								.filter(n -> !n.getNpcId().equals(npcUuid))
+								.collect(Collectors.toList());
+						npcRepo.saveAll(kept);
+						GlobalNpcManager.loadNpcData();
+
+						LOGGER.info("🗑️ PNJ {} supprimé à la fin du trade", npcUuid);
+					}
+					else {
+						LOGGER.warn("PNJ {} introuvable pour suppression", npcUuid);
+					}
+				}
 			}
 		}
 
 		isProcessingTrade = false;
 	}
-
-	// ── Utility methods (unchanged) ──────────────────────────────────────
-
-	private static boolean isValidSlotPair(
-			Map<Integer, Slot> slots, int req, int pay, ServerPlayer p) {
-		// your existing slot‐check logic...
-		return true; // simplified for brevity
+	private static boolean isServerPlayerWithMenu(Entity entity) {
+		return entity instanceof ServerPlayer _player && _player.containerMenu instanceof Supplier _current && _current.get() instanceof Map;
 	}
 
-	private static void clearAndRemoveSlots(
-			ServerPlayer p, Map<Integer, Slot> slots) {
-		// your existing logic...
+	// Méthode utilitaire pour récupérer les slots
+	private static Map getSlots(ServerPlayer player) {
+		return (Map) ((Supplier) player.containerMenu).get();
 	}
 
-	private static void giveRewards(
-			ServerPlayer player,
-			Map<Integer, Slot> slots,
-			String tradeId,
-			String tradeName
-	) {
-		LOGGER.info("Give rewards for trade {}", tradeId);
+	// Méthode utilitaire pour valider une paire de slots
+	private static boolean isValidSlotPair(Map _slots, int slotId1, int slotId2, ServerPlayer player) {
+		return (getItem(_slots, slotId1).getItem() == Items.AIR &&
+				getItem(_slots, 8).getItem() == Items.AIR &&
+				getItem(_slots, 9).getItem() == Items.AIR &&
+				getItem(_slots, 10).getItem() == Items.AIR &&
+				getItem(_slots, 11).getItem() == Items.AIR )
+				||
+				(getItem(_slots, slotId1).getItem() != Items.AIR &&
+						getItem(_slots, slotId2).getItem() != Items.AIR &&
+						getItem(_slots, 8).getItem() == Items.AIR &&
+						getItem(_slots, 9).getItem() == Items.AIR &&
+						getItem(_slots, 10).getItem() == Items.AIR &&
+						getItem(_slots, 11).getItem() == Items.AIR &&
+						getItem(_slots, slotId1).getItem() == getItem(_slots, slotId2).getItem() &&
+						getAmount(_slots, slotId1) <= getAmount(_slots, slotId2));
+	}
 
-		TradeHistory history = getTradeHistoryById(tradeId);
-		if (history == null) {
-			LOGGER.error("No history for trade {}", tradeId);
-			return;
-		}
-
-		// distribute coins
-		int total = history.getTotalPrice();
-		int[] coins = MoneyCalculator.getIntInCoins(total);
-		Item[] coinItems = {
-				BuiltInRegistries.ITEM.get(
-						new ResourceLocation("medieval_coins:gold_coin")),
-				BuiltInRegistries.ITEM.get(
-						new ResourceLocation("medieval_coins:silver_coin")),
-				BuiltInRegistries.ITEM.get(
-						new ResourceLocation("medieval_coins:bronze_coin")),
-				Items.COPPER_INGOT
-		};
-		for (int i=0, slot=8; i<coins.length && slot<=9; i++) {
-			if (coins[i]>0) {
-				setSlot(slots, slot++, new ItemStack(coinItems[i], coins[i]));
-			}
-		}
-
-		// give the trade result in slot 10
-		Trade t = getTradeByName(tradeName);
-		TradeResult res = t.getResult();
-		if (res==null) {
-			LOGGER.error("No result for trade {}", tradeName);
-			return;
-		}
-		ItemStack out = new ItemStack(
-				BuiltInRegistries.ITEM.get(new ResourceLocation(res.getItem())),
-				res.getQuantity()
-		);
-		setSlot(slots, 10, out);
+	// Méthode utilitaire pour effacer les slots et mettre à jour les quantités
+	private static void clearAndRemoveSlots(ServerPlayer player, Map _slots) {
+		removeItem(player, _slots, 0, 1);
+		removeItem(player, _slots, 2, 3);
+		removeItem(player, _slots, 4, 5);
+		removeItem(player, _slots, 6, 7);
+		clearSlot(player, _slots, 0);
+		clearSlot(player, _slots, 2);
+		clearSlot(player, _slots, 4);
+		clearSlot(player, _slots, 6);
 		player.containerMenu.broadcastChanges();
 	}
 
-	private static void setSlot(
-			Map<Integer, Slot> slots, int id, ItemStack s) {
-		slots.get(id).set(s);
+	// Méthode utilitaire pour donner les récompenses
+	private static void giveRewards(ServerPlayer player, Map _slots, String tradeId, String tradeName) {
+		// Récupérer l'historique du trade
+		LOGGER.info("On est dans give reward");
+		TradeHistory tradeHistory = getTradeHistoryById(tradeId);
+		if (tradeHistory == null) {
+			LOGGER.error("Aucun historique de trade trouvé pour le trade ID : " + tradeId);
+			return;
+		}
+		LOGGER.info("Historique de trade trouvé pour le joueur : " + tradeHistory.getPlayer());
+
+
+		// Calculer le total d'argent à partir des tradeItems
+		int totalMoneyInCopper = tradeHistory.getTotalPrice();
+		LOGGER.info("Total d'argent calculé (en cuivre) : " + totalMoneyInCopper);
+
+		// Convertir le total en pièces (Gold, Silver, Bronze, Copper)
+		int[] coins = MoneyCalculator.getIntInCoins(totalMoneyInCopper);
+		LOGGER.info("Conversion des pièces : Or = " + coins[0] + ", Argent = " + coins[1] + ", Bronze = " + coins[2] + ", Cuivre = " + coins[3]);
+
+		// Définir les items correspondants aux pièces
+		Item goldCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:gold_coin"));
+		Item silverCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:silver_coin"));
+		Item bronzeCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:bronze_coin"));
+		Item copperCoin = Items.COPPER_INGOT;
+
+		// Tableau contenant les pièces et leur quantité
+		ItemStack[] coinStacks = {
+				new ItemStack(goldCoin, coins[0]),    // Or
+				new ItemStack(silverCoin, coins[1]),  // Argent
+				new ItemStack(bronzeCoin, coins[2]),  // Bronze
+				new ItemStack(copperCoin, coins[3])   // Cuivre
+		};
+
+		// Trouver les deux types de pièces les plus hautes avec au moins une pièce
+		int slotIndex = 8;
+		for (int i = 0; i < coinStacks.length && slotIndex <= 9; i++) {
+			if (coinStacks[i].getCount() > 0) {
+				LOGGER.info("Ajout de " + coins[i] + " pièce(s) dans le slot " + slotIndex);
+				setSlot(_slots, slotIndex, coinStacks[i], coins[i]);
+				slotIndex++;
+			}
+		}
+
+		// Récupérer le résultat du trade et placer l'item dans le slot 10
+		TradeResult result = getTradeByName(tradeName).getResult();
+		if (result == null) {
+			LOGGER.error("Aucun résultat trouvé pour le trade : " + tradeName);
+			return;
+		}
+		ResourceLocation itemResource = new ResourceLocation(result.getItem());
+		Item item = BuiltInRegistries.ITEM.get(itemResource);
+		LOGGER.info("Ajout de " + result.getQuantity() + " de " + result.getItem() + " dans le slot 10.");
+		setSlot(_slots, 10, new ItemStack(item), result.getQuantity());
+
+		// Si nécessaire, diffuser les changements de l'inventaire
+		player.containerMenu.broadcastChanges();
+		LOGGER.info("Changements de l'inventaire diffusés au joueur.");
 	}
 
 
-private static ItemStack getItem(Map _slots, int slotId) {
+
+	// Méthode utilitaire pour effacer le contenu d'un slot
+	private static void clearSlot(ServerPlayer player, Map _slots, int slotId) {
+		((Slot) _slots.get(slotId)).set(ItemStack.EMPTY);
+		player.containerMenu.broadcastChanges();
+	}
+
+	// Méthode utilitaire pour enlever les items d'un slot
+	private static void removeItem(ServerPlayer player, Map _slots, int slotIdReq, int slotId) {
+		ItemStack reqStack = ((Slot) _slots.get(slotIdReq)).getItem();
+		ItemStack slotStack = ((Slot) _slots.get(slotId)).getItem();
+
+		if (!slotStack.isEmpty() && !reqStack.isEmpty()) {
+			int initialCount = slotStack.getCount();
+			int reqCount = reqStack.getCount();
+			int newCount = initialCount - reqCount;
+
+			if (newCount < 0) newCount = 0;
+
+			if (newCount > 0) {
+				ItemStack updatedStack = slotStack.copy();
+				updatedStack.setCount(newCount);
+				((Slot) _slots.get(slotId)).set(updatedStack);
+			} else {
+				((Slot) _slots.get(slotId)).set(ItemStack.EMPTY);
+			}
+
+			player.containerMenu.broadcastChanges();
+		}
+	}
+
+	private static void setSlot(Map _slots, int slotId, ItemStack stack, int count) {
+		ItemStack _setstack = stack.copy();
+		_setstack.setCount(count);
+		((Slot) _slots.get(slotId)).set(_setstack);
+	}
+
+	private static ItemStack getItem(Map _slots, int slotId) {
 		return _slots.containsKey(slotId) ? ((Slot) _slots.get(slotId)).getItem() : ItemStack.EMPTY;
 	}
 

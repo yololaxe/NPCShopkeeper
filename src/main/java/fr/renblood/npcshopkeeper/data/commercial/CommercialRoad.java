@@ -1,8 +1,6 @@
 package fr.renblood.npcshopkeeper.data.commercial;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
@@ -16,6 +14,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.mojang.text2speech.Narrator.LOGGER;
@@ -94,6 +100,42 @@ public class CommercialRoad {
         }
 
         repo.saveAll(fromDisk);
+    }
+
+    public void removeNpcAndPersist(TradeNpcEntity npc) {
+        // 1) Retire de la liste en mémoire
+        this.npcEntities.removeIf(e -> e.getUUID().equals(npc.getUUID()));
+
+        // 2) Met à jour le JSON
+        Path path = Paths.get(OnServerStartedManager.PATH_COMMERCIAL);
+        try (Reader reader = Files.newBufferedReader(path)) {
+            JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
+            JsonArray roadsArr = root.getAsJsonArray("roads");
+
+            for (JsonElement el : roadsArr) {
+                JsonObject rj = el.getAsJsonObject();
+                if (!rj.get("id").getAsString().equals(this.id)) continue;
+
+                JsonArray npcArr = rj.getAsJsonArray("npcEntities");
+                // on supprime tous les éléments dont l'uuid correspond
+                for (int i = npcArr.size() - 1; i >= 0; i--) {
+                    JsonElement je = npcArr.get(i);
+                    if (!je.isJsonObject()) continue;
+                    JsonObject jo = je.getAsJsonObject();
+                    if (jo.has("uuid") && jo.get("uuid").getAsString().equals(npc.getUUID().toString())) {
+                        npcArr.remove(i);
+                    }
+                }
+                break;
+            }
+
+            try (Writer writer = Files.newBufferedWriter(path)) {
+                new Gson().toJson(root, writer);
+            }
+            LOGGER.info("💾 PNJ {} supprimé de la route '{}' et JSON mis à jour", npc.getUUID(), this.name);
+        } catch (IOException ex) {
+            LOGGER.error("❌ Impossible de persister la suppression du PNJ {} sur la route {}", npc.getUUID(), this.name, ex);
+        }
     }
 
 
