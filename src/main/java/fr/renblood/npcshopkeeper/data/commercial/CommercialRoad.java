@@ -4,14 +4,19 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
+import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.mojang.text2speech.Narrator.LOGGER;
 
@@ -23,6 +28,7 @@ public class CommercialRoad {
     private ArrayList<TradeNpcEntity> npcEntities;
     private int minTimer;
     private int maxTimer;
+
 
     public String getId() {
         return id;
@@ -52,6 +58,7 @@ public class CommercialRoad {
         return positions;
     }
 
+
     public void setPositions(ArrayList<BlockPos> positions) {
         this.positions = positions;
     }
@@ -59,6 +66,36 @@ public class CommercialRoad {
     public ArrayList<TradeNpcEntity> getNpcEntities() {
         return npcEntities;
     }
+
+    public void addNpcAndPersist(TradeNpcEntity npc, List<CommercialRoad> allRoads) {
+        this.npcEntities.add(npc);
+
+        // → Récupère le ServerLevel via la méthode, pas le champ privé
+        ServerLevel world = (ServerLevel) npc.level();   // ou npc.getLevel()
+
+        JsonRepository<CommercialRoad> repo = new JsonRepository<>(
+                Paths.get(OnServerStartedManager.PATH_COMMERCIAL),
+                "roads",
+                json -> CommercialRoad.fromJson(json, world),
+                CommercialRoad::toJson
+        );
+        List<CommercialRoad> fromDisk = repo.loadAll();
+
+        for (CommercialRoad r : fromDisk) {
+            if (r.getId().equals(this.getId())) {
+                Set<String> uuids = r.getNpcEntities().stream()
+                        .map(e -> e.getUUID().toString())
+                        .collect(Collectors.toSet());
+                if (!uuids.contains(npc.getUUID().toString())) {
+                    r.getNpcEntities().add(npc);
+                }
+                break;
+            }
+        }
+
+        repo.saveAll(fromDisk);
+    }
+
 
     public void setNpcEntities(ArrayList<TradeNpcEntity> npcEntities) {
         this.npcEntities = npcEntities;

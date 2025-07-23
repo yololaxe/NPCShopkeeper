@@ -1,5 +1,3 @@
-// fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager
-
 package fr.renblood.npcshopkeeper.manager.server;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
@@ -24,12 +22,11 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class OnServerStartedManager {
-    private static final Logger LOGGER = LogManager.getLogger(OnServerStartedManager.class);
+    public static final Logger LOGGER = LogManager.getLogger(OnServerStartedManager.class);
 
     public static String PATH;
     public static String PATH_HISTORY;
@@ -99,7 +96,7 @@ public class OnServerStartedManager {
                     .anyMatch(e -> e.getUUID().toString().equals(npcData.getNpcId()));
             if (!present) {
                 TradeNpcEntity ent = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
-                ent.setUUID(java.util.UUID.fromString(npcData.getNpcId()));
+                ent.setUUID(UUID.fromString(npcData.getNpcId()));
                 ent.setTradeNpc(npcData);
                 ent.setPos(npcData.getPos().getX(), npcData.getPos().getY(), npcData.getPos().getZ());
                 world.addFreshEntity(ent);
@@ -120,22 +117,24 @@ public class OnServerStartedManager {
         );
         Npcshopkeeper.COMMERCIAL_ROADS = roadRepo.loadAll();
 
-        // Reconstruit activeNPCs **sans** re-spawn
+        // Reconstruit activeNPCs **sans** re-spawn, et retient les npcEntities dans chaque route
         for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
             var map = new HashMap<BlockPos, Mob>();
             world.getEntitiesOfClass(TradeNpcEntity.class, fullWorldAABB()).stream()
                     .filter(e -> road.getPositions().contains(e.blockPosition()))
-                    .forEach(e -> {
-                        // on ré-applique le modèle pour remontée skin & trade
-                        TradeNpc model = routeNpcs.stream()
-                                .filter(n -> n.getNpcId().equals(e.getUUID().toString()))
-                                .findFirst().orElse(null);
-                        if (model != null) {
-                            e.setTradeNpc(model);
-                        }
-                        map.put(e.blockPosition(), e);
-                    });
+                    .forEach(e -> map.put(e.blockPosition(), e));
+
+            // activeNPCs sert pour le scheduler
             NpcSpawnerManager.activeNPCs.put(road, map);
+
+            // on reconstruit la liste forte de TradeNpcEntity
+//            road.getNpcEntities().clear();
+//            for (Mob mob : map.values()) {
+//                if (mob instanceof TradeNpcEntity tne) {
+//                    road.getNpcEntities().add(tne);
+//                }
+//            }
+
             RoadTickScheduler.registerRoad(road);
         }
         LOGGER.info("✅ activeNPCs prérempli pour {} routes", NpcSpawnerManager.activeNPCs.size());
