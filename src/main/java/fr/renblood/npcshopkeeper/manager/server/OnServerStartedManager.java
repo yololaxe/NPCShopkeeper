@@ -1,9 +1,14 @@
 package fr.renblood.npcshopkeeper.manager.server;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
-import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
@@ -21,6 +26,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
+import java.io.Reader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -76,7 +84,7 @@ public class OnServerStartedManager {
         List<TradeNpc> fixedNpcs = allNpcs.stream()
                 .filter(n -> !n.isRouteNpc())
                 .collect(Collectors.toList());
-        List<TradeNpc> routeNpcs = allNpcs.stream()
+        List<TradeNpc> routeModels = allNpcs.stream()
                 .filter(TradeNpc::isRouteNpc)
                 .collect(Collectors.toList());
 
@@ -98,7 +106,8 @@ public class OnServerStartedManager {
                 TradeNpcEntity ent = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
                 ent.setUUID(UUID.fromString(npcData.getNpcId()));
                 ent.setTradeNpc(npcData);
-                ent.setPos(npcData.getPos().getX(), npcData.getPos().getY(), npcData.getPos().getZ());
+                BlockPos p = npcData.getPos();
+                ent.setPos(p.getX(), p.getY(), p.getZ());
                 world.addFreshEntity(ent);
                 LOGGER.info("📦 PNJ fixe ajouté : {} ({})", npcData.getNpcId(), npcData.getNpcName());
             }
@@ -117,25 +126,55 @@ public class OnServerStartedManager {
         );
         Npcshopkeeper.COMMERCIAL_ROADS = roadRepo.loadAll();
 
-        // Reconstruit activeNPCs **sans** re-spawn, et retient les npcEntities dans chaque route
-        for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
-            var map = new HashMap<BlockPos, Mob>();
-            world.getEntitiesOfClass(TradeNpcEntity.class, fullWorldAABB()).stream()
-                    .filter(e -> road.getPositions().contains(e.blockPosition()))
-                    .forEach(e -> map.put(e.blockPosition(), e));
+        // ── Reconstruction des PNJs de route + activeNPCs ───────────────────
+        try {
+            Path commercialPath = Paths.get(PATH_COMMERCIAL);
+            try (Reader reader = Files.newBufferedReader(commercialPath)) {
+                JsonObject rootJson = JsonParser.parseReader(reader).getAsJsonObject();
+                JsonArray roadsArr = rootJson.getAsJsonArray("roads");
 
-            // activeNPCs sert pour le scheduler
-            NpcSpawnerManager.activeNPCs.put(road, map);
+                for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
+                    Map<BlockPos, Mob> map = new HashMap<>();
 
-            // on reconstruit la liste forte de TradeNpcEntity
-//            road.getNpcEntities().clear();
-//            for (Mob mob : map.values()) {
-//                if (mob instanceof TradeNpcEntity tne) {
-//                    road.getNpcEntities().add(tne);
-//                }
-//            }
+                    // retrouve l'objet JSON correspondant à cette route
+                    for (JsonElement el : roadsArr) {
+                        JsonObject rJson = el.getAsJsonObject();
+                        if (!road.getId().equals(rJson.get("id").getAsString())) continue;
 
-            RoadTickScheduler.registerRoad(road);
+                        JsonArray npcArr = rJson.getAsJsonArray("npcEntities");
+                        for (JsonElement ne : npcArr) {
+                            String uuidStr = ne.getAsJsonObject().get("uuid").getAsString();
+
+                            // retrouve le modèle TradeNpc par UUID
+                            TradeNpc model = routeModels.stream()
+                                    .filter(m -> m.getNpcId().equals(uuidStr))
+                                    .findFirst().orElse(null);
+                            if (model == null) {
+                                LOGGER.warn("❓ Pas de modèle TradeNpc pour UUID {} sur la route '{}'", uuidStr, road.getName());
+                                continue;
+                            }
+
+                            // recrée l'entité route-PNJ
+                            TradeNpcEntity ent = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
+                            ent.setUUID(UUID.fromString(uuidStr));
+                            ent.setTradeNpc(model);
+                            BlockPos pos = model.getPos();
+                            ent.setPos(pos.getX(), pos.getY(), pos.getZ());
+                            world.addFreshEntity(ent);
+
+                            map.put(pos, ent);
+                            road.getNpcEntities().add(ent);
+                        }
+                        break;
+                    }
+
+                    NpcSpawnerManager.activeNPCs.put(road, (HashMap<BlockPos, Mob>) map);
+                    RoadTickScheduler.registerRoad(road);
+                    LOGGER.info("🔄 Route '{}' initialisée avec {} PNJs de route", road.getName(), map.size());
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("Erreur lors de la reconstruction des PNJs de route", e);
         }
         LOGGER.info("✅ activeNPCs prérempli pour {} routes", NpcSpawnerManager.activeNPCs.size());
         // ────────────────────────────────────────────────────────────────────
