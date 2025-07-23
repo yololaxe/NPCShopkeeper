@@ -69,23 +69,23 @@ public class NpcShopkeeperWandGuiMenu extends AbstractContainerMenu implements S
 			}
 		}
 
-		// Ajouter les slots de l'inventaire du joueur
-		for (int row = 0; row < 3; row++) {
-			for (int col = 0; col < 9; col++) {
-				int slotIndex = col + row * 9 + 9;
-				int xPosition = 8 + col * 18;
-				int yPosition = 84 + row * 18;
-				this.addSlot(new Slot(playerInventory, slotIndex, xPosition, yPosition));
-			}
-		}
+//		// Ajouter les slots de l'inventaire du joueur
+//		for (int row = 0; row < 3; row++) {
+//			for (int col = 0; col < 9; col++) {
+//				int slotIndex = col + row * 9 + 9;
+//				int xPosition = 8 + col * 18;
+//				int yPosition = 84 + row * 18;
+//				this.addSlot(new Slot(playerInventory, slotIndex, xPosition, yPosition));
+//			}
+//		}
 
-		// Ajouter la barre de raccourcis
-		for (int col = 0; col < 9; col++) {
-			int slotIndex = col;
-			int xPosition = 8 + col * 18;
-			int yPosition = 142;
-			this.addSlot(new Slot(playerInventory, slotIndex, xPosition, yPosition));
-		}
+//		// Ajouter la barre de raccourcis
+//		for (int col = 0; col < 9; col++) {
+//			int slotIndex = col;
+//			int xPosition = 8 + col * 18;
+//			int yPosition = 142;
+//			this.addSlot(new Slot(playerInventory, slotIndex, xPosition, yPosition));
+//		}
 	}
 
 	@Override

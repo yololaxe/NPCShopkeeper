@@ -96,10 +96,10 @@ public class CreateTradeMenu extends AbstractContainerMenu implements Supplier<M
 		this.customSlots.put(5, this.addSlot(new SlotItemHandler(internal, 5, 132, 21) {
 			private final int slot = 5;
 		}));
-		this.customSlots.put(6, this.addSlot(new SlotItemHandler(internal, 6, 96, 50) {
+		this.customSlots.put(6, this.addSlot(new SlotItemHandler(internal, 6, 96, 51) {
 			private final int slot = 6;
 		}));
-		this.customSlots.put(7, this.addSlot(new SlotItemHandler(internal, 7, 132, 50) {
+		this.customSlots.put(7, this.addSlot(new SlotItemHandler(internal, 7, 132, 51) {
 			private final int slot = 7;
 		}));
 		this.customSlots.put(10, this.addSlot(new SlotItemHandler(internal, 10, 216, 36) {

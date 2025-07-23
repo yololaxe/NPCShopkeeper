@@ -15,9 +15,9 @@
   "gui.npcshopkeeper.npc_shopkeeper_wand_gui.label_time_in_minute": "Timer in minutes",
   "gui.npcshopkeeper.npc_shopkeeper_wand_gui.npc_number": "Npc number ",
   "gui.npcshopkeeper.npc_shopkeeper_wand_gui.name": "Name",
-  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.label_max_points": "Number of points: %s",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.label_max_points": "Max : %s",
   "gui.npcshopkeeper.npc_shopkeeper_wand_gui.maxTimer": "Maximum time",
   "gui.npcshopkeeper.npc_shopkeeper_wand_gui.minTimer": "Minimum time",
   "gui.npcshopkeeper.npc_shopkeeper_wand_gui.points": "Number of point",
   "item.npcshopkeeper.npc_shopkeeper_wand": "Npc Shopkeerper Wand"
-}
+}t
