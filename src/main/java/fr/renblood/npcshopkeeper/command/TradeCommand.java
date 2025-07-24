@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static com.mojang.text2speech.Narrator.LOGGER;
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH;
 
 @Mod.EventBusSubscriber
 public class TradeCommand {
@@ -64,7 +65,7 @@ public class TradeCommand {
 	private static List<String> getTradeNamesFromFile() {
 		try {
 			JsonRepository<Trade> repo = new JsonRepository<>(
-					Paths.get(JsonFileManager.path), // chemin vers trades.json
+					Paths.get(PATH), // chemin vers trades.json
 					"trades",                        // clé racine
 					Trade::fromJson,                 // désérialisation
 					Trade::toJson                    // sérialisation

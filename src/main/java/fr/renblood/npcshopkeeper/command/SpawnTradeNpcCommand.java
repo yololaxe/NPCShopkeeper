@@ -20,6 +20,9 @@ import net.minecraftforge.fml.common.Mod;
 import java.util.Map;
 
 import static com.mojang.text2speech.Narrator.LOGGER;
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH;
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH_NPCS;
+
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import java.nio.file.Paths;
 
@@ -104,7 +107,7 @@ public class SpawnTradeNpcCommand {
                 }
                 ActiveNpcManager.printActiveNpcs();
                 JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
-                        Paths.get(JsonFileManager.pathNpcs),  // chemin vers npcshopkeeper/npcs.json
+                        Paths.get(PATH_NPCS),  // chemin vers npcshopkeeper/npcs.json
                         "npcs",                              // clé racine dans le JSON
                         TradeNpc::fromJson,                  // désérialiseur
                         TradeNpc::toJson                     // sérialiseur

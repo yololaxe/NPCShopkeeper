@@ -25,6 +25,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.function.Supplier;
 
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH;
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH_HISTORY;
+
 public class TradePrepareProcedure {
     public static void execute(Entity entity,
                                String cleanTradeName,
@@ -35,7 +38,7 @@ public class TradePrepareProcedure {
 
         // 1️⃣ Load all trades and find the one we want
         JsonRepository<Trade> tradeRepo = new JsonRepository<>(
-                Paths.get(JsonFileManager.path),
+                Paths.get(PATH),
                 "trades",
                 Trade::fromJson,
                 Trade::toJson
@@ -54,7 +57,7 @@ public class TradePrepareProcedure {
 
         // 2️⃣ Load history and check for an existing open trade for this NPC
         JsonRepository<TradeHistory> historyRepo = new JsonRepository<>(
-                Paths.get(JsonFileManager.pathHistory),
+                Paths.get(PATH_HISTORY),
                 "history",
                 TradeHistory::fromJson,
                 TradeHistory::toJson
@@ -143,14 +146,14 @@ public class TradePrepareProcedure {
             return m;
         }).toList();
 
-        int totalCopper = MoneyCalculator.calculateTotalMoneyFromTrade(flat);
+        int totaliron = MoneyCalculator.calculateTotalMoneyFromTrade(flat);
 
-        int[] coins = MoneyCalculator.getIntInCoins(totalCopper);
+        int[] coins = MoneyCalculator.getIntInCoins(totaliron);
         Item[] coinItems = {
                 BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:gold_coin")),
                 BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:silver_coin")),
                 BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:bronze_coin")),
-                Items.COPPER_INGOT
+                BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:iron_coin"))
         };
         int coinSlot = 13;
         for (int i = 0; i < coins.length && coinSlot <= 14; i++) {
@@ -172,7 +175,7 @@ public class TradePrepareProcedure {
                     false,
                     id,
                     tradeItems,
-                    totalCopper,
+                    totaliron,
                     npcId,
                     npcName
             );

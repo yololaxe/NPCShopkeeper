@@ -24,6 +24,8 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH;
+
 public class TradeCommandProcedure {
 	private static final Logger LOGGER = LogManager.getLogger(TradeCommandProcedure.class);
 
@@ -39,7 +41,7 @@ public class TradeCommandProcedure {
 		List<String> tradeNames;
 		try {
 			JsonRepository<Trade> repo = new JsonRepository<>(
-					Paths.get(JsonFileManager.path),
+					Paths.get(PATH),
 					"trades",
 					Trade::fromJson,
 					Trade::toJson

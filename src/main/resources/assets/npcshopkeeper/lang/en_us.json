@@ -10,7 +10,6 @@
   "gui.npcshopkeeper.create_trade.label_item": "item",
   "gui.npcshopkeeper.create_trade.label_empty": "-",
   "gui.npcshopkeeper.create_trade.label_xp": "xp",
-  "gui.npcshopkeeper.create_trade.label_create_trade": "Create trade:",
 
   "gui.npcshopkeeper.npc_shopkeeper_wand_gui.label_time_in_minute": "Timer in minutes",
   "gui.npcshopkeeper.npc_shopkeeper_wand_gui.npc_number": "Npc number ",
@@ -20,4 +19,4 @@
   "gui.npcshopkeeper.npc_shopkeeper_wand_gui.minTimer": "Minimum time",
   "gui.npcshopkeeper.npc_shopkeeper_wand_gui.points": "Number of point",
   "item.npcshopkeeper.npc_shopkeeper_wand": "Npc Shopkeerper Wand"
-}t
+}

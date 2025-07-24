@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.*;
 
 import static fr.renblood.npcshopkeeper.manager.npc.ActiveNpcManager.addActiveNpc;
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH_CONSTANT;
 
 import com.google.gson.*;
 
@@ -28,9 +29,9 @@ public class GlobalNpcManager {
         inactiveNpcs.clear();
         activeNpcs.clear();
 
-        JsonObject root = JsonFileManager.readJsonFile(JsonFileManager.pathConstant);
+        JsonObject root = JsonFileManager.readJsonFile(PATH_CONSTANT);
         if (!root.has("npcs") || !root.get("npcs").isJsonObject()) {
-            LOGGER.error("Aucune clé 'npcs' valide dans : " + JsonFileManager.pathConstant);
+            LOGGER.error("Aucune clé 'npcs' valide dans : " + PATH_CONSTANT);
             return;
         }
 

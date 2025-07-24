@@ -54,24 +54,24 @@ public class MoneyCalculator {
 
 
     // Méthode pour convertir un montant d'argent en pièces
-    public static int[] getIntInCoins(int amountInCopper) {
-        LOGGER.info("Conversion de " + amountInCopper + " cuivre(s) en pièces.");
-        int[] coins = new int[4]; // Format : [Gold, Silver, Bronze, Copper]
+    public static int[] getIntInCoins(int amountIniron) {
+        LOGGER.info("Conversion de " + amountIniron + " cuivre(s) en pièces.");
+        int[] coins = new int[4]; // Format : [Gold, Silver, Bronze, iron]
 
         // Conversion en pièces
-        coins[0] = amountInCopper / (64 * 64 * 64); // Gold
+        coins[0] = amountIniron / (64 * 64 * 64); // Gold
         LOGGER.info("Nombre de pièces d'or calculé : " + coins[0]);
-        amountInCopper %= (64 * 64 * 64);
+        amountIniron %= (64 * 64 * 64);
 
-        coins[1] = amountInCopper / (64 * 64); // Silver
+        coins[1] = amountIniron / (64 * 64); // Silver
         LOGGER.info("Nombre de pièces d'argent calculé : " + coins[1]);
-        amountInCopper %= (64 * 64);
+        amountIniron %= (64 * 64);
 
-        coins[2] = amountInCopper / 64; // Bronze
+        coins[2] = amountIniron / 64; // Bronze
         LOGGER.info("Nombre de pièces de bronze calculé : " + coins[2]);
-        amountInCopper %= 64;
+        amountIniron %= 64;
 
-        coins[3] = amountInCopper; // Copper restant
+        coins[3] = amountIniron; // iron restant
         LOGGER.info("Nombre de pièces de cuivre restantes : " + coins[3]);
 
         LOGGER.info("Conversion terminée. Résultat : Or = " + coins[0] + ", Argent = " + coins[1] + ", Bronze = " + coins[2] + ", Cuivre = " + coins[3]);

@@ -13,11 +13,11 @@ import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.*;
 public class JsonFileManager {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    public static String path         = PATH;
-    public static String pathHistory  = PATH_HISTORY;
-    public static String pathConstant = PATH_CONSTANT;
-    public static String pathCommercial = PATH_COMMERCIAL;
-    public static String pathNpcs     = PATH_NPCS;
+//    public static String path         = PATH;
+//    public static String pathHistory  = PATH_HISTORY;
+//    public static String pathConstant = PATH_CONSTANT;
+//    public static String pathCommercial = PATH_COMMERCIAL;
+//    public static String pathNpcs     = PATH_NPCS;
 
     /** Lecture brute d’un fichier JSON */
     public static JsonObject readJsonFile(String readPath) {

@@ -15,6 +15,8 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH;
+
 public class TradeListMenu extends AbstractContainerMenu {
 
     public static final MenuType<TradeListMenu> TRADE_LIST_MENU = null;
@@ -29,7 +31,7 @@ public class TradeListMenu extends AbstractContainerMenu {
 
         JsonRepository<Trade> repo;
         repo = new JsonRepository<>(
-                Paths.get(JsonFileManager.path),
+                Paths.get(PATH),
                 "trades",
                 Trade::fromJson,
                 Trade::toJson
@@ -50,7 +52,7 @@ public class TradeListMenu extends AbstractContainerMenu {
     }
     private List<Trade> loadTrades(String category) {
         JsonRepository<Trade> repo = new JsonRepository<>(
-                Paths.get(JsonFileManager.path),
+                Paths.get(PATH),
                 "trades",
                 Trade::fromJson,
                 Trade::toJson

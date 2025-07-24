@@ -14,6 +14,8 @@ import net.minecraftforge.registries.ObjectHolder;
 import java.nio.file.Paths;
 import java.util.List;
 
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH;
+
 
 public class CategoryMenu extends AbstractContainerMenu {
 
@@ -24,7 +26,7 @@ public class CategoryMenu extends AbstractContainerMenu {
     public CategoryMenu(int id, Inventory playerInventory) {
         super(CATEGORY_MENU, id);
         JsonRepository<Trade> repo = new JsonRepository<>(
-                Paths.get(JsonFileManager.path),
+                Paths.get(PATH),
                 "trades",
                 Trade::fromJson,
                 Trade::toJson

@@ -37,6 +37,8 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.*;
+
 public class TradeNpcEntity extends Villager {
     private static final Logger LOGGER = LogManager.getLogger(TradeNpcEntity.class);
     private static final EntityDataAccessor<String> TEXTURE =
@@ -98,7 +100,7 @@ public class TradeNpcEntity extends Villager {
 
     private void applyModelById(UUID id) {
         TradeNpc model = new JsonRepository<>(
-                Paths.get(JsonFileManager.pathNpcs),
+                Paths.get(PATH_NPCS),
                 "npcs",
                 TradeNpc::fromJson,
                 TradeNpc::toJson
@@ -171,7 +173,7 @@ public class TradeNpcEntity extends Villager {
             try {
                 // 1) Charger l’historique des trades
                 JsonRepository<TradeHistory> historyRepo = new JsonRepository<>(
-                        Paths.get(JsonFileManager.pathHistory),
+                        Paths.get(PATH_HISTORY),
                         "history",
                         TradeHistory::fromJson,
                         TradeHistory::toJson
@@ -203,7 +205,7 @@ public class TradeNpcEntity extends Villager {
                     // Nouveau trade : en choisir un au hasard dans la catégorie
                     if (this.tradeCategory != null && !this.tradeCategory.isEmpty()) {
                         JsonRepository<Trade> tradeRepo = new JsonRepository<>(
-                                Paths.get(JsonFileManager.path),
+                                Paths.get(PATH),
                                 "trades",
                                 Trade::fromJson,
                                 Trade::toJson

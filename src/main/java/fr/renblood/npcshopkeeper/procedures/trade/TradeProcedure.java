@@ -38,7 +38,7 @@ public class TradeProcedure {
 
 	private static Trade getTradeByName(String name) {
 		JsonRepository<Trade> repo = new JsonRepository<>(
-				Paths.get(JsonFileManager.path),
+				Paths.get(OnServerStartedManager.PATH),
 				"trades",
 				Trade::fromJson,
 				Trade::toJson
@@ -50,7 +50,7 @@ public class TradeProcedure {
 
 	private static TradeHistory getTradeHistoryById(String id) {
 		JsonRepository<TradeHistory> repo = new JsonRepository<>(
-				Paths.get(JsonFileManager.pathHistory),
+				Paths.get(OnServerStartedManager.PATH_HISTORY),
 				"history",
 				TradeHistory::fromJson,
 				TradeHistory::toJson
@@ -62,7 +62,7 @@ public class TradeProcedure {
 
 	private static void markTradeAsFinished(ServerPlayer player, String id) {
 		JsonRepository<TradeHistory> repo = new JsonRepository<>(
-				Paths.get(JsonFileManager.pathHistory),
+				Paths.get(OnServerStartedManager.PATH_HISTORY),
 				"history",
 				TradeHistory::fromJson,
 				TradeHistory::toJson
@@ -101,16 +101,22 @@ public class TradeProcedure {
 			boolean ongoing = (th != null && !th.isFinished());
 
 			// Validate item/req slots (0/1,2/3,...)
-			if (isValidSlotPair(slots,0,1,player)
-					&& isValidSlotPair(slots,2,3,player)
-					&& isValidSlotPair(slots,4,5,player)
-					&& isValidSlotPair(slots,6,7,player)
-					&& ongoing) {
+			if (ongoing
+					&& isValidSlotPair(slots, 0, 1)
+					&& isValidSlotPair(slots, 2, 3)
+					&& isValidSlotPair(slots, 4, 5)
+					&& isValidSlotPair(slots, 6, 7)) {
 
 				clearAndRemoveSlots(player, slots);
 				giveRewards(player, slots, tradeId, tradeName);
 				markTradeAsFinished(player, tradeId);
+
 				player.containerMenu.broadcastChanges();
+//				LOGGER.info("🔒 Fermeture du GUI de trade pour débloquer la suite");
+				player.closeContainer();
+
+
+
 
 				// ── SUPPRESSION DU PNJ À LA FIN DU TRADE ───────────────────────
 				TradeHistory finishedTh = getTradeHistoryById(tradeId);
@@ -181,21 +187,12 @@ public class TradeProcedure {
 	}
 
 	// Méthode utilitaire pour valider une paire de slots
-	private static boolean isValidSlotPair(Map _slots, int slotId1, int slotId2, ServerPlayer player) {
-		return (getItem(_slots, slotId1).getItem() == Items.AIR &&
-				getItem(_slots, 8).getItem() == Items.AIR &&
-				getItem(_slots, 9).getItem() == Items.AIR &&
-				getItem(_slots, 10).getItem() == Items.AIR &&
-				getItem(_slots, 11).getItem() == Items.AIR )
-				||
-				(getItem(_slots, slotId1).getItem() != Items.AIR &&
-						getItem(_slots, slotId2).getItem() != Items.AIR &&
-						getItem(_slots, 8).getItem() == Items.AIR &&
-						getItem(_slots, 9).getItem() == Items.AIR &&
-						getItem(_slots, 10).getItem() == Items.AIR &&
-						getItem(_slots, 11).getItem() == Items.AIR &&
-						getItem(_slots, slotId1).getItem() == getItem(_slots, slotId2).getItem() &&
-						getAmount(_slots, slotId1) <= getAmount(_slots, slotId2));
+	private static boolean isValidSlotPair(Map<Integer, Slot> _slots, int slotIdReq, int slotIdPay) {
+		ItemStack req = _slots.get(slotIdReq).getItem();
+		ItemStack pay = _slots.get(slotIdPay).getItem();
+		if (req.isEmpty() || pay.isEmpty()) return false;
+		if (req.getItem() != pay.getItem())        return false;
+		return pay.getCount() >= req.getCount();
 	}
 
 	// Méthode utilitaire pour effacer les slots et mettre à jour les quantités
@@ -224,25 +221,25 @@ public class TradeProcedure {
 
 
 		// Calculer le total d'argent à partir des tradeItems
-		int totalMoneyInCopper = tradeHistory.getTotalPrice();
-		LOGGER.info("Total d'argent calculé (en cuivre) : " + totalMoneyInCopper);
+		int totalMoneyIniron = tradeHistory.getTotalPrice();
+		LOGGER.info("Total d'argent calculé (en iron) : " + totalMoneyIniron);
 
-		// Convertir le total en pièces (Gold, Silver, Bronze, Copper)
-		int[] coins = MoneyCalculator.getIntInCoins(totalMoneyInCopper);
-		LOGGER.info("Conversion des pièces : Or = " + coins[0] + ", Argent = " + coins[1] + ", Bronze = " + coins[2] + ", Cuivre = " + coins[3]);
+		// Convertir le total en pièces (Gold, Silver, Bronze, iron)
+		int[] coins = MoneyCalculator.getIntInCoins(totalMoneyIniron);
+		LOGGER.info("Conversion des pièces : Or = " + coins[0] + ", Argent = " + coins[1] + ", Bronze = " + coins[2] + ", Iron = " + coins[3]);
 
 		// Définir les items correspondants aux pièces
 		Item goldCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:gold_coin"));
 		Item silverCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:silver_coin"));
 		Item bronzeCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:bronze_coin"));
-		Item copperCoin = Items.COPPER_INGOT;
+		Item ironCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:iron_coin"));
 
 		// Tableau contenant les pièces et leur quantité
 		ItemStack[] coinStacks = {
 				new ItemStack(goldCoin, coins[0]),    // Or
 				new ItemStack(silverCoin, coins[1]),  // Argent
 				new ItemStack(bronzeCoin, coins[2]),  // Bronze
-				new ItemStack(copperCoin, coins[3])   // Cuivre
+				new ItemStack(ironCoin, coins[3])   // iron
 		};
 
 		// Trouver les deux types de pièces les plus hautes avec au moins une pièce

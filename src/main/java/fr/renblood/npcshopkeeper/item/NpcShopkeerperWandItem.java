@@ -19,6 +19,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.nio.file.Paths;
 
+import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.PATH;
+
 public class NpcShopkeerperWandItem extends Item {
 	public NpcShopkeerperWandItem() {
 		super(new Item.Properties().stacksTo(1).rarity(Rarity.RARE));
@@ -59,7 +61,7 @@ public class NpcShopkeerperWandItem extends Item {
 		Set<String> validCategories;
 		try {
 			validCategories = new JsonRepository<>(
-					Paths.get(JsonFileManager.path),
+					Paths.get(PATH),
 					"trades",
 					Trade::fromJson,
 					Trade::toJson
