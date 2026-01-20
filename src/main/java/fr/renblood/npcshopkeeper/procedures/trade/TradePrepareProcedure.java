@@ -2,7 +2,7 @@ package fr.renblood.npcshopkeeper.procedures.trade;
 
 import com.ibm.icu.impl.Pair;
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
-import fr.renblood.npcshopkeeper.data.io.JsonFileManager; // for path constants
+import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import fr.renblood.npcshopkeeper.data.price.TradeItemInfo;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
@@ -13,16 +13,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.level.LevelAccessor;
 
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.function.Supplier;
 
 public class TradePrepareProcedure {
@@ -31,7 +27,6 @@ public class TradePrepareProcedure {
                                String npcId,
                                String npcName) {
         if (!(entity instanceof ServerPlayer _player)) return;
-        if (_player.containerMenu == null) return;
 
         // 1️⃣ Load all trades and find the one we want
         JsonRepository<Trade> tradeRepo = new JsonRepository<>(
@@ -72,7 +67,7 @@ public class TradePrepareProcedure {
 
         // 3️⃣ Prepare slots
         Object menu = _player.containerMenu;
-        if (!(menu instanceof Supplier<?> sup && sup.get() instanceof Map<?, ?> _slots)) {
+        if (!(menu instanceof Supplier<?> sup && sup.get() instanceof Map<?, ?> rawSlots)) {
             _player.displayClientMessage(
                     Component.literal("containerMenu invalide pour le trade"),
                     false
@@ -80,33 +75,38 @@ public class TradePrepareProcedure {
             return;
         }
         @SuppressWarnings("unchecked")
-        Map<Integer, Slot> slots = (Map<Integer, Slot>) sup.get();
+        Map<Integer, Slot> slots = (Map<Integer, Slot>) rawSlots;
 
         Random rnd = new Random();
         List<TradeItemInfo> tradeItems = new ArrayList<>();
+
         // 4️⃣ Fill item slots
+        List<TradeItemInfo> existingItems = checkExist
+                ? tradeHistory.getTradeItems()
+                : Collections.emptyList();
+
         int slotIndex = 0;
         for (var tItem : trade.getTrades()) {
             final int price, qty;
-            List<TradeItemInfo> existingItems = checkExist
-                    ? tradeHistory.getTradeItems()
-                    : Collections.emptyList();
 
             if (checkExist) {
                 // reuse existing
-                TradeItemInfo info = existingItems.get(slotIndex / 2);
-                price = info.getPrice();
-                qty   = info.getQuantity();
+                int historyIndex = slotIndex / 2;
+                if (historyIndex < existingItems.size()) {
+                    TradeItemInfo info = existingItems.get(historyIndex);
+                    price = info.getPrice();
+                    qty   = info.getQuantity();
+                } else {
+                    price = 0;
+                    qty = 0;
+                }
             } else {
                 // compute fresh
                 Pair<Integer,Integer> minMax = PriceReferenceManager.findReferenceByItem(
                         tItem.getItem(), _player
                 );
-                price = new Random()
-                        .nextInt(minMax.second - minMax.first + 1)
-                        + minMax.first;
-                qty   = tItem.getMin() +
-                        new Random().nextInt(tItem.getMax() - tItem.getMin() + 1);
+                price = rnd.nextInt(minMax.second - minMax.first + 1) + minMax.first;
+                qty   = tItem.getMin() + rnd.nextInt(tItem.getMax() - tItem.getMin() + 1);
             }
 
             // now we know price & qty for sure:
@@ -114,7 +114,9 @@ public class TradePrepareProcedure {
                     BuiltInRegistries.ITEM.get(new ResourceLocation(tItem.getItem())),
                     qty
             );
-            slots.get(slotIndex).set(stack);
+            if (slots.containsKey(slotIndex)) {
+                slots.get(slotIndex).set(stack);
+            }
 
             // add a typed TradeItemInfo
             tradeItems.add(new TradeItemInfo(
@@ -132,7 +134,9 @@ public class TradePrepareProcedure {
                 BuiltInRegistries.ITEM.get(new ResourceLocation(trade.getCategory()))
         );
         catStack.setHoverName(Component.literal(trade.getName() + " " + id));
-        slots.get(12).set(catStack);
+        if (slots.containsKey(12)) {
+            slots.get(12).set(catStack);
+        }
 
         // 6️⃣ Set coins
         List<Map<String,Object>> flat = tradeItems.stream().map(info -> {
@@ -146,16 +150,20 @@ public class TradePrepareProcedure {
         int totalCopper = MoneyCalculator.calculateTotalMoneyFromTrade(flat);
 
         int[] coins = MoneyCalculator.getIntInCoins(totalCopper);
-        Item[] coinItems = {
-                BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:gold_coin")),
-                BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:silver_coin")),
-                BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:bronze_coin")),
-                BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:iron_coin"))
+        String[] coinIds = {
+                "medieval_coins:gold_coin",
+                "medieval_coins:silver_coin",
+                "medieval_coins:bronze_coin",
+                "medieval_coins:iron_coin"
         };
+
         int coinSlot = 13;
         for (int i = 0; i < coins.length && coinSlot <= 14; i++) {
             if (coins[i] > 0) {
-                slots.get(coinSlot).set(new ItemStack(coinItems[i], coins[i]));
+                Item coinItem = BuiltInRegistries.ITEM.get(new ResourceLocation(coinIds[i]));
+                if (slots.containsKey(coinSlot)) {
+                    slots.get(coinSlot).set(new ItemStack(coinItem, coins[i]));
+                }
                 coinSlot++;
             }
         }

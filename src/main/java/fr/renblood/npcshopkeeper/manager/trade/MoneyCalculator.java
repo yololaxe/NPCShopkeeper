@@ -12,7 +12,7 @@ public class MoneyCalculator {
     // Méthode pour calculer l'argent total rapporté par un trade
     public static int calculateTotalMoneyFromTrade(List<Map<String, Object>> trades) {
         int totalMoney = 0;
-        LOGGER.info("Début du calcul de l'argent total pour le trade.");
+        // LOGGER.info("Début du calcul de l'argent total pour le trade.");
 
         // Parcourir chaque trade
         for (Map<String, Object> trade : trades) {
@@ -40,14 +40,14 @@ public class MoneyCalculator {
                 int tradeValue = count * price;
                 totalMoney += tradeValue;
 
-                LOGGER.info("Trade - Item: " + trade.get("item") + ", Quantity: " + count + ", Price: " + price + ", Total pour cet item: " + tradeValue);
+                // LOGGER.info("Trade - Item: " + trade.get("item") + ", Quantity: " + count + ", Price: " + price + ", Total pour cet item: " + tradeValue);
 
             } catch (Exception e) {
                 LOGGER.error("Erreur lors du calcul de l'argent pour un trade : " + trade, e);
             }
         }
 
-        LOGGER.info("Total d'argent calculé pour le trade : " + totalMoney + " en cuivre.");
+        // LOGGER.info("Total d'argent calculé pour le trade : " + totalMoney + " en cuivre.");
         return totalMoney;
     }
 
@@ -55,26 +55,26 @@ public class MoneyCalculator {
 
     // Méthode pour convertir un montant d'argent en pièces
     public static int[] getIntInCoins(int amountInCopper) {
-        LOGGER.info("Conversion de " + amountInCopper + " cuivre(s) en pièces.");
+        // LOGGER.info("Conversion de " + amountInCopper + " cuivre(s) en pièces.");
         int[] coins = new int[4]; // Format : [Gold, Silver, Bronze, Copper]
 
         // Conversion en pièces
         coins[0] = amountInCopper / (64 * 64 * 64); // Gold
-        LOGGER.info("Nombre de pièces d'or calculé : " + coins[0]);
+        // LOGGER.info("Nombre de pièces d'or calculé : " + coins[0]);
         amountInCopper %= (64 * 64 * 64);
 
         coins[1] = amountInCopper / (64 * 64); // Silver
-        LOGGER.info("Nombre de pièces d'argent calculé : " + coins[1]);
+        // LOGGER.info("Nombre de pièces d'argent calculé : " + coins[1]);
         amountInCopper %= (64 * 64);
 
         coins[2] = amountInCopper / 64; // Bronze
-        LOGGER.info("Nombre de pièces de bronze calculé : " + coins[2]);
+        // LOGGER.info("Nombre de pièces de bronze calculé : " + coins[2]);
         amountInCopper %= 64;
 
         coins[3] = amountInCopper; // Copper restant
-        LOGGER.info("Nombre de pièces de cuivre restantes : " + coins[3]);
+        // LOGGER.info("Nombre de pièces de cuivre restantes : " + coins[3]);
 
-        LOGGER.info("Conversion terminée. Résultat : Or = " + coins[0] + ", Argent = " + coins[1] + ", Bronze = " + coins[2] + ", Cuivre = " + coins[3]);
+        // LOGGER.info("Conversion terminée. Résultat : Or = " + coins[0] + ", Argent = " + coins[1] + ", Bronze = " + coins[2] + ", Cuivre = " + coins[3]);
         return coins;
     }
 }

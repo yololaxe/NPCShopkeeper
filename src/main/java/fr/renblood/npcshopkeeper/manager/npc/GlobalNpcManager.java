@@ -75,7 +75,7 @@ public class GlobalNpcManager {
         if (activeNpcs.remove(npcName)) {
             inactiveNpcs.add(npcName);
             LOGGER.info("PNJ désactivé : " + npcName);
-            removeNpcFromActiveManager(npcName);
+            // removeNpcFromActiveManager(npcName); // Cette méthode est buggée car elle cherche un ID dans npcDataMap qui n'existe pas
         }
     }
 
@@ -104,7 +104,7 @@ public class GlobalNpcManager {
         return Collections.unmodifiableList(inactiveNpcs);
     }
 
-
+    /*
     private static void removeNpcFromActiveManager(String npcName) {
         Map<String, Object> npcData = getNpcData(npcName);
         if (npcData == null) {
@@ -112,7 +112,12 @@ public class GlobalNpcManager {
             return;
         }
 
-        UUID uuid = UUID.fromString((String) npcData.get("id"));
-        ActiveNpcManager.removeActiveNpc(uuid);
+        // Le problème est ici : npcDataMap contient des données statiques (texture, textes) chargées depuis constant.json
+        // Il ne contient PAS l'UUID de l'instance actuelle du PNJ.
+        // L'UUID est généré dynamiquement lors du spawn.
+        
+        // UUID uuid = UUID.fromString((String) npcData.get("id")); 
+        // ActiveNpcManager.removeActiveNpc(uuid);
     }
+    */
 }

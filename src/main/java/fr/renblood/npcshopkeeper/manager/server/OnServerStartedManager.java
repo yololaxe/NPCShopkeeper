@@ -71,6 +71,9 @@ public class OnServerStartedManager {
 
         ServerLevel world = server.overworld();
 
+        // Charge des données globales (liste des noms de PNJ possibles)
+        GlobalNpcManager.loadNpcData();
+
         // ── Chargement de TOUS les TradeNpc depuis le JSON ──────────────────
         JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
                 Paths.get(PATH_NPCS),
@@ -111,11 +114,10 @@ public class OnServerStartedManager {
                 world.addFreshEntity(ent);
                 LOGGER.info("📦 PNJ fixe ajouté : {} ({})", npcData.getNpcId(), npcData.getNpcName());
             }
+            // Marquer comme actif
+            GlobalNpcManager.activateNpc(npcData);
         });
         // ────────────────────────────────────────────────────────────────────
-
-        // Charge des données globales
-        GlobalNpcManager.loadNpcData();
 
         // ── Chargement des routes commerciales ───────────────────────────────
         JsonRepository<CommercialRoad> roadRepo = new JsonRepository<>(
@@ -154,16 +156,33 @@ public class OnServerStartedManager {
                                 continue;
                             }
 
-                            // recrée l'entité route-PNJ
-                            TradeNpcEntity ent = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
-                            ent.setUUID(UUID.fromString(uuidStr));
-                            ent.setTradeNpc(model);
-                            BlockPos pos = model.getPos();
-                            ent.setPos(pos.getX(), pos.getY(), pos.getZ());
-                            world.addFreshEntity(ent);
+                            // Vérifier si l'entité existe déjà dans le monde pour éviter les doublons
+                            List<TradeNpcEntity> existingEntities = world.getEntitiesOfClass(TradeNpcEntity.class, fullWorldAABB());
+                            TradeNpcEntity ent = existingEntities.stream()
+                                    .filter(e -> e.getUUID().toString().equals(uuidStr))
+                                    .findFirst()
+                                    .orElse(null);
 
-                            map.put(pos, ent);
+                            if (ent == null) {
+                                // recrée l'entité route-PNJ si elle n'existe pas
+                                ent = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
+                                ent.setUUID(UUID.fromString(uuidStr));
+                                ent.setTradeNpc(model);
+                                BlockPos pos = model.getPos();
+                                ent.setPos(pos.getX(), pos.getY(), pos.getZ());
+                                world.addFreshEntity(ent);
+                                LOGGER.info("🔄 PNJ de route recréé : {} ({})", uuidStr, model.getNpcName());
+                            } else {
+                                LOGGER.info("🔄 PNJ de route déjà présent : {} ({})", uuidStr, model.getNpcName());
+                                // S'assurer que le modèle est à jour
+                                ent.setTradeNpc(model);
+                            }
+
+                            map.put(model.getPos(), ent);
                             road.getNpcEntities().add(ent);
+
+                            // Marquer comme actif
+                            GlobalNpcManager.activateNpc(model);
                         }
                         break;
                     }

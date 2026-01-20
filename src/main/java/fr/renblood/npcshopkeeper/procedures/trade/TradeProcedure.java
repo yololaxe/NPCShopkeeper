@@ -8,6 +8,7 @@ import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
 import fr.renblood.npcshopkeeper.data.trade.TradeResult;
+import fr.renblood.npcshopkeeper.manager.npc.ActiveNpcManager;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
 import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
@@ -84,92 +85,138 @@ public class TradeProcedure {
 		if (entity == null || isProcessingTrade) return;
 		isProcessingTrade = true;
 
-		if (entity instanceof ServerPlayer player
-				&& player.containerMenu instanceof Supplier<?> sup
-				&& sup.get() instanceof Map<?, ?> rawSlots) {
+		try {
+			if (entity instanceof ServerPlayer player
+					&& player.containerMenu instanceof Supplier<?> sup
+					&& sup.get() instanceof Map<?, ?> rawSlots) {
 
-			Map<Integer, Slot> slots = (Map<Integer, Slot>) rawSlots;
+				Map<Integer, Slot> slots = (Map<Integer, Slot>) rawSlots;
 
-			// Read trade name + id from slot 12
-			String label = slots.get(12).getItem()
-					.getDisplayName().getString();
-			var parts = label.replace("[","").replace("]","")
-					.split(" ",2);
-			String tradeName = parts[0], tradeId = parts[1];
+				// Read trade name + id from slot 12
+				ItemStack categoryStack = slots.get(12).getItem();
+				if (categoryStack.isEmpty() || !categoryStack.hasCustomHoverName()) {
+					LOGGER.warn("Slot 12 vide ou sans nom, impossible de récupérer l'ID du trade.");
+					return;
+				}
 
-			TradeHistory th = getTradeHistoryById(tradeId);
-			boolean ongoing = (th != null && !th.isFinished());
+				String label = categoryStack.getHoverName().getString();
+				// Le format est "NomDuTrade UUID"
+				// On cherche le dernier espace pour séparer le nom de l'UUID
+				int lastSpaceIndex = label.lastIndexOf(' ');
+				if (lastSpaceIndex == -1) {
+					// Fallback si le format est différent (ex: avec crochets)
+					label = label.replace("[","").replace("]","");
+					lastSpaceIndex = label.lastIndexOf(' ');
+				}
+				
+				String tradeName, tradeId;
+				if (lastSpaceIndex != -1) {
+					tradeName = label.substring(0, lastSpaceIndex);
+					tradeId = label.substring(lastSpaceIndex + 1);
+				} else {
+					// Fallback ultime
+					var parts = label.split(" ", 2);
+					tradeName = parts[0];
+					tradeId = (parts.length > 1) ? parts[1] : "";
+				}
 
-			// Validate item/req slots (0/1,2/3,...)
-			if (isValidSlotPair(slots,0,1,player)
-					&& isValidSlotPair(slots,2,3,player)
-					&& isValidSlotPair(slots,4,5,player)
-					&& isValidSlotPair(slots,6,7,player)
-					&& ongoing) {
+				LOGGER.info("Tentative de validation du trade : " + tradeName + " (ID: " + tradeId + ")");
 
-				clearAndRemoveSlots(player, slots);
-				giveRewards(player, slots, tradeId, tradeName);
-				markTradeAsFinished(player, tradeId);
-				player.containerMenu.broadcastChanges();
+				TradeHistory th = getTradeHistoryById(tradeId);
+				boolean ongoing = (th != null && !th.isFinished());
 
-				// ── SUPPRESSION DU PNJ À LA FIN DU TRADE ───────────────────────
-				TradeHistory finishedTh = getTradeHistoryById(tradeId);
-				if (finishedTh != null) {
-					// … après markTradeAsFinished + broadcastChanges …
+				if (!ongoing) {
+					LOGGER.warn("Le trade " + tradeId + " est déjà fini ou introuvable.");
+					return;
+				}
 
-					String npcUuid = finishedTh.getNpcId();
-					ServerLevel serverLevel = (ServerLevel) player.level();
-					Entity ent = serverLevel.getEntity(UUID.fromString(npcUuid));
-					if (ent instanceof TradeNpcEntity npcEnt) {
-						for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
-							// vérifie qu'il était bien sur cette route
-							if (road.getNpcEntities().stream()
-									.anyMatch(e -> e.getUUID().toString().equals(npcUuid))) {
+				// Validate item/req slots (0/1,2/3,...)
+				if (isValidSlotPair(slots,0,1,player)
+						&& isValidSlotPair(slots,2,3,player)
+						&& isValidSlotPair(slots,4,5,player)
+						&& isValidSlotPair(slots,6,7,player)) {
 
-								// 1) retire du JSON et mémoire forte
-								road.removeNpcAndPersist(npcEnt);
-								road.getNpcEntities().removeIf(e ->
-										e.getUUID().equals(npcEnt.getUUID())
-								);
+					LOGGER.info("Conditions remplies, exécution du trade...");
 
-								// 1.1) libère la place côté scheduler, PAR VALEUR
-								var roadMap = NpcSpawnerManager.activeNPCs.get(road);
-								if (roadMap != null) {
-									roadMap.entrySet().removeIf(e ->
-											e.getValue() instanceof TradeNpcEntity
-													&& e.getValue().getUUID().equals(npcEnt.getUUID())
-									);
-								}
-								break;
-							}
+					clearAndRemoveSlots(player, slots);
+					giveRewards(player, slots, tradeId, tradeName);
+					markTradeAsFinished(player, tradeId);
+					player.containerMenu.broadcastChanges();
+
+					// ── SUPPRESSION DU PNJ À LA FIN DU TRADE ───────────────────────
+					TradeHistory finishedTh = getTradeHistoryById(tradeId);
+					if (finishedTh != null) {
+						// … après markTradeAsFinished + broadcastChanges …
+
+						String npcUuid = finishedTh.getNpcId();
+						ServerLevel serverLevel = (ServerLevel) player.level();
+						
+						// Essayer de trouver l'entité par UUID
+						Entity ent = null;
+						try {
+							ent = serverLevel.getEntity(UUID.fromString(npcUuid));
+						} catch (Exception e) {
+							LOGGER.warn("UUID invalide pour le PNJ : " + npcUuid);
 						}
+						
+						if (ent instanceof TradeNpcEntity npcEnt) {
+							for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
+								// vérifie qu'il était bien sur cette route
+								if (road.getNpcEntities().stream()
+										.anyMatch(e -> e.getUUID().toString().equals(npcUuid))) {
 
-						// 2) despawn
-						npcEnt.discard();
+									// 1) retire du JSON et mémoire forte
+									road.removeNpcAndPersist(npcEnt);
+									road.getNpcEntities().removeIf(e ->
+											e.getUUID().equals(npcEnt.getUUID())
+									);
 
-						// 3) supprime du JSON trades_npcs.json et recharge GlobalNpcManager
-						JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
-								Paths.get(OnServerStartedManager.PATH_NPCS),
-								"npcs",
-								TradeNpc::fromJson,
-								TradeNpc::toJson
-						);
-						List<TradeNpc> kept = npcRepo.loadAll().stream()
-								.filter(n -> !n.getNpcId().equals(npcUuid))
-								.collect(Collectors.toList());
-						npcRepo.saveAll(kept);
-						GlobalNpcManager.loadNpcData();
+									// 1.1) libère la place côté scheduler, PAR VALEUR
+									var roadMap = NpcSpawnerManager.activeNPCs.get(road);
+									if (roadMap != null) {
+										roadMap.entrySet().removeIf(e ->
+												e.getValue() instanceof TradeNpcEntity
+														&& e.getValue().getUUID().equals(npcEnt.getUUID())
+										);
+									}
+									break;
+								}
+							}
 
-						LOGGER.info("🗑️ PNJ {} supprimé à la fin du trade", npcUuid);
+							// 2) despawn
+							npcEnt.discard();
+
+							// 3) supprime du JSON trades_npcs.json et recharge GlobalNpcManager
+							JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
+									Paths.get(OnServerStartedManager.PATH_NPCS),
+									"npcs",
+									TradeNpc::fromJson,
+									TradeNpc::toJson
+							);
+							List<TradeNpc> kept = npcRepo.loadAll().stream()
+									.filter(n -> !n.getNpcId().equals(npcUuid))
+									.collect(Collectors.toList());
+							npcRepo.saveAll(kept);
+							
+							// 4) Libérer le nom du PNJ pour qu'il puisse être réutilisé plus tard
+							GlobalNpcManager.deactivateNpc(npcEnt.getNpcName());
+							ActiveNpcManager.removeActiveNpc(UUID.fromString(npcUuid));
+
+							LOGGER.info("🗑️ PNJ {} supprimé à la fin du trade", npcUuid);
+						}
+						else {
+							LOGGER.warn("PNJ {} introuvable pour suppression", npcUuid);
+						}
 					}
-					else {
-						LOGGER.warn("PNJ {} introuvable pour suppression", npcUuid);
-					}
+				} else {
+					LOGGER.info("Conditions non remplies pour le trade (items manquants ou slots de récompense pleins).");
 				}
 			}
+		} catch (Exception e) {
+			LOGGER.error("Erreur lors de l'exécution du trade", e);
+		} finally {
+			isProcessingTrade = false;
 		}
-
-		isProcessingTrade = false;
 	}
 	private static boolean isServerPlayerWithMenu(Entity entity) {
 		return entity instanceof ServerPlayer _player && _player.containerMenu instanceof Supplier _current && _current.get() instanceof Map;

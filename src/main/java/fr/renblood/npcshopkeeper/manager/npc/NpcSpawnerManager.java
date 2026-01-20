@@ -151,6 +151,8 @@ public class NpcSpawnerManager {
             road.addNpcAndPersist(npcEnt, COMMERCIAL_ROADS);
             LOGGER.info("💾 PNJ '{}' ajouté et route '{}' mise à jour", npcName, road.getName());
 
+            // Marquer le PNJ comme actif pour qu'il ne soit plus choisi
+            GlobalNpcManager.activateNpc(modelNpc);
 
             // ── 2.7) Persistance du nouveau PNJ dans trades_npcs.json
             JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
@@ -168,10 +170,4 @@ public class NpcSpawnerManager {
 
         LOGGER.info("⚠️ Tous les points sont occupés sur la route '{}'", road.getName());
     }
-
-
-
-
-
-
 }
