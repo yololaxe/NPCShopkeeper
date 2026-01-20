@@ -150,7 +150,7 @@ public class TradePrepareProcedure {
                 BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:gold_coin")),
                 BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:silver_coin")),
                 BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:bronze_coin")),
-                Items.COPPER_INGOT
+                BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:iron_coin"))
         };
         int coinSlot = 13;
         for (int i = 0; i < coins.length && coinSlot <= 14; i++) {

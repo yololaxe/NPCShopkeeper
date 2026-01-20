@@ -235,14 +235,14 @@ public class TradeProcedure {
 		Item goldCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:gold_coin"));
 		Item silverCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:silver_coin"));
 		Item bronzeCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:bronze_coin"));
-		Item copperCoin = Items.COPPER_INGOT;
+		Item ironCoin   = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:iron_coin"));
 
 		// Tableau contenant les pièces et leur quantité
 		ItemStack[] coinStacks = {
 				new ItemStack(goldCoin, coins[0]),    // Or
 				new ItemStack(silverCoin, coins[1]),  // Argent
 				new ItemStack(bronzeCoin, coins[2]),  // Bronze
-				new ItemStack(copperCoin, coins[3])   // Cuivre
+				new ItemStack(ironCoin, coins[3])   // Cuivre
 		};
 
 		// Trouver les deux types de pièces les plus hautes avec au moins une pièce
