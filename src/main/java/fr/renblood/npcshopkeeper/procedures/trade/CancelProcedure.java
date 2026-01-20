@@ -77,6 +77,7 @@ public class CancelProcedure {
             for (TradeHistory h : allHistories) {
                 if (h.getId().equals(tradeId)) {
                     h.setFinished(true);
+                    h.setAbandoned(true); // Marquer comme abandonné
                     targetHistory = h;
                     break;
                 }
@@ -84,7 +85,7 @@ public class CancelProcedure {
             
             if (targetHistory != null) {
                 historyRepo.saveAll(allHistories);
-                LOGGER.info("Trade {} annulé par le joueur.", tradeId);
+                LOGGER.info("Trade {} annulé et marqué comme abandonné par le joueur.", tradeId);
 
                 // 3. Supprimer le PNJ associé
                 String npcUuid = targetHistory.getNpcId();

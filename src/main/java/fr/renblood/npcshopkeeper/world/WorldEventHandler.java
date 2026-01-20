@@ -104,6 +104,7 @@ private static String getDefaultConstantJson() {
           "npcs": {
             "Bingo": {
               "Texture": "textures/entity/bingo.png",
+              "IsShopkeeper": true,
               "Texts": [
                 "Bienvenue dans le jardin ! Pret a commencer ?",
                 "Tu devrais planter des melons, ils poussent vite !",
@@ -112,6 +113,7 @@ private static String getDefaultConstantJson() {
             },
             "George": {
               "Texture": "textures/entity/george.png",
+              "IsShopkeeper": true,
               "Texts": [
                 "J'aime ce que tu as fait ici.",
                 "Les animaux adorent cet endroit.",
@@ -120,6 +122,7 @@ private static String getDefaultConstantJson() {
             },
             "Diana": {
               "Texture": "textures/entity/diana.png",
+              "IsShopkeeper": true,
               "Texts": [
                 "Tes recoltes sont impressionnantes.",
                 "Les fruits de ton travail sont magnifiques.",
@@ -128,6 +131,7 @@ private static String getDefaultConstantJson() {
             },
             "Bazaar": {
               "Texture": "textures/entity/bazaar.png",
+              "IsShopkeeper": true,
               "Texts": [
                 "Besoin d'aide pour le jardin ?",
                 "Je peux te fournir ce qu'il te faut.",
@@ -136,6 +140,7 @@ private static String getDefaultConstantJson() {
             },
             "Jerry": {
               "Texture": "textures/entity/jerry.png",
+              "IsShopkeeper": true,
               "Texts": [
                 "C'est agreable de voir le jardin grandir.",
                 "Ton jardin attire beaucoup d'attention.",
@@ -144,6 +149,7 @@ private static String getDefaultConstantJson() {
             },
             "Derpy": {
               "Texture": "textures/entity/derpy.png",
+              "IsShopkeeper": true,
               "Texts": [
                 "Pourquoi pas planter du ble ici ?",
                 "Les betteraves poussent bien ici.",
@@ -152,6 +158,7 @@ private static String getDefaultConstantJson() {
             },
             "Paul": {
               "Texture": "textures/entity/paul.png",
+              "IsShopkeeper": true,
               "Texts": [
                 "Tes recoltes de carottes sont incroyables !",
                 "Tu devrais vendre tes surplus.",
@@ -160,6 +167,7 @@ private static String getDefaultConstantJson() {
             },
             "Sam": {
               "Texture": "textures/entity/sam.png",
+              "IsShopkeeper": true,
               "Texts": [
                 "Ce jardin est parfait pour se relaxer.",
                 "J'aime ton organisation.",
@@ -168,6 +176,7 @@ private static String getDefaultConstantJson() {
             },
             "Tia": {
               "Texture": "textures/entity/tia.png",
+              "IsShopkeeper": true,
               "Texts": [
                 "As-tu besoin d'engrais ?",
                 "Ce sol est parfait pour planter.",
@@ -176,6 +185,7 @@ private static String getDefaultConstantJson() {
             },
             "Adventurer": {
               "Texture": "textures/entity/adventurer.png",
+              "IsShopkeeper": true,
               "Texts": [
                 "Ce jardin est un endroit calme.",
                 "Il offre une pause loin de l'agitation.",

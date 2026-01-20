@@ -29,7 +29,9 @@ public class RoadTickScheduler {
     public static void tick(ServerLevel level) {
         for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
             int current = timers.getOrDefault(road, 0);
-            LOGGER.info("⏱️ Tick - Road : {} | timer={}", road.getName(), current);
+            
+            // Utilisation du mode debug pour les logs fréquents
+            Npcshopkeeper.debugLog(LOGGER, "⏱️ Tick - Road : {} | timer={}", road.getName(), current);
 
             if (current <= 0) {
                 LOGGER.info("🔁 Timer écoulé pour : {}", road.getName());
@@ -49,8 +51,11 @@ public class RoadTickScheduler {
     /** à appeler dès qu’on ajoute une nouvelle route pour lancer son premier spawn immediat */
     public static void registerRoad(CommercialRoad road) {
         if (!timers.containsKey(road)) {
-            timers.put(road, 0);
-            LOGGER.info("📥 Route enregistrée dans RoadTickScheduler : {}", road.getName());
+            // Initialiser avec un délai aléatoire au lieu de 0 pour éviter le double spawn immédiat
+            int delaySeconds = NpcSpawnerManager.getRandomTime(road.getMinTimer(), road.getMaxTimer());
+            int delayTicks = delaySeconds * 20;
+            timers.put(road, delayTicks);
+            LOGGER.info("📥 Route enregistrée dans RoadTickScheduler : {} (Délai initial: {} ticks)", road.getName(), delayTicks);
         }
     }
 }

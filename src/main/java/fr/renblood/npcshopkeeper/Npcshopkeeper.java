@@ -47,6 +47,9 @@ import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.on
 public class Npcshopkeeper {
     public static final String MODID = "npcshopkeeper";
     public static final Logger LOGGER = LogManager.getLogger(MODID);
+    
+    // Mode Debug : Mettre à true pour activer les logs détaillés
+    public static boolean DEBUG_MODE = true;
 
     public static final DeferredRegister<MenuType<?>> MENUS =
             DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
@@ -124,7 +127,11 @@ public class Npcshopkeeper {
     public void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
     }
-
-
-
+    
+    // Méthode utilitaire pour logger uniquement si le mode debug est activé
+    public static void debugLog(Logger logger, String message, Object... params) {
+        if (DEBUG_MODE) {
+            logger.info(message, params);
+        }
+    }
 }

@@ -36,7 +36,7 @@ public class NpcShopkeeperWandGuiMenu extends AbstractContainerMenu implements S
 		super(NpcshopkeeperModMenus.NPC_SHOPKEEPER_WAND_GUI.get(), id);
 		this.entity = inv.player;
 		this.world = inv.player.level();
-		this.internal = new ItemStackHandler(9); // Exemple de 9 slots internes
+		this.internal = new ItemStackHandler(0); // 0 slots internes car pas d'inventaire
 		BlockPos pos = null;
 
 		if (extraData != null) {
@@ -51,7 +51,7 @@ public class NpcShopkeeperWandGuiMenu extends AbstractContainerMenu implements S
 		this.access = pos != null ? ContainerLevelAccess.create(world, pos) : ContainerLevelAccess.NULL;
 		this.category = extraData.readUtf(32767);
 
-		// Initialiser les slots personnalisés
+		// Initialiser les slots personnalisés (aucun ici)
 		init(inv);
 	}
 	public String getCategory() {
@@ -59,63 +59,21 @@ public class NpcShopkeeperWandGuiMenu extends AbstractContainerMenu implements S
 	}
 
 	private void init(Inventory playerInventory) {
-		// Ajouter les slots internes (exemple de 3x3 grille)
-		for (int row = 0; row < 3; row++) {
-			for (int col = 0; col < 3; col++) {
-				int slotIndex = row * 3 + col;
-				int xPosition = 62 + col * 18;
-				int yPosition = 17 + row * 18;
-				this.customSlots.put(slotIndex, this.addSlot(new SlotItemHandler(internal, slotIndex, xPosition, yPosition)));
-			}
-		}
-
-		// Ajouter les slots de l'inventaire du joueur
-		for (int row = 0; row < 3; row++) {
-			for (int col = 0; col < 9; col++) {
-				int slotIndex = col + row * 9 + 9;
-				int xPosition = 8 + col * 18;
-				int yPosition = 84 + row * 18;
-				this.addSlot(new Slot(playerInventory, slotIndex, xPosition, yPosition));
-			}
-		}
-
-		// Ajouter la barre de raccourcis
-		for (int col = 0; col < 9; col++) {
-			int slotIndex = col;
-			int xPosition = 8 + col * 18;
-			int yPosition = 142;
-			this.addSlot(new Slot(playerInventory, slotIndex, xPosition, yPosition));
-		}
+		// Pas de slots internes
+		
+		// Pas de slots d'inventaire joueur
+		
+		// Pas de barre de raccourcis
 	}
 
 	@Override
 	public boolean stillValid(Player player) {
-		return this.access.evaluate((level, pos) -> player.distanceToSqr(pos.getX(), pos.getY(), pos.getZ()) <= 64, true);
+		return true; // Toujours valide car c'est juste une GUI de configuration
 	}
 
 	@Override
 	public ItemStack quickMoveStack(Player playerIn, int index) {
-		ItemStack itemstack = ItemStack.EMPTY;
-		Slot slot = this.slots.get(index);
-		if (slot != null && slot.hasItem()) {
-			ItemStack itemstack1 = slot.getItem();
-			itemstack = itemstack1.copy();
-
-			if (index < this.internal.getSlots()) {
-				if (!this.moveItemStackTo(itemstack1, this.internal.getSlots(), this.slots.size(), true)) {
-					return ItemStack.EMPTY;
-				}
-			} else if (!this.moveItemStackTo(itemstack1, 0, this.internal.getSlots(), false)) {
-				return ItemStack.EMPTY;
-			}
-
-			if (itemstack1.isEmpty()) {
-				slot.set(ItemStack.EMPTY);
-			} else {
-				slot.setChanged();
-			}
-		}
-		return itemstack;
+		return ItemStack.EMPTY;
 	}
 
 	@Override

@@ -120,7 +120,7 @@ public class TradeProcedure {
 					tradeId = (parts.length > 1) ? parts[1] : "";
 				}
 
-				LOGGER.info("Tentative de validation du trade : " + tradeName + " (ID: " + tradeId + ")");
+				Npcshopkeeper.debugLog(LOGGER, "Tentative de validation du trade : " + tradeName + " (ID: " + tradeId + ")");
 
 				TradeHistory th = getTradeHistoryById(tradeId);
 				boolean ongoing = (th != null && !th.isFinished());
@@ -136,7 +136,7 @@ public class TradeProcedure {
 						&& isValidSlotPair(slots,4,5,player)
 						&& isValidSlotPair(slots,6,7,player)) {
 
-					LOGGER.info("Conditions remplies, exécution du trade...");
+					Npcshopkeeper.debugLog(LOGGER, "Conditions remplies, exécution du trade...");
 
 					clearAndRemoveSlots(player, slots);
 					giveRewards(player, slots, tradeId, tradeName);
@@ -202,14 +202,14 @@ public class TradeProcedure {
 							GlobalNpcManager.deactivateNpc(npcEnt.getNpcName());
 							ActiveNpcManager.removeActiveNpc(UUID.fromString(npcUuid));
 
-							LOGGER.info("🗑️ PNJ {} supprimé à la fin du trade", npcUuid);
+							Npcshopkeeper.debugLog(LOGGER, "🗑️ PNJ {} supprimé à la fin du trade", npcUuid);
 						}
 						else {
 							LOGGER.warn("PNJ {} introuvable pour suppression", npcUuid);
 						}
 					}
 				} else {
-					LOGGER.info("Conditions non remplies pour le trade (items manquants ou slots de récompense pleins).");
+					Npcshopkeeper.debugLog(LOGGER, "Conditions non remplies pour le trade (items manquants ou slots de récompense pleins).");
 				}
 			}
 		} catch (Exception e) {
@@ -261,22 +261,22 @@ public class TradeProcedure {
 	// Méthode utilitaire pour donner les récompenses
 	private static void giveRewards(ServerPlayer player, Map _slots, String tradeId, String tradeName) {
 		// Récupérer l'historique du trade
-		LOGGER.info("On est dans give reward");
+		Npcshopkeeper.debugLog(LOGGER, "On est dans give reward");
 		TradeHistory tradeHistory = getTradeHistoryById(tradeId);
 		if (tradeHistory == null) {
 			LOGGER.error("Aucun historique de trade trouvé pour le trade ID : " + tradeId);
 			return;
 		}
-		LOGGER.info("Historique de trade trouvé pour le joueur : " + tradeHistory.getPlayer());
+		Npcshopkeeper.debugLog(LOGGER, "Historique de trade trouvé pour le joueur : " + tradeHistory.getPlayer());
 
 
 		// Calculer le total d'argent à partir des tradeItems
 		int totalMoneyInCopper = tradeHistory.getTotalPrice();
-		LOGGER.info("Total d'argent calculé (en cuivre) : " + totalMoneyInCopper);
+		Npcshopkeeper.debugLog(LOGGER, "Total d'argent calculé (en cuivre) : " + totalMoneyInCopper);
 
 		// Convertir le total en pièces (Gold, Silver, Bronze, Copper)
 		int[] coins = MoneyCalculator.getIntInCoins(totalMoneyInCopper);
-		LOGGER.info("Conversion des pièces : Or = " + coins[0] + ", Argent = " + coins[1] + ", Bronze = " + coins[2] + ", Cuivre = " + coins[3]);
+		Npcshopkeeper.debugLog(LOGGER, "Conversion des pièces : Or = " + coins[0] + ", Argent = " + coins[1] + ", Bronze = " + coins[2] + ", Cuivre = " + coins[3]);
 
 		// Définir les items correspondants aux pièces
 		Item goldCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:gold_coin"));
@@ -296,7 +296,7 @@ public class TradeProcedure {
 		int slotIndex = 8;
 		for (int i = 0; i < coinStacks.length && slotIndex <= 9; i++) {
 			if (coinStacks[i].getCount() > 0) {
-				LOGGER.info("Ajout de " + coins[i] + " pièce(s) dans le slot " + slotIndex);
+				Npcshopkeeper.debugLog(LOGGER, "Ajout de " + coins[i] + " pièce(s) dans le slot " + slotIndex);
 				setSlot(_slots, slotIndex, coinStacks[i], coins[i]);
 				slotIndex++;
 			}
@@ -310,12 +310,12 @@ public class TradeProcedure {
 		}
 		ResourceLocation itemResource = new ResourceLocation(result.getItem());
 		Item item = BuiltInRegistries.ITEM.get(itemResource);
-		LOGGER.info("Ajout de " + result.getQuantity() + " de " + result.getItem() + " dans le slot 10.");
+		Npcshopkeeper.debugLog(LOGGER, "Ajout de " + result.getQuantity() + " de " + result.getItem() + " dans le slot 10.");
 		setSlot(_slots, 10, new ItemStack(item), result.getQuantity());
 
 		// Si nécessaire, diffuser les changements de l'inventaire
 		player.containerMenu.broadcastChanges();
-		LOGGER.info("Changements de l'inventaire diffusés au joueur.");
+		Npcshopkeeper.debugLog(LOGGER, "Changements de l'inventaire diffusés au joueur.");
 	}
 
 

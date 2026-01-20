@@ -13,6 +13,7 @@ public class TradeHistory {
     private List<String> player;
     private String tradeName;
     private boolean isFinished;
+    private boolean isAbandoned; // Nouveau champ
     private String id;
     private List<TradeItemInfo> tradeItems;
     private int totalPrice;
@@ -20,17 +21,22 @@ public class TradeHistory {
     private String npcName;
 
 
-    // Constructeur
+    // Constructeur principal
     public TradeHistory(List<String> player, String tradeName, boolean isFinished, String ID, List<TradeItemInfo> tradeItems, int totalPrice, String npcId, String npcName) {
+        this(player, tradeName, isFinished, false, ID, tradeItems, totalPrice, npcId, npcName);
+    }
+
+    // Constructeur complet avec isAbandoned
+    public TradeHistory(List<String> player, String tradeName, boolean isFinished, boolean isAbandoned, String ID, List<TradeItemInfo> tradeItems, int totalPrice, String npcId, String npcName) {
         this.player = player;
         this.tradeName = tradeName;
         this.isFinished = isFinished;
+        this.isAbandoned = isAbandoned;
         this.id = ID;
         this.tradeItems = tradeItems;
         this.totalPrice = totalPrice;
         this.npcId = npcId;
         this.npcName = npcName;
-
     }
 
     // Getters et Setters
@@ -64,6 +70,15 @@ public class TradeHistory {
     public void setFinished(boolean finished) {
         isFinished = finished;
     }
+
+    public boolean isAbandoned() {
+        return isAbandoned;
+    }
+
+    public void setAbandoned(boolean abandoned) {
+        isAbandoned = abandoned;
+    }
+
     public List<TradeItemInfo> getTradeItems() {
         return tradeItems;
     }
@@ -101,6 +116,7 @@ public class TradeHistory {
                 "player='" + player + '\'' +
                 ", tradeName='" + tradeName + '\'' +
                 ", isFinished=" + isFinished +
+                ", isAbandoned=" + isAbandoned +
                 ", totalPrice=" + totalPrice +
                 ", tradeItems=" + tradeItems +
                 '}';
@@ -117,6 +133,7 @@ public class TradeHistory {
 
         o.addProperty("tradeName",  tradeName);
         o.addProperty("isFinished", isFinished);
+        o.addProperty("isAbandoned", isAbandoned); // Sauvegarde du nouveau champ
         o.addProperty("id",         id);
 
         JsonArray itemsArr = new JsonArray();
@@ -140,6 +157,10 @@ public class TradeHistory {
 
         String tradeName  = o.get("tradeName").getAsString();
         boolean isFinished= o.get("isFinished").getAsBoolean();
+        
+        // Lecture du nouveau champ avec valeur par défaut false pour la rétrocompatibilité
+        boolean isAbandoned = o.has("isAbandoned") && o.get("isAbandoned").getAsBoolean();
+        
         String id         = o.get("id").getAsString();
 
         List<TradeItemInfo> items = new ArrayList<>();
@@ -154,6 +175,7 @@ public class TradeHistory {
         return new TradeHistory(players,
                 tradeName,
                 isFinished,
+                isAbandoned,
                 id,
                 items,
                 totalPrice,

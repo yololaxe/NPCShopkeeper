@@ -6,8 +6,16 @@
   "gui.npcshopkeeper.create_trade.label_empty2": "-",
   "gui.npcshopkeeper.create_trade.label_good": "Bien !",
   "gui.npcshopkeeper.create_trade.label_coins": "pièces",
-  "gui.npcshopkeeper.create_trade.label_category": "Categorie:",
+  "gui.npcshopkeeper.create_trade.label_category": "Categories:",
   "gui.npcshopkeeper.create_trade.label_item": "objet",
   "gui.npcshopkeeper.create_trade.label_empty": "-",
-  "gui.npcshopkeeper.create_trade.label_xp": "xp"
+  "gui.npcshopkeeper.create_trade.label_xp": "xp",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.label_time_in_minute": "Temps en seconde:",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.npc_number": "PNJ : ",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.name": "Nom de la route",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.label_max_points": "Max: %s",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.maxTimer": "Temps max",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.minTimer": "Temps min",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.points": "Combien de PNJ",
+  "item.npcshopkeeper.npc_shopkeeper_wand": "Bâtons de PNJ"
 }
