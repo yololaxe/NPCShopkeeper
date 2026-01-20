@@ -2,6 +2,7 @@
 package fr.renblood.npcshopkeeper.network;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.procedures.trade.CancelProcedure;
 import fr.renblood.npcshopkeeper.procedures.trade.TradeProcedure;
 import fr.renblood.npcshopkeeper.world.inventory.TradeMenu;
 import net.minecraftforge.network.NetworkEvent;
@@ -66,6 +67,11 @@ public class TradeButtonMessage {
         if (buttonID == 0) {
 
             TradeProcedure.execute(entity);
+
+        }
+        if (buttonID == 1) {
+
+            CancelProcedure.execute(entity);
 
         }
     }

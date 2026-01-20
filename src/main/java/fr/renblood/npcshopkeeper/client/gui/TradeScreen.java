@@ -23,6 +23,7 @@ public class TradeScreen extends AbstractContainerScreen<TradeMenu> {
 	private final int x, y, z;
 	private final Player entity;
 	ImageButton imagebutton_check;
+	ImageButton imagebutton_red_cross_mc;
 
 	public TradeScreen(TradeMenu container, Inventory inventory, Component text) {
 		super(container, inventory, text);
@@ -77,5 +78,14 @@ public class TradeScreen extends AbstractContainerScreen<TradeMenu> {
 		});
 		guistate.put("button:imagebutton_check", imagebutton_check);
 		this.addRenderableWidget(imagebutton_check);
+		
+		imagebutton_red_cross_mc = new ImageButton(this.leftPos + -62, this.topPos + 57, 51, 50, 0, 0, 50, new ResourceLocation("npcshopkeeper:textures/screens/atlas/imagebutton_red_cross_mc.png"), 51, 100, e -> {
+			if (true) {
+				Npcshopkeeper.PACKET_HANDLER.sendToServer(new TradeButtonMessage(1, x, y, z));
+				TradeButtonMessage.handleButtonAction(entity, 1, x, y, z);
+			}
+		});
+		guistate.put("button:imagebutton_red_cross_mc", imagebutton_red_cross_mc);
+		this.addRenderableWidget(imagebutton_red_cross_mc);
 	}
 }

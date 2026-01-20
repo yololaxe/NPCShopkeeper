@@ -158,16 +158,17 @@ public class TradeNpcEntity extends Villager {
 
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
-        // Affichage d’un texte aléatoire si défini
-        if (this.texts != null && !this.texts.isEmpty()) {
-            String randomText = this.texts.get(RandomSource.create().nextInt(this.texts.size()));
-            player.displayClientMessage(Component.literal(randomText), false);
-        } else {
-            player.displayClientMessage(Component.literal("Ce PNJ n'a rien à dire pour le moment."), false);
-        }
-
         // Côté serveur : gérer le trade
         if (!this.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
+            
+            // Affichage d’un texte aléatoire si défini (une seule fois)
+            if (this.texts != null && !this.texts.isEmpty()) {
+                String randomText = this.texts.get(RandomSource.create().nextInt(this.texts.size()));
+                serverPlayer.displayClientMessage(Component.literal(randomText), false);
+            } else {
+                serverPlayer.displayClientMessage(Component.literal("Ce PNJ n'a rien à dire pour le moment."), false);
+            }
+
             try {
                 // 1) Charger l’historique des trades
                 JsonRepository<TradeHistory> historyRepo = new JsonRepository<>(

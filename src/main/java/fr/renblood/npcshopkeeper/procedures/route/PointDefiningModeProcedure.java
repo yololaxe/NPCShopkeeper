@@ -116,10 +116,14 @@ public class PointDefiningModeProcedure {
                 json -> CommercialRoad.fromJson(json,(ServerLevel)world),
                 CommercialRoad::toJson
         );
-        NpcSpawnerManager.trySpawnNpcForRoad((ServerLevel)world, road);
 
-        // puis scheduler pour les suivants
+        // On enregistre la route dans le scheduler pour qu'elle commence à spawner des PNJs
+        // Le scheduler s'occupera du premier spawn après le délai initial
         RoadTickScheduler.registerRoad(road);
+
+        // On ne force plus le spawn immédiat ici pour éviter le doublon avec le scheduler
+        // NpcSpawnerManager.trySpawnNpcForRoad((ServerLevel)world, road);
+
         repo.saveAll(Npcshopkeeper.COMMERCIAL_ROADS);
 
         player.displayClientMessage(Component.literal("Route créée : "+name),false);
