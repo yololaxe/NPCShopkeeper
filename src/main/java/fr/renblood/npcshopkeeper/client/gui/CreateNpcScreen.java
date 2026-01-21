@@ -13,17 +13,25 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class CreateNpcScreen extends AbstractContainerScreen<CreateNpcMenu> {
     private static final ResourceLocation TEXTURE = new ResourceLocation("textures/gui/container/generic_54.png");
 
     EditBox nameBox;
     EditBox skinBox;
     Checkbox isShopkeeperCheckbox;
+    
+    EditBox text1Box;
+    EditBox text2Box;
+    EditBox text3Box;
+    
     Button createButton;
 
     public CreateNpcScreen(CreateNpcMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        this.imageHeight = 180;
+        this.imageHeight = 220; // Augmenté pour faire de la place
         this.inventoryLabelY = this.imageHeight - 94;
     }
 
@@ -47,18 +55,36 @@ public class CreateNpcScreen extends AbstractContainerScreen<CreateNpcMenu> {
         // Checkbox Shopkeeper
         this.isShopkeeperCheckbox = new Checkbox(centerX + 10, centerY + 80, 150, 20, Component.literal("Est un Shopkeeper ?"), true);
         this.addRenderableWidget(this.isShopkeeperCheckbox);
+        
+        // Champs Textes
+        this.text1Box = new EditBox(this.font, centerX + 10, centerY + 110, 150, 20, Component.literal("Texte 1"));
+        this.text1Box.setMaxLength(256);
+        this.addRenderableWidget(this.text1Box);
+        
+        this.text2Box = new EditBox(this.font, centerX + 10, centerY + 135, 150, 20, Component.literal("Texte 2"));
+        this.text2Box.setMaxLength(256);
+        this.addRenderableWidget(this.text2Box);
+        
+        this.text3Box = new EditBox(this.font, centerX + 10, centerY + 160, 150, 20, Component.literal("Texte 3"));
+        this.text3Box.setMaxLength(256);
+        this.addRenderableWidget(this.text3Box);
 
         // Bouton Créer
         this.createButton = Button.builder(Component.literal("Créer PNJ"), button -> {
             String name = nameBox.getValue();
             String skin = skinBox.getValue();
             boolean isShopkeeper = isShopkeeperCheckbox.selected();
+            
+            List<String> texts = new ArrayList<>();
+            if (!text1Box.getValue().isEmpty()) texts.add(text1Box.getValue());
+            if (!text2Box.getValue().isEmpty()) texts.add(text2Box.getValue());
+            if (!text3Box.getValue().isEmpty()) texts.add(text3Box.getValue());
 
             if (!name.isEmpty() && !skin.isEmpty()) {
-                Npcshopkeeper.PACKET_HANDLER.sendToServer(new CreateNpcButtonMessage(name, skin, isShopkeeper));
+                Npcshopkeeper.PACKET_HANDLER.sendToServer(new CreateNpcButtonMessage(name, skin, isShopkeeper, texts));
                 this.onClose();
             }
-        }).bounds(centerX + 10, centerY + 110, 100, 20).build();
+        }).bounds(centerX + 10, centerY + 190, 100, 20).build();
         this.addRenderableWidget(this.createButton);
     }
 
@@ -92,6 +118,9 @@ public class CreateNpcScreen extends AbstractContainerScreen<CreateNpcMenu> {
         }
         if (nameBox.isFocused()) return nameBox.keyPressed(key, b, c);
         if (skinBox.isFocused()) return skinBox.keyPressed(key, b, c);
+        if (text1Box.isFocused()) return text1Box.keyPressed(key, b, c);
+        if (text2Box.isFocused()) return text2Box.keyPressed(key, b, c);
+        if (text3Box.isFocused()) return text3Box.keyPressed(key, b, c);
         return super.keyPressed(key, b, c);
     }
 }

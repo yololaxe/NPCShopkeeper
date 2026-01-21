@@ -10,6 +10,8 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.network.NetworkEvent;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
@@ -17,23 +19,36 @@ public class CreateNpcButtonMessage {
     private final String name;
     private final String skin;
     private final boolean isShopkeeper;
+    private final List<String> texts;
 
-    public CreateNpcButtonMessage(String name, String skin, boolean isShopkeeper) {
+    public CreateNpcButtonMessage(String name, String skin, boolean isShopkeeper, List<String> texts) {
         this.name = name;
         this.skin = skin;
         this.isShopkeeper = isShopkeeper;
+        this.texts = texts;
     }
 
     public CreateNpcButtonMessage(FriendlyByteBuf buffer) {
         this.name = buffer.readUtf();
         this.skin = buffer.readUtf();
         this.isShopkeeper = buffer.readBoolean();
+        
+        int size = buffer.readInt();
+        this.texts = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            this.texts.add(buffer.readUtf());
+        }
     }
 
     public static void buffer(CreateNpcButtonMessage message, FriendlyByteBuf buffer) {
         buffer.writeUtf(message.name);
         buffer.writeUtf(message.skin);
         buffer.writeBoolean(message.isShopkeeper);
+        
+        buffer.writeInt(message.texts.size());
+        for (String text : message.texts) {
+            buffer.writeUtf(text);
+        }
     }
 
     public static void handler(CreateNpcButtonMessage message, Supplier<NetworkEvent.Context> contextSupplier) {
@@ -41,25 +56,9 @@ public class CreateNpcButtonMessage {
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
             if (player != null) {
-                // Traitement de la texture : si c'est un pseudo, on construit l'URL ou le chemin local
-                // Pour simplifier ici, on suppose que si ça ne commence pas par "http", c'est un pseudo
-                // et on utilise une texture locale ou une API de skin.
-                // Dans votre mod actuel, vous utilisez des textures locales "textures/entity/nom.png".
-                // On va garder cette logique pour l'instant ou adapter selon votre besoin.
-                
-                // Si l'utilisateur entre un pseudo, on peut imaginer un système qui télécharge le skin,
-                // mais pour l'instant on va stocker la valeur brute.
-                // Le rendu devra gérer ça.
-                
-                // Pour l'instant, on stocke ce que l'utilisateur a entré.
                 String texturePath = message.skin;
-                if (!texturePath.contains("/") && !texturePath.contains(":")) {
-                     // Si c'est juste un nom (ex: "Notch"), on assume que c'est un fichier local standardisé
-                     // ou on pourrait utiliser une URL de skin head
-                     texturePath = "textures/entity/" + message.skin.toLowerCase() + ".png";
-                }
 
-                boolean success = GlobalNpcManager.registerNewNpc(message.name, texturePath, message.isShopkeeper);
+                boolean success = GlobalNpcManager.registerNewNpc(message.name, texturePath, message.isShopkeeper, message.texts);
                 
                 if (success) {
                     player.displayClientMessage(Component.literal("PNJ créé avec succès : " + message.name), false);

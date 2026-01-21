@@ -75,7 +75,7 @@ public class GlobalNpcManager {
         LOGGER.info("Données PNJ chargées avec succès. Total PNJs : " + npcDataMap.size() + " (dont " + inactiveNpcs.size() + " shopkeepers)");
     }
     
-    public static boolean registerNewNpc(String name, String texture, boolean isShopkeeper) {
+    public static boolean registerNewNpc(String name, String texture, boolean isShopkeeper, List<String> texts) {
         if (npcDataMap.containsKey(name)) {
             LOGGER.warn("Tentative de création d'un PNJ existant : " + name);
             return false;
@@ -84,7 +84,7 @@ public class GlobalNpcManager {
         // 1. Mise à jour de la mémoire
         Map<String, Object> data = new HashMap<>();
         data.put("Texture", texture);
-        data.put("Texts", new ArrayList<String>()); // Liste vide par défaut
+        data.put("Texts", texts != null ? texts : new ArrayList<String>());
         data.put("IsShopkeeper", isShopkeeper);
         data.put("IsCreatedByPlayer", true); // Marqué comme créé par le joueur
         
@@ -106,7 +106,16 @@ public class GlobalNpcManager {
         newNpc.addProperty("Texture", texture);
         newNpc.addProperty("IsShopkeeper", isShopkeeper);
         newNpc.addProperty("IsCreatedByPlayer", true);
-        newNpc.add("Texts", new JsonArray());
+        
+        JsonArray textsArray = new JsonArray();
+        if (texts != null) {
+            for (String t : texts) {
+                if (t != null && !t.isEmpty()) {
+                    textsArray.add(t);
+                }
+            }
+        }
+        newNpc.add("Texts", textsArray);
         
         npcsObj.add(name, newNpc);
         

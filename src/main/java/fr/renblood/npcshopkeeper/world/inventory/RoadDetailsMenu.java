@@ -4,6 +4,7 @@ import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -48,9 +49,19 @@ public class RoadDetailsMenu extends AbstractContainerMenu implements Supplier<M
         for (TradeNpcEntity npc : road.getNpcEntities()) {
             if (slotIndex >= internal.getSlots()) break;
             
-            // Utiliser un item générique (ex: tête de joueur ou émeraude) car getHeadAsItem n'existe pas
             ItemStack npcStack = new ItemStack(Items.PLAYER_HEAD);
             npcStack.setHoverName(Component.literal(npc.getNpcName()));
+            
+            // Gestion du skin sur la tête
+            String texture = npc.getTradeNpc().getTexture();
+            if (texture != null && !texture.startsWith("textures/")) {
+                // C'est un pseudo (PNJ créé par joueur)
+                CompoundTag tag = npcStack.getOrCreateTag();
+                tag.putString("SkullOwner", texture); // Minecraft chargera le skin automatiquement
+            } else {
+                // C'est une texture locale, on ne peut pas l'afficher facilement sur un item
+                // On laisse la tête de Steve par défaut, mais avec le bon nom
+            }
             
             internal.setStackInSlot(slotIndex++, npcStack);
         }
