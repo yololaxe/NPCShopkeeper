@@ -20,7 +20,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,32 +45,14 @@ public class OnServerStartedManager {
     public static String PATH_NPCS;
 
     @SubscribeEvent
-    public static void onServerStarted(ServerStartedEvent event) {
+    public static void onServerStarting(ServerStartingEvent event) {
         MinecraftServer server = event.getServer();
         if (server == null) {
-            LOGGER.error("Le serveur est null dans onServerStarted");
+            LOGGER.error("Le serveur est null dans onServerStarting");
             return;
         }
 
-        // ── Initialisation des chemins JSON ────────────────────────────────
-        var root = server.getWorldPath(LevelResource.ROOT);
-        PATH            = root.resolve("npcshopkeeper/trade.json").toString();
-        PATH_HISTORY    = root.resolve("npcshopkeeper/trade_history.json").toString();
-        PATH_CONSTANT   = root.resolve("npcshopkeeper/constant.json").toString();
-        PATH_PRICE      = root.resolve("npcshopkeeper/price_references.json").toString();
-        PATH_XP         = root.resolve("npcshopkeeper/xp_references.json").toString(); // Init
-        PATH_COMMERCIAL = root.resolve("npcshopkeeper/commercial_road.json").toString();
-        PATH_NPCS       = root.resolve("npcshopkeeper/trades_npcs.json").toString();
-
-        LOGGER.info("Chemins JSON init...");
-        checkFileExists(PATH, "trade.json");
-        checkFileExists(PATH_HISTORY, "trade_history.json");
-        checkFileExists(PATH_CONSTANT, "constant.json");
-        checkFileExists(PATH_PRICE, "price_references.json");
-        checkFileExists(PATH_XP, "xp_references.json"); // Check
-        checkFileExists(PATH_COMMERCIAL, "commercial_road.json");
-        checkFileExists(PATH_NPCS, "trades_npcs.json");
-        // ────────────────────────────────────────────────────────────────────
+        initPaths(server);
 
         ServerLevel world = server.overworld();
 
@@ -202,6 +184,28 @@ public class OnServerStartedManager {
         // ────────────────────────────────────────────────────────────────────
 
         LOGGER.info("✅ Initialisation des PNJs et des routes terminée.");
+    }
+
+    public static void initPaths(MinecraftServer server) {
+        // ── Initialisation des chemins JSON ────────────────────────────────
+        var root = server.getWorldPath(LevelResource.ROOT);
+        PATH            = root.resolve("npcshopkeeper/trade.json").toString();
+        PATH_HISTORY    = root.resolve("npcshopkeeper/trade_history.json").toString();
+        PATH_CONSTANT   = root.resolve("npcshopkeeper/constant.json").toString();
+        PATH_PRICE      = root.resolve("npcshopkeeper/price_references.json").toString();
+        PATH_XP         = root.resolve("npcshopkeeper/xp_references.json").toString(); // Init
+        PATH_COMMERCIAL = root.resolve("npcshopkeeper/commercial_road.json").toString();
+        PATH_NPCS       = root.resolve("npcshopkeeper/trades_npcs.json").toString();
+
+        LOGGER.info("Chemins JSON init...");
+        checkFileExists(PATH, "trade.json");
+        checkFileExists(PATH_HISTORY, "trade_history.json");
+        checkFileExists(PATH_CONSTANT, "constant.json");
+        checkFileExists(PATH_PRICE, "price_references.json");
+        checkFileExists(PATH_XP, "xp_references.json"); // Check
+        checkFileExists(PATH_COMMERCIAL, "commercial_road.json");
+        checkFileExists(PATH_NPCS, "trades_npcs.json");
+        // ────────────────────────────────────────────────────────────────────
     }
 
     private static AABB fullWorldAABB() {

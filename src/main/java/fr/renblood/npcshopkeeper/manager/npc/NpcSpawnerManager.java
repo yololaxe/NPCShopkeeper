@@ -49,15 +49,6 @@ public class NpcSpawnerManager {
     private static final String NPC_DATA_FILE = "npc_data.json"; // Chemin du fichier JSON
     private static List<NpcData> npcDataList;
 
-
-    public static class NpcData {
-        public String id;
-        public String name;
-        public String texture;
-        public int x, y, z;
-        public String category;
-    }
-
     public static void saveNpcData(ServerLevel world) {
         List<NpcData> npcDataList = new ArrayList<>();
 
