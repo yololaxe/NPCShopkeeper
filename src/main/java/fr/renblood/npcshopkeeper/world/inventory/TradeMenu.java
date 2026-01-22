@@ -42,6 +42,9 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 	private Supplier<Boolean> boundItemMatcher = null;
 	private Entity boundEntity = null;
 	private BlockEntity boundBlockEntity = null;
+    
+    // Stockage de l'ID du trade directement dans le menu
+    public String tradeId = "";
 
 	public TradeMenu(int id, Inventory inv, FriendlyByteBuf extraData) {
 		super(NpcshopkeeperModMenus.TRADE.get(), id);

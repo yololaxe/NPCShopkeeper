@@ -13,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
@@ -98,6 +99,12 @@ public class TradeNpcEntity extends Villager {
     }
 
     private void applyModelById(UUID id) {
+        // Force l'initialisation des chemins si nécessaire (Lazy Init)
+        MinecraftServer server = this.level().getServer();
+        if (server != null) {
+            OnServerStartedManager.initPaths(server);
+        }
+
         // Utilisation de OnServerStartedManager.PATH_NPCS au lieu de JsonFileManager.pathNpcs
         String path = OnServerStartedManager.PATH_NPCS;
         if (path == null) {

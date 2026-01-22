@@ -1,5 +1,6 @@
 package fr.renblood.npcshopkeeper.procedures.trade;
 
+import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
@@ -108,13 +109,11 @@ public class TradeCommandProcedure {
 
 			LOGGER.info("Trade menu opened successfully for player: {}", serverPlayer.getName().getString());
 			
-			// Appel de TradePrepareProcedure
-			// Note : Ceci est appelé immédiatement côté serveur, mais le menu côté client peut prendre quelques ms à s'ouvrir.
-			// TradePrepareProcedure doit manipuler le containerMenu du joueur.
-			// Si openScreen n'a pas encore mis à jour containerMenu, ça peut échouer.
-			// Mais NetworkHooks.openScreen est synchrone pour la partie serveur (création du menu).
-
-			TradePrepareProcedure.execute(entity, cleanTradeName, npcId, npcName);
+			// Appel différé de TradePrepareProcedure pour laisser le temps au client d'ouvrir le GUI
+			// 2 ticks = 100ms, devrait suffire pour la synchro sans casser l'ID
+			Npcshopkeeper.queueServerWork(2, () -> {
+				TradePrepareProcedure.execute(entity, cleanTradeName, npcId, npcName);
+			});
 
 		} catch (Exception e) {
 			LOGGER.error("Failed to open trade menu for player: {}", serverPlayer.getName().getString(), e);

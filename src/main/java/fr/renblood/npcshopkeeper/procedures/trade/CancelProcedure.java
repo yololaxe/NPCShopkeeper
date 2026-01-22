@@ -11,6 +11,7 @@ import fr.renblood.npcshopkeeper.manager.npc.ActiveNpcManager;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
 import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
+import fr.renblood.npcshopkeeper.manager.trade.TradeSessionManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -35,38 +36,38 @@ public class CancelProcedure {
         if (!(entity instanceof ServerPlayer player)) return;
 
         try {
-            // 1. Récupérer l'ID du trade depuis le slot 12
-            if (!(player.containerMenu instanceof Supplier<?> sup && sup.get() instanceof Map<?, ?> rawSlots)) {
-                return;
-            }
-            @SuppressWarnings("unchecked")
-            Map<Integer, Slot> slots = (Map<Integer, Slot>) rawSlots;
-            
-            ItemStack categoryStack = slots.get(12).getItem();
-            if (categoryStack.isEmpty() || !categoryStack.hasCustomHoverName()) {
-                LOGGER.warn("Impossible d'annuler : Slot 12 vide ou sans nom.");
-                player.closeContainer();
-                return;
-            }
+            Npcshopkeeper.debugLog(LOGGER, ">>> CancelProcedure START <<<");
+            Npcshopkeeper.debugLog(LOGGER, "Container ID: " + player.containerMenu.containerId);
 
-            String label = categoryStack.getHoverName().getString();
-            // Format "NomDuTrade UUID"
-            int lastSpaceIndex = label.lastIndexOf(' ');
-            if (lastSpaceIndex == -1) {
-                label = label.replace("[","").replace("]","");
-                lastSpaceIndex = label.lastIndexOf(' ');
+            // 1. Récupérer l'ID du trade depuis le TradeSessionManager
+            String tradeId = TradeSessionManager.getTradeId(player.getUUID());
+            
+            if (tradeId == null || tradeId.isEmpty()) {
+                LOGGER.warn("Impossible d'annuler : ID de trade introuvable dans la session.");
+                // Fallback sur le slot 12 si la session est vide (pour compatibilité)
+                if (player.containerMenu instanceof Supplier<?> sup && sup.get() instanceof Map<?, ?> rawSlots) {
+                    @SuppressWarnings("unchecked")
+                    Map<Integer, Slot> slots = (Map<Integer, Slot>) rawSlots;
+                    ItemStack categoryStack = slots.get(12).getItem();
+                    if (!categoryStack.isEmpty() && categoryStack.hasCustomHoverName()) {
+                        String label = categoryStack.getHoverName().getString();
+                        int lastSpaceIndex = label.lastIndexOf(' ');
+                        if (lastSpaceIndex != -1) {
+                            tradeId = label.substring(lastSpaceIndex + 1);
+                        }
+                    }
+                }
             }
             
-            String tradeId = (lastSpaceIndex != -1) ? label.substring(lastSpaceIndex + 1) : "";
-            if (tradeId.isEmpty()) {
-                LOGGER.warn("Impossible d'annuler : ID de trade introuvable.");
+            if (tradeId == null || tradeId.isEmpty()) {
+                LOGGER.warn("Echec total de récupération de l'ID du trade.");
                 player.closeContainer();
                 return;
             }
 
             // 2. Marquer le trade comme fini (annulé) dans l'historique
             JsonRepository<TradeHistory> historyRepo = new JsonRepository<>(
-                    Paths.get(JsonFileManager.pathHistory),
+                    Paths.get(OnServerStartedManager.PATH_HISTORY), // Utilisation de OnServerStartedManager
                     "history",
                     TradeHistory::fromJson,
                     TradeHistory::toJson
@@ -86,6 +87,9 @@ public class CancelProcedure {
             if (targetHistory != null) {
                 historyRepo.saveAll(allHistories);
                 LOGGER.info("Trade {} annulé et marqué comme abandonné par le joueur.", tradeId);
+                
+                // Nettoyage de la session
+                TradeSessionManager.clearTradeId(player.getUUID());
 
                 // 3. Supprimer le PNJ associé
                 String npcUuid = targetHistory.getNpcId();

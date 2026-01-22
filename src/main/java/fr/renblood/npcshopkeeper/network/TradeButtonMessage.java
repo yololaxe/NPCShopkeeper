@@ -1,4 +1,3 @@
-
 package fr.renblood.npcshopkeeper.network;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
@@ -14,14 +13,15 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.core.BlockPos;
-
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.function.Supplier;
 import java.util.HashMap;
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 public class TradeButtonMessage {
+    private static final Logger LOGGER = LogManager.getLogger(TradeButtonMessage.class);
     private final int buttonID, x, y, z;
 
     public TradeButtonMessage(FriendlyByteBuf buffer) {
@@ -60,19 +60,23 @@ public class TradeButtonMessage {
 
     public static void handleButtonAction(Player entity, int buttonID, int x, int y, int z) {
         Level world = entity.level();
-        HashMap guistate = TradeMenu.guistate;
+        
         // security measure to prevent arbitrary chunk generation
         if (!world.hasChunkAt(new BlockPos(x, y, z)))
             return;
+            
+        Npcshopkeeper.debugLog(LOGGER, "TradeButtonMessage received. ButtonID: " + buttonID + ", Container ID: " + entity.containerMenu.containerId);
+        
+        if (!(entity.containerMenu instanceof TradeMenu)) {
+            LOGGER.warn("Player " + entity.getName().getString() + " tried to use TradeButton but container is not TradeMenu! (Container: " + entity.containerMenu.getClass().getName() + ")");
+            return;
+        }
+
         if (buttonID == 0) {
-
             TradeProcedure.execute(entity);
-
         }
         if (buttonID == 1) {
-
             CancelProcedure.execute(entity);
-
         }
     }
 

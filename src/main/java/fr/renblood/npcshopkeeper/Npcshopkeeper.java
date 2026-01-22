@@ -6,6 +6,7 @@ import fr.renblood.npcshopkeeper.init.NpcshopkeeperModItems;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModTabs;
 import fr.renblood.npcshopkeeper.manager.road.RoadTickScheduler;
+import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import fr.renblood.npcshopkeeper.world.WorldEventHandler;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.network.FriendlyByteBuf;
@@ -41,7 +42,6 @@ import java.util.function.Supplier;
 
 import static fr.renblood.npcshopkeeper.init.EntityInit.ENTITY_TYPES;
 import static fr.renblood.npcshopkeeper.init.EntityInit.TRADE_NPC_ENTITY;
-import static fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager.onServerStarted;
 
 @Mod(Npcshopkeeper.MODID)
 public class Npcshopkeeper {
@@ -61,6 +61,7 @@ public class Npcshopkeeper {
         // Register to the Forge event bus
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(WorldEventHandler.class);
+        MinecraftForge.EVENT_BUS.register(OnServerStartedManager.class); // Enregistrement de OnServerStartedManager
 
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         modBus.addListener(this::commonSetup);
@@ -70,12 +71,6 @@ public class Npcshopkeeper {
         NpcshopkeeperModItems.REGISTRY.register(modBus);
         NpcshopkeeperModMenus.REGISTRY.register(modBus);
         NpcshopkeeperModTabs.REGISTRY.register(modBus);
-    }
-
-    @SubscribeEvent
-    public void onServerStarting(ServerStartedEvent event) {
-        onServerStarted(event);
-        LOGGER.info("Event onServerStarting executed!");
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -126,6 +121,17 @@ public class Npcshopkeeper {
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
+        
+        List<AbstractMap.SimpleEntry<Runnable, Integer>> actions = new ArrayList<>();
+        workQueue.forEach(work -> {
+            work.setValue(work.getValue() - 1);
+            if (work.getValue() == 0)
+                actions.add(work);
+        });
+        actions.forEach(e -> {
+            e.getKey().run();
+            workQueue.remove(e);
+        });
     }
     
     // Méthode utilitaire pour logger uniquement si le mode debug est activé

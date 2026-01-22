@@ -15,6 +15,7 @@ import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
 import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import fr.renblood.npcshopkeeper.manager.trade.MoneyCalculator;
+import fr.renblood.npcshopkeeper.manager.trade.TradeSessionManager;
 import fr.renblood.npcshopkeeper.manager.trade.XpReferenceManager;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -43,7 +44,7 @@ public class TradeProcedure {
 
 	private static Trade getTradeByName(String name) {
 		JsonRepository<Trade> repo = new JsonRepository<>(
-				Paths.get(JsonFileManager.path),
+				Paths.get(OnServerStartedManager.PATH),
 				"trades",
 				Trade::fromJson,
 				Trade::toJson
@@ -55,7 +56,7 @@ public class TradeProcedure {
 
 	private static TradeHistory getTradeHistoryById(String id) {
 		JsonRepository<TradeHistory> repo = new JsonRepository<>(
-				Paths.get(JsonFileManager.pathHistory),
+				Paths.get(OnServerStartedManager.PATH_HISTORY),
 				"history",
 				TradeHistory::fromJson,
 				TradeHistory::toJson
@@ -67,7 +68,7 @@ public class TradeProcedure {
 
 	private static void markTradeAsFinished(ServerPlayer player, String id) {
 		JsonRepository<TradeHistory> repo = new JsonRepository<>(
-				Paths.get(JsonFileManager.pathHistory),
+				Paths.get(OnServerStartedManager.PATH_HISTORY),
 				"history",
 				TradeHistory::fromJson,
 				TradeHistory::toJson
@@ -96,35 +97,28 @@ public class TradeProcedure {
 
 				Map<Integer, Slot> slots = (Map<Integer, Slot>) rawSlots;
 
-				// Read trade name + id from slot 12
-				ItemStack categoryStack = slots.get(12).getItem();
-				if (categoryStack.isEmpty() || !categoryStack.hasCustomHoverName()) {
-					LOGGER.warn("Slot 12 vide ou sans nom, impossible de récupérer l'ID du trade.");
+				// Récupération de l'ID du trade depuis le TradeSessionManager
+				String tradeId = TradeSessionManager.getTradeId(player.getUUID());
+				
+				if (tradeId == null || tradeId.isEmpty()) {
+					LOGGER.warn("Impossible de valider : ID de trade introuvable dans la session.");
+					// Fallback sur le slot 12 si la session est vide (pour compatibilité)
+					ItemStack categoryStack = slots.get(12).getItem();
+					if (!categoryStack.isEmpty() && categoryStack.hasCustomHoverName()) {
+						String label = categoryStack.getHoverName().getString();
+						int lastSpaceIndex = label.lastIndexOf(' ');
+						if (lastSpaceIndex != -1) {
+							tradeId = label.substring(lastSpaceIndex + 1);
+						}
+					}
+				}
+				
+				if (tradeId == null || tradeId.isEmpty()) {
+					LOGGER.warn("Echec total de récupération de l'ID du trade.");
 					return;
 				}
 
-				String label = categoryStack.getHoverName().getString();
-				// Le format est "NomDuTrade UUID"
-				// On cherche le dernier espace pour séparer le nom de l'UUID
-				int lastSpaceIndex = label.lastIndexOf(' ');
-				if (lastSpaceIndex == -1) {
-					// Fallback si le format est différent (ex: avec crochets)
-					label = label.replace("[","").replace("]","");
-					lastSpaceIndex = label.lastIndexOf(' ');
-				}
-				
-				String tradeName, tradeId;
-				if (lastSpaceIndex != -1) {
-					tradeName = label.substring(0, lastSpaceIndex);
-					tradeId = label.substring(lastSpaceIndex + 1);
-				} else {
-					// Fallback ultime
-					var parts = label.split(" ", 2);
-					tradeName = parts[0];
-					tradeId = (parts.length > 1) ? parts[1] : "";
-				}
-
-				Npcshopkeeper.debugLog(LOGGER, "Tentative de validation du trade : " + tradeName + " (ID: " + tradeId + ")");
+				Npcshopkeeper.debugLog(LOGGER, "Tentative de validation du trade (ID: " + tradeId + ")");
 
 				TradeHistory th = getTradeHistoryById(tradeId);
 				boolean ongoing = (th != null && !th.isFinished());
@@ -133,6 +127,8 @@ public class TradeProcedure {
 					LOGGER.warn("Le trade " + tradeId + " est déjà fini ou introuvable.");
 					return;
 				}
+				
+				String tradeName = th.getTradeName();
 
 				// Validate item/req slots (0/1,2/3,...)
 				if (isValidSlotPair(slots,0,1,player)
@@ -145,6 +141,10 @@ public class TradeProcedure {
 					clearAndRemoveSlots(player, slots);
 					giveRewards(player, slots, tradeId, tradeName);
 					markTradeAsFinished(player, tradeId);
+					
+					// Nettoyage de la session
+					TradeSessionManager.clearTradeId(player.getUUID());
+
 					player.containerMenu.broadcastChanges();
 
 					// ── SUPPRESSION DU PNJ À LA FIN DU TRADE ───────────────────────

@@ -10,6 +10,7 @@ import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import fr.renblood.npcshopkeeper.manager.trade.MoneyCalculator;
 import fr.renblood.npcshopkeeper.manager.trade.PriceReferenceManager;
+import fr.renblood.npcshopkeeper.manager.trade.TradeSessionManager;
 import fr.renblood.npcshopkeeper.manager.trade.XpReferenceManager;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -84,6 +85,10 @@ public class TradePrepareProcedure {
         }
 
         Npcshopkeeper.debugLog(LOGGER, "Trade ID: " + id + " (Existing: " + checkExist + ")");
+        
+        // SAUVEGARDE DE L'ID DANS LA SESSION (CRUCIAL POUR LA VALIDATION/ANNULATION)
+        TradeSessionManager.setTradeId(_player.getUUID(), id);
+        Npcshopkeeper.debugLog(LOGGER, "Trade ID saved to session for player " + _player.getName().getString());
 
         // 3️⃣ Prepare slots
         Object menu = _player.containerMenu;
