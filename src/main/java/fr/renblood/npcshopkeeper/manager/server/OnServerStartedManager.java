@@ -40,6 +40,7 @@ public class OnServerStartedManager {
     public static String PATH_HISTORY;
     public static String PATH_CONSTANT;
     public static String PATH_PRICE;
+    public static String PATH_XP; // Nouveau chemin
     public static String PATH_COMMERCIAL;
     public static String PATH_NPCS;
 
@@ -57,6 +58,7 @@ public class OnServerStartedManager {
         PATH_HISTORY    = root.resolve("npcshopkeeper/trade_history.json").toString();
         PATH_CONSTANT   = root.resolve("npcshopkeeper/constant.json").toString();
         PATH_PRICE      = root.resolve("npcshopkeeper/price_references.json").toString();
+        PATH_XP         = root.resolve("npcshopkeeper/xp_references.json").toString(); // Init
         PATH_COMMERCIAL = root.resolve("npcshopkeeper/commercial_road.json").toString();
         PATH_NPCS       = root.resolve("npcshopkeeper/trades_npcs.json").toString();
 
@@ -65,6 +67,7 @@ public class OnServerStartedManager {
         checkFileExists(PATH_HISTORY, "trade_history.json");
         checkFileExists(PATH_CONSTANT, "constant.json");
         checkFileExists(PATH_PRICE, "price_references.json");
+        checkFileExists(PATH_XP, "xp_references.json"); // Check
         checkFileExists(PATH_COMMERCIAL, "commercial_road.json");
         checkFileExists(PATH_NPCS, "trades_npcs.json");
         // ────────────────────────────────────────────────────────────────────
@@ -210,7 +213,22 @@ public class OnServerStartedManager {
 
     private static void checkFileExists(String path, String desc) {
         File f = new File(path);
-        if (!f.exists()) LOGGER.error("Le fichier {} n'existe pas : {}", desc, path);
+        if (!f.exists()) {
+            // Création du fichier vide si nécessaire pour éviter les erreurs de lecture
+            if (desc.equals("xp_references.json")) {
+                try {
+                    f.getParentFile().mkdirs();
+                    try (java.io.FileWriter w = new java.io.FileWriter(f)) {
+                        w.write("{\"references\": []}");
+                    }
+                    LOGGER.info("Fichier {} créé.", desc);
+                } catch (Exception e) {
+                    LOGGER.error("Impossible de créer {}", desc, e);
+                }
+            } else {
+                LOGGER.error("Le fichier {} n'existe pas : {}", desc, path);
+            }
+        }
         else             LOGGER.info("Le fichier {} existe : {}", desc, path);
     }
 }

@@ -5,16 +5,20 @@ import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
+import fr.renblood.npcshopkeeper.data.price.TradeItemInfo;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
 import fr.renblood.npcshopkeeper.data.trade.TradeResult;
+import fr.renblood.npcshopkeeper.manager.integration.MedievalCoinsIntegration;
 import fr.renblood.npcshopkeeper.manager.npc.ActiveNpcManager;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
 import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import fr.renblood.npcshopkeeper.manager.trade.MoneyCalculator;
+import fr.renblood.npcshopkeeper.manager.trade.XpReferenceManager;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -305,13 +309,40 @@ public class TradeProcedure {
 		// Récupérer le résultat du trade et placer l'item dans le slot 10
 		TradeResult result = getTradeByName(tradeName).getResult();
 		if (result == null) {
-			LOGGER.error("Aucun résultat trouvé pour le trade : " + tradeName);
-			return;
+			// LOGGER.error("Aucun résultat trouvé pour le trade : " + tradeName);
+			// return; // <-- SUPPRIMÉ : On continue même si pas de résultat bonus
+		} else {
+			ResourceLocation itemResource = new ResourceLocation(result.getItem());
+			Item item = BuiltInRegistries.ITEM.get(itemResource);
+			Npcshopkeeper.debugLog(LOGGER, "Ajout de " + result.getQuantity() + " de " + result.getItem() + " dans le slot 10.");
+			setSlot(_slots, 10, new ItemStack(item), result.getQuantity());
 		}
-		ResourceLocation itemResource = new ResourceLocation(result.getItem());
-		Item item = BuiltInRegistries.ITEM.get(itemResource);
-		Npcshopkeeper.debugLog(LOGGER, "Ajout de " + result.getQuantity() + " de " + result.getItem() + " dans le slot 10.");
-		setSlot(_slots, 10, new ItemStack(item), result.getQuantity());
+		
+		// ── CALCUL ET DISTRIBUTION DE L'XP ───────────────────────────────────
+		Map<String, Float> xpGains = new HashMap<>(); // Job -> Total XP
+		
+		for (TradeItemInfo info : tradeHistory.getTradeItems()) {
+			XpReferenceManager.XpInfo xpRef = XpReferenceManager.getXpReference(info.getItem());
+			if (xpRef != null) {
+				String job = xpRef.job;
+				float xpPerItem = xpRef.getRandomXp(); // Utilisation de la valeur aléatoire entre min et max
+				float totalXp = xpPerItem * info.getQuantity();
+				
+				xpGains.put(job, xpGains.getOrDefault(job, 0f) + totalXp);
+				
+				// Log de vérification
+				player.displayClientMessage(Component.literal("XP calculée pour " + info.getItem() + " : " + totalXp + " (" + job + ")"), false);
+			} else {
+				// Log si pas de ref
+				// player.displayClientMessage(Component.literal("Pas de ref XP pour " + info.getItem()), false);
+			}
+		}
+		
+		for (Map.Entry<String, Float> entry : xpGains.entrySet()) {
+			MedievalCoinsIntegration.addXp(player, entry.getKey(), entry.getValue());
+			player.displayClientMessage(Component.literal("Envoi XP à MedievalCoins : " + entry.getKey() + " -> " + entry.getValue()), false);
+		}
+		// ─────────────────────────────────────────────────────────────────────
 
 		// Si nécessaire, diffuser les changements de l'inventaire
 		player.containerMenu.broadcastChanges();

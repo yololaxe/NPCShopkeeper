@@ -30,8 +30,7 @@ public class RoadTickScheduler {
         for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
             int current = timers.getOrDefault(road, 0);
             
-            // Utilisation du mode debug pour les logs fréquents
-            Npcshopkeeper.debugLog(LOGGER, "⏱️ Tick - Road : {} | timer={}", road.getName(), current);
+            // Npcshopkeeper.debugLog(LOGGER, "⏱️ Tick - Road : {} | timer={}", road.getName(), current); // Commenté
 
             if (current <= 0) {
                 LOGGER.info("🔁 Timer écoulé pour : {}", road.getName());

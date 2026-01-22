@@ -47,7 +47,7 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 		super(NpcshopkeeperModMenus.TRADE.get(), id);
 		this.entity = inv.player;
 		this.world = inv.player.level();
-		this.internal = new ItemStackHandler(15);
+		this.internal = new ItemStackHandler(16); // Augmenté à 16 pour inclure le slot XP (index 15)
 		BlockPos pos = null;
 		if (extraData != null) {
 			pos = extraData.readBlockPos();
@@ -265,6 +265,21 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 				return false;
 			}
 		}));
+		// Slot 15 : Affichage XP (positionné en haut à droite, par exemple x=180, y=-23)
+		this.customSlots.put(15, this.addSlot(new SlotItemHandler(internal, 15, 164, -23) {
+			private final int slot = 15;
+
+			@Override
+			public boolean mayPickup(Player entity) {
+				return false;
+			}
+
+			@Override
+			public boolean mayPlace(ItemStack stack) {
+				return false;
+			}
+		}));
+		
 		for (int si = 0; si < 3; ++si)
 			for (int sj = 0; sj < 9; ++sj)
 				this.addSlot(new Slot(inv, sj + (si + 1) * 9, 12 + 8 + sj * 18, 0 + 84 + si * 18));
@@ -292,16 +307,16 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 		if (slot != null && slot.hasItem()) {
 			ItemStack itemstack1 = slot.getItem();
 			itemstack = itemstack1.copy();
-			if (index < 15) {
-				if (!this.moveItemStackTo(itemstack1, 15, this.slots.size(), true))
+			if (index < 16) { // Mise à jour de la taille (15 -> 16)
+				if (!this.moveItemStackTo(itemstack1, 16, this.slots.size(), true))
 					return ItemStack.EMPTY;
 				slot.onQuickCraft(itemstack1, itemstack);
-			} else if (!this.moveItemStackTo(itemstack1, 0, 15, false)) {
-				if (index < 15 + 27) {
-					if (!this.moveItemStackTo(itemstack1, 15 + 27, this.slots.size(), true))
+			} else if (!this.moveItemStackTo(itemstack1, 0, 16, false)) {
+				if (index < 16 + 27) {
+					if (!this.moveItemStackTo(itemstack1, 16 + 27, this.slots.size(), true))
 						return ItemStack.EMPTY;
 				} else {
-					if (!this.moveItemStackTo(itemstack1, 15, 15 + 27, false))
+					if (!this.moveItemStackTo(itemstack1, 16, 16 + 27, false))
 						return ItemStack.EMPTY;
 				}
 				return ItemStack.EMPTY;
@@ -413,6 +428,8 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 						continue;
 					if (j == 14)
 						continue;
+					if (j == 15) // Ne pas drop l'item d'XP
+						continue;
 					playerIn.drop(internal.extractItem(j, internal.getStackInSlot(j).getCount(), false), false);
 				}
 			} else {
@@ -430,6 +447,8 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 					if (i == 13)
 						continue;
 					if (i == 14)
+						continue;
+					if (i == 15) // Ne pas rendre l'item d'XP
 						continue;
 					playerIn.getInventory().placeItemBackInInventory(internal.extractItem(i, internal.getStackInSlot(i).getCount(), false));
 				}

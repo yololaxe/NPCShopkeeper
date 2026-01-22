@@ -1,8 +1,8 @@
 package fr.renblood.npcshopkeeper.procedures.trade;
 
-import fr.renblood.npcshopkeeper.data.io.JsonFileManager; // for path
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
+import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import fr.renblood.npcshopkeeper.world.inventory.TradeMenu;
 import fr.renblood.npcshopkeeper.procedures.trade.TradePrepareProcedure;
 import io.netty.buffer.Unpooled;
@@ -38,8 +38,16 @@ public class TradeCommandProcedure {
 		// Charger dynamiquement la liste des noms de trades depuis trades.json
 		List<String> tradeNames;
 		try {
+			// Utilisation de OnServerStartedManager.PATH au lieu de JsonFileManager.path
+			String path = OnServerStartedManager.PATH;
+			if (path == null) {
+				LOGGER.error("Chemin trades.json non initialisé !");
+				if (entity instanceof Player p) p.displayClientMessage(Component.literal("Erreur interne : Chemins non chargés."), false);
+				return;
+			}
+
 			JsonRepository<Trade> repo = new JsonRepository<>(
-					Paths.get(JsonFileManager.path),
+					Paths.get(path),
 					"trades",
 					Trade::fromJson,
 					Trade::toJson
@@ -99,6 +107,13 @@ public class TradeCommandProcedure {
 			});
 
 			LOGGER.info("Trade menu opened successfully for player: {}", serverPlayer.getName().getString());
+			
+			// Appel de TradePrepareProcedure
+			// Note : Ceci est appelé immédiatement côté serveur, mais le menu côté client peut prendre quelques ms à s'ouvrir.
+			// TradePrepareProcedure doit manipuler le containerMenu du joueur.
+			// Si openScreen n'a pas encore mis à jour containerMenu, ça peut échouer.
+			// Mais NetworkHooks.openScreen est synchrone pour la partie serveur (création du menu).
+
 			TradePrepareProcedure.execute(entity, cleanTradeName, npcId, npcName);
 
 		} catch (Exception e) {

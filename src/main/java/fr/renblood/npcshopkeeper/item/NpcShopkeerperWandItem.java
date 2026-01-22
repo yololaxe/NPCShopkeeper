@@ -4,6 +4,7 @@ import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.io.JsonFileManager; // pour path
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
+import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import fr.renblood.npcshopkeeper.procedures.route.RightClickNpcShopkeeperWandProcedure;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -58,8 +59,15 @@ public class NpcShopkeerperWandItem extends Item {
 		// 3) Load valid categories **only once**, on the server
 		Set<String> validCategories;
 		try {
+			// Utilisation de OnServerStartedManager.PATH au lieu de JsonFileManager.path
+			String tradePath = OnServerStartedManager.PATH;
+			if (tradePath == null) {
+				Npcshopkeeper.LOGGER.error("Le chemin vers trades.json n'est pas initialisé !");
+				return InteractionResultHolder.fail(wand);
+			}
+			
 			validCategories = new JsonRepository<>(
-					Paths.get(JsonFileManager.path),
+					Paths.get(tradePath),
 					"trades",
 					Trade::fromJson,
 					Trade::toJson

@@ -5,6 +5,7 @@ import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
+import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import fr.renblood.npcshopkeeper.procedures.trade.TradeCommandProcedure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -97,8 +98,15 @@ public class TradeNpcEntity extends Villager {
     }
 
     private void applyModelById(UUID id) {
+        // Utilisation de OnServerStartedManager.PATH_NPCS au lieu de JsonFileManager.pathNpcs
+        String path = OnServerStartedManager.PATH_NPCS;
+        if (path == null) {
+            LOGGER.error("[TradeNpcEntity] Impossible de charger le modèle : chemin trades_npcs.json non initialisé.");
+            return;
+        }
+
         TradeNpc model = new JsonRepository<>(
-                Paths.get(JsonFileManager.pathNpcs),
+                Paths.get(path),
                 "npcs",
                 TradeNpc::fromJson,
                 TradeNpc::toJson
@@ -170,9 +178,16 @@ public class TradeNpcEntity extends Villager {
             }
 
             try {
+                // Vérification des chemins avant utilisation
+                if (OnServerStartedManager.PATH_HISTORY == null || OnServerStartedManager.PATH == null) {
+                    LOGGER.error("Chemins JSON non initialisés dans mobInteract !");
+                    serverPlayer.displayClientMessage(Component.literal("Erreur interne : Chemins de fichiers non trouvés."), true);
+                    return InteractionResult.FAIL;
+                }
+
                 // 1) Charger l’historique des trades
                 JsonRepository<TradeHistory> historyRepo = new JsonRepository<>(
-                        Paths.get(JsonFileManager.pathHistory),
+                        Paths.get(OnServerStartedManager.PATH_HISTORY),
                         "history",
                         TradeHistory::fromJson,
                         TradeHistory::toJson
@@ -204,7 +219,7 @@ public class TradeNpcEntity extends Villager {
                     // Nouveau trade : en choisir un au hasard dans la catégorie
                     if (this.tradeCategory != null && !this.tradeCategory.isEmpty()) {
                         JsonRepository<Trade> tradeRepo = new JsonRepository<>(
-                                Paths.get(JsonFileManager.path),
+                                Paths.get(OnServerStartedManager.PATH),
                                 "trades",
                                 Trade::fromJson,
                                 Trade::toJson

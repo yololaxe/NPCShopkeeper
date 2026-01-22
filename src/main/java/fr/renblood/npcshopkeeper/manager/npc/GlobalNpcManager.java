@@ -2,6 +2,7 @@ package fr.renblood.npcshopkeeper.manager.npc;
 
 import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
+import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -31,9 +32,17 @@ public class GlobalNpcManager {
         inactiveNpcs.clear();
         activeNpcs.clear();
 
-        JsonObject root = JsonFileManager.readJsonFile(JsonFileManager.pathConstant);
+        // Utilisation de OnServerStartedManager.PATH_CONSTANT au lieu de JsonFileManager.pathConstant
+        // car JsonFileManager.pathConstant peut être null si initialisé trop tôt
+        String path = OnServerStartedManager.PATH_CONSTANT;
+        if (path == null) {
+            LOGGER.error("Chemin constant.json non initialisé !");
+            return;
+        }
+
+        JsonObject root = JsonFileManager.readJsonFile(path);
         if (!root.has("npcs") || !root.get("npcs").isJsonObject()) {
-            LOGGER.error("Aucune clé 'npcs' valide dans : " + JsonFileManager.pathConstant);
+            LOGGER.error("Aucune clé 'npcs' valide dans : " + path);
             return;
         }
 
@@ -94,7 +103,13 @@ public class GlobalNpcManager {
         }
 
         // 2. Sauvegarde dans constant.json
-        JsonObject root = JsonFileManager.readJsonFile(JsonFileManager.pathConstant);
+        String path = OnServerStartedManager.PATH_CONSTANT;
+        if (path == null) {
+            LOGGER.error("Impossible de sauvegarder le PNJ : chemin constant.json non initialisé.");
+            return false;
+        }
+
+        JsonObject root = JsonFileManager.readJsonFile(path);
         if (root == null) root = new JsonObject();
         
         if (!root.has("npcs")) {
@@ -119,7 +134,7 @@ public class GlobalNpcManager {
         
         npcsObj.add(name, newNpc);
         
-        try (FileWriter writer = new FileWriter(JsonFileManager.pathConstant)) {
+        try (FileWriter writer = new FileWriter(path)) {
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             gson.toJson(root, writer);
             LOGGER.info("Nouveau PNJ sauvegardé : " + name);
