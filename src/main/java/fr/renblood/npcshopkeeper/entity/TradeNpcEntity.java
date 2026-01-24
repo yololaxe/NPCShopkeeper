@@ -1,5 +1,6 @@
 package fr.renblood.npcshopkeeper.entity;
 
+import fr.renblood.npcshopkeeper.command.OpenTravelGuiCommand;
 import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
@@ -43,6 +44,10 @@ public class TradeNpcEntity extends Villager {
     private static final Logger LOGGER = LogManager.getLogger(TradeNpcEntity.class);
     private static final EntityDataAccessor<String> TEXTURE =
             SynchedEntityData.defineId(TradeNpcEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Boolean> IS_CAPTAIN =
+            SynchedEntityData.defineId(TradeNpcEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<String> PORT_NAME =
+            SynchedEntityData.defineId(TradeNpcEntity.class, EntityDataSerializers.STRING);
 
     private TradeNpc tradeNpc;
     private String npcId;
@@ -65,6 +70,8 @@ public class TradeNpcEntity extends Villager {
     protected void defineSynchedData() {
         super.defineSynchedData();
         this.entityData.define(TEXTURE, "textures/entity/banker.png");
+        this.entityData.define(IS_CAPTAIN, false);
+        this.entityData.define(PORT_NAME, "");
     }
 
     @Override
@@ -76,7 +83,13 @@ public class TradeNpcEntity extends Villager {
             CompoundTag tag
     ) {
         SpawnGroupData result = super.finalizeSpawn(world, difficulty, reason, data, tag);
-        if (tag != null && tag.hasUUID("TradeNpcId")) {
+        
+        // Si c'est un capitaine, on force la texture ici aussi pour le premier spawn
+        if (this.isCaptain()) {
+            this.entityData.set(TEXTURE, "textures/entity/captain.png");
+            this.setCustomName(Component.literal("Captain " + this.getPortName()));
+            this.setCustomNameVisible(true);
+        } else if (tag != null && tag.hasUUID("TradeNpcId")) {
             applyModelById(tag.getUUID("TradeNpcId"));
         }
         return result;
@@ -88,17 +101,39 @@ public class TradeNpcEntity extends Villager {
         if (npcId != null) {
             tag.putUUID("TradeNpcId", UUID.fromString(npcId));
         }
+        tag.putBoolean("IsCaptain", this.isCaptain());
+        tag.putString("PortName", this.getPortName());
     }
 
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        
+        // Chargement des données de Capitaine
+        if (tag.contains("IsCaptain")) {
+            this.setCaptain(tag.getBoolean("IsCaptain"));
+        }
+        if (tag.contains("PortName")) {
+            this.setPortName(tag.getString("PortName"));
+        }
+
+        // Si c'est un capitaine, on ignore le chargement du modèle TradeNpc
+        if (this.isCaptain()) {
+            this.setCustomName(Component.literal("Captain " + this.getPortName()));
+            this.setCustomNameVisible(true);
+            this.entityData.set(TEXTURE, "textures/entity/captain.png");
+            return;
+        }
+
         if (tag.hasUUID("TradeNpcId")) {
             applyModelById(tag.getUUID("TradeNpcId"));
         }
     }
 
     private void applyModelById(UUID id) {
+        // Si c'est un capitaine, on ne charge pas de modèle
+        if (this.isCaptain()) return;
+
         // Force l'initialisation des chemins si nécessaire (Lazy Init)
         MinecraftServer server = this.level().getServer();
         if (server != null) {
@@ -165,6 +200,35 @@ public class TradeNpcEntity extends Villager {
         return this.tradeNpc;
     }
 
+    public boolean isCaptain() {
+        return this.entityData.get(IS_CAPTAIN);
+    }
+
+    public void setCaptain(boolean isCaptain) {
+        this.entityData.set(IS_CAPTAIN, isCaptain);
+        // Mise à jour immédiate du nom et de la texture si on devient capitaine
+        if (isCaptain) {
+            this.entityData.set(TEXTURE, "textures/entity/captain.png");
+            if (this.getPortName() != null && !this.getPortName().isEmpty()) {
+                this.setCustomName(Component.literal("Captain " + this.getPortName()));
+                this.setCustomNameVisible(true);
+            }
+        }
+    }
+
+    public String getPortName() {
+        return this.entityData.get(PORT_NAME);
+    }
+
+    public void setPortName(String portName) {
+        this.entityData.set(PORT_NAME, portName);
+        // Mise à jour du nom si on est déjà capitaine
+        if (this.isCaptain()) {
+            this.setCustomName(Component.literal("Captain " + portName));
+            this.setCustomNameVisible(true);
+        }
+    }
+
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(1, new RandomStrollGoal(this, 0.5D));
@@ -175,6 +239,20 @@ public class TradeNpcEntity extends Villager {
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         // Côté serveur : gérer le trade
         if (!this.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
+
+            // ── Logique Capitaine de Port ──
+            if (this.isCaptain()) {
+                long time = this.level().getDayTime() % 24000;
+                // 5 minutes réelles = 5 * 60 * 20 ticks = 6000 ticks
+                // Le jour commence à 0. Donc de 0 à 6000.
+                if (time >= 0 && time <= 6000) {
+                    serverPlayer.displayClientMessage(Component.literal("⚓ Bienvenue au port de " + this.getPortName() + " !"), false);
+                    OpenTravelGuiCommand.openGui(serverPlayer, this.getPortName());
+                } else {
+                    serverPlayer.displayClientMessage(Component.literal("Le capitaine est en pause. Revenez demain matin !"), true);
+                }
+                return InteractionResult.SUCCESS;
+            }
             
             // Affichage d’un texte aléatoire si défini (une seule fois)
             if (this.texts != null && !this.texts.isEmpty()) {

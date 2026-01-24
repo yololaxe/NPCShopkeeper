@@ -35,5 +35,6 @@ public class NpcshopkeeperModMenus {
 	public static final RegistryObject<MenuType<SeeRoadsMenu>> SEE_ROADS = REGISTRY.register("see_roads", () -> IForgeMenuType.create(SeeRoadsMenu::new));
 	public static final RegistryObject<MenuType<RoadDetailsMenu>> ROAD_DETAILS = REGISTRY.register("road_details", () -> IForgeMenuType.create((id, inv, extraData) -> new RoadDetailsMenu(id, inv, extraData)));
 	public static final RegistryObject<MenuType<CreateNpcMenu>> CREATE_NPC = REGISTRY.register("create_npc", () -> IForgeMenuType.create((id, inv, extraData) -> new CreateNpcMenu(id, inv, extraData)));
+    public static final RegistryObject<MenuType<TravelMenu>> TRAVEL = REGISTRY.register("travel", () -> IForgeMenuType.create(TravelMenu::new));
 
 }

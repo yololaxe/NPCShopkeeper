@@ -6,18 +6,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class JsonFileManager {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    // Ces variables statiques sont initialisées au chargement de la classe,
-    // AVANT que OnServerStartedManager.PATH ne soit défini (qui est null au début).
-    // Donc elles valent null et ne sont jamais mises à jour.
-    
-    // Solution : Utiliser des getters ou accéder directement à OnServerStartedManager
-    
     public static String path         = OnServerStartedManager.PATH;
     public static String pathHistory  = OnServerStartedManager.PATH_HISTORY;
     public static String pathConstant = OnServerStartedManager.PATH_CONSTANT;
@@ -34,7 +29,8 @@ public class JsonFileManager {
         Path p = Path.of(readPath);
         try {
             if (!Files.exists(p)) return new JsonObject();
-            String content = Files.readString(p);
+            // Force l'encodage UTF-8 pour éviter MalformedInputException
+            String content = Files.readString(p, StandardCharsets.UTF_8);
             JsonElement el = JsonParser.parseString(content);
             return el.isJsonObject() ? el.getAsJsonObject() : new JsonObject();
         } catch (IOException e) {
@@ -50,7 +46,8 @@ public class JsonFileManager {
             return;
         }
 
-        try (FileWriter w = new FileWriter(Path.of(writePath).toFile())) {
+        // Force l'encodage UTF-8 lors de l'écriture
+        try (FileWriter w = new FileWriter(Path.of(writePath).toFile(), StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(obj, w);
         } catch (IOException e) {
             LOGGER.error("Écriture JSON échouée: {}", writePath, e);

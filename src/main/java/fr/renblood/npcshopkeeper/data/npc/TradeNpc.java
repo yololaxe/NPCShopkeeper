@@ -27,7 +27,15 @@ public class TradeNpc {
     public TradeNpc(String npcName, Map<String, Object> npcData, String tradeCategory, BlockPos pos) {
         this.npcName = npcName != null ? npcName : "PNJ sans nom";
         this.npcData = npcData != null ? npcData : new HashMap<>();
-        this.texts = (ArrayList<String>) this.npcData.getOrDefault("Texts", new ArrayList<>());
+        
+        // Correction du cast : on crée une nouvelle ArrayList à partir de la liste (qui peut être immuable)
+        Object rawTexts = this.npcData.getOrDefault("Texts", new ArrayList<>());
+        if (rawTexts instanceof List<?>) {
+            this.texts = new ArrayList<>((List<String>) rawTexts);
+        } else {
+            this.texts = new ArrayList<>();
+        }
+
         this.texture = (String) this.npcData.getOrDefault("Texture", "textures/entity/" + npcName.toLowerCase() + ".png");
         this.tradeCategory = tradeCategory != null ? tradeCategory : "null";
         this.pos = pos != null ? pos : new BlockPos(0, 0, 0);
@@ -39,7 +47,15 @@ public class TradeNpc {
         this.npcId = npcId;
         this.npcName = npcName != null ? npcName : "PNJ sans nom";
         this.npcData = npcData != null ? npcData : new HashMap<>();
-        this.texts = (ArrayList<String>) this.npcData.getOrDefault("Texts", new ArrayList<>());
+        
+        // Correction du cast ici aussi
+        Object rawTexts = this.npcData.getOrDefault("Texts", new ArrayList<>());
+        if (rawTexts instanceof List<?>) {
+            this.texts = new ArrayList<>((List<String>) rawTexts);
+        } else {
+            this.texts = new ArrayList<>();
+        }
+
         this.texture = (String) this.npcData.getOrDefault("Texture", "textures/entity/" + npcName.toLowerCase() + ".png");
         this.tradeCategory = tradeCategory != null ? tradeCategory : "null";
         this.pos = pos != null ? pos : new BlockPos(0, 0, 0);

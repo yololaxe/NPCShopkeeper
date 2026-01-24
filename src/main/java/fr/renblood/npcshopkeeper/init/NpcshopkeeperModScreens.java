@@ -8,6 +8,7 @@ import fr.renblood.npcshopkeeper.client.gui.CreateNpcScreen;
 import fr.renblood.npcshopkeeper.client.gui.NpcShopkeeperWandGuiScreen;
 import fr.renblood.npcshopkeeper.client.gui.RoadDetailsScreen;
 import fr.renblood.npcshopkeeper.client.gui.SeeRoadsScreen;
+import fr.renblood.npcshopkeeper.client.gui.TravelScreen;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -31,6 +32,7 @@ public class NpcshopkeeperModScreens {
 			MenuScreens.register(NpcshopkeeperModMenus.SEE_ROADS.get(), SeeRoadsScreen::new);
 			MenuScreens.register(NpcshopkeeperModMenus.ROAD_DETAILS.get(), RoadDetailsScreen::new);
 			MenuScreens.register(NpcshopkeeperModMenus.CREATE_NPC.get(), CreateNpcScreen::new);
+			MenuScreens.register(NpcshopkeeperModMenus.TRAVEL.get(), TravelScreen::new);
 
 		});
 	}

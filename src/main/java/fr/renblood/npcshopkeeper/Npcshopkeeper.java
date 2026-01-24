@@ -7,6 +7,7 @@ import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModTabs;
 import fr.renblood.npcshopkeeper.manager.road.RoadTickScheduler;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
+import fr.renblood.npcshopkeeper.network.PacketHandler;
 import fr.renblood.npcshopkeeper.world.WorldEventHandler;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.network.FriendlyByteBuf;
@@ -74,12 +75,13 @@ public class Npcshopkeeper {
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
-        event.enqueueWork(() ->
-                EntityRenderers.register(
-                        TRADE_NPC_ENTITY.get(),
-                        TradeNpcRenderer::new
-                )
-        );
+        event.enqueueWork(() -> {
+            EntityRenderers.register(
+                    TRADE_NPC_ENTITY.get(),
+                    TradeNpcRenderer::new
+            );
+            PacketHandler.init(); // Initialisation du PacketHandler
+        });
     }
 
     // Network channel setup

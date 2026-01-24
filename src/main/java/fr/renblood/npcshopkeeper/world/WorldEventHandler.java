@@ -40,6 +40,7 @@ public class WorldEventHandler {
         initializeFile(folder, "price_references.json", "{\"references\": []}");
         initializeFile(folder, "commercial_road.json",  "{\"roads\": []}");
         initializeFile(folder, "trades_npcs.json",     "{\"npcs\": []}");
+        initializeFile(folder, "ports.json",            "{\"ports\": []}"); // Ajout de ports.json
         initializeFile(folder, "constant.json",         getDefaultConstantJson());
     }
 
@@ -55,6 +56,12 @@ public class WorldEventHandler {
         if (!(evt.getLevel() instanceof ServerLevel world)) return;
         Entity entity = evt.getEntity();
         if (!(entity instanceof TradeNpcEntity npcEnt)) return;
+
+        // Si c'est un capitaine, on ignore la logique TradeNpc
+        if (npcEnt.isCaptain()) {
+            LOGGER.info("onEntityJoin: Capitaine détecté ({}), pas de modèle TradeNpc requis.", npcEnt.getPortName());
+            return;
+        }
 
         TradeNpc model = new JsonRepository<>(
                 Paths.get(OnServerStartedManager.PATH_NPCS),
