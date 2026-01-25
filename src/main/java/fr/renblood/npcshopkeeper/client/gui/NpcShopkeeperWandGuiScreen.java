@@ -213,7 +213,7 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 				51, 68, e -> {
 			if (true) {
 				Npcshopkeeper.PACKET_HANDLER.sendToServer(
-						new NpcShopkeeperWandGuiButtonMessage(0, x, y, z, menu.getCategory()) // Inclure la catégorie
+						new NpcShopkeeperWandGuiButtonMessage(0, x, y, z, menu.getCategory(), name.getValue(), points.getValue(), minTimer.getValue(), maxTimer.getValue())
 				);
 			}
 		}

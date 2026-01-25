@@ -43,14 +43,17 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 	private Entity boundEntity = null;
 	private BlockEntity boundBlockEntity = null;
     
-    // Stockage de l'ID du trade directement dans le menu
-    public String tradeId = "";
+    // Stockage des infos du trade
+    public String tradeName = "";
+    public String npcId = "";
+    public String npcName = "";
 
 	public TradeMenu(int id, Inventory inv, FriendlyByteBuf extraData) {
 		super(NpcshopkeeperModMenus.TRADE.get(), id);
 		this.entity = inv.player;
 		this.world = inv.player.level();
 		this.internal = new ItemStackHandler(16); // Augmenté à 16 pour inclure le slot XP (index 15)
+		
 		BlockPos pos = null;
 		if (extraData != null) {
 			pos = extraData.readBlockPos();
@@ -58,33 +61,24 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 			this.y = pos.getY();
 			this.z = pos.getZ();
 			access = ContainerLevelAccess.create(world, pos);
-		}
-		if (pos != null) {
-			if (extraData.readableBytes() == 1) { // bound to item
-				byte hand = extraData.readByte();
-				ItemStack itemstack = hand == 0 ? this.entity.getMainHandItem() : this.entity.getOffhandItem();
-				this.boundItemMatcher = () -> itemstack == (hand == 0 ? this.entity.getMainHandItem() : this.entity.getOffhandItem());
-				itemstack.getCapability(ForgeCapabilities.ITEM_HANDLER, null).ifPresent(capability -> {
-					this.internal = capability;
-					this.bound = true;
-				});
-			} else if (extraData.readableBytes() > 1) { // bound to entity
-				extraData.readByte(); // drop padding
-				boundEntity = world.getEntity(extraData.readVarInt());
-				if (boundEntity != null)
-					boundEntity.getCapability(ForgeCapabilities.ITEM_HANDLER, null).ifPresent(capability -> {
-						this.internal = capability;
-						this.bound = true;
-					});
-			} else { // might be bound to block
-				boundBlockEntity = this.world.getBlockEntity(pos);
-				if (boundBlockEntity != null)
-					boundBlockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER, null).ifPresent(capability -> {
-						this.internal = capability;
-						this.bound = true;
-					});
+			
+			// Lecture des données supplémentaires envoyées par TradeCommandProcedure
+			// Ordre : BlockPos, String (tradeName), String (npcId), String (npcName)
+			if (extraData.readableBytes() > 0) {
+			    try {
+                    this.tradeName = extraData.readUtf();
+                    this.npcId = extraData.readUtf();
+                    this.npcName = extraData.readUtf();
+                } catch (Exception e) {
+                    // Si la lecture échoue (ex: ancien format ou autre appel), on ignore silencieusement
+                    // pour ne pas crash, mais on loggue si possible.
+                }
 			}
 		}
+		
+		// La logique "bound to entity/block" générée par MCreator est supprimée ici car elle entrait en conflit
+		// avec nos données personnalisées. On suppose que le trade est toujours "virtuel" ou lié au BlockPos.
+
 		this.customSlots.put(0, this.addSlot(new SlotItemHandler(internal, 0, 14, 19) {
 			private final int slot = 0;
 

@@ -123,8 +123,9 @@ public class CreateTradeScreen extends AbstractContainerScreen<CreateTradeMenu> 
 		this.addWidget(this.trade_name);
 		imagebutton_check = new ImageButton(this.leftPos + 221, this.topPos + 115, 51, 34, 0, 0, 34, new ResourceLocation("npcshopkeeper:textures/screens/atlas/imagebutton_check.png"), 51, 68, e -> {
 			if (true) {
-				Npcshopkeeper.PACKET_HANDLER.sendToServer(new CreateTradeButtonMessage(0, x, y, z));
-				CreateTradeButtonMessage.handleButtonAction(entity, 0, x, y, z);
+				// Envoi du nom du trade dans le packet
+				Npcshopkeeper.PACKET_HANDLER.sendToServer(new CreateTradeButtonMessage(0, x, y, z, trade_name.getValue()));
+				CreateTradeButtonMessage.handleButtonAction(entity, 0, x, y, z, trade_name.getValue());
 			}
 		});
 		guistate.put("button:imagebutton_check", imagebutton_check);

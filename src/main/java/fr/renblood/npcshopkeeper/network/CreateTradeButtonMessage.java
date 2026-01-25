@@ -23,19 +23,22 @@ import java.util.HashMap;
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 public class CreateTradeButtonMessage {
 	private final int buttonID, x, y, z;
+	private final String tradeName; // Ajout du nom du trade
 
 	public CreateTradeButtonMessage(FriendlyByteBuf buffer) {
 		this.buttonID = buffer.readInt();
 		this.x = buffer.readInt();
 		this.y = buffer.readInt();
 		this.z = buffer.readInt();
+		this.tradeName = buffer.readUtf(); // Lecture du nom
 	}
 
-	public CreateTradeButtonMessage(int buttonID, int x, int y, int z) {
+	public CreateTradeButtonMessage(int buttonID, int x, int y, int z, String tradeName) {
 		this.buttonID = buttonID;
 		this.x = x;
 		this.y = y;
 		this.z = z;
+		this.tradeName = tradeName;
 	}
 
 	public static void buffer(CreateTradeButtonMessage message, FriendlyByteBuf buffer) {
@@ -43,6 +46,7 @@ public class CreateTradeButtonMessage {
 		buffer.writeInt(message.x);
 		buffer.writeInt(message.y);
 		buffer.writeInt(message.z);
+		buffer.writeUtf(message.tradeName); // Écriture du nom
 	}
 
 	public static void handler(CreateTradeButtonMessage message, Supplier<NetworkEvent.Context> contextSupplier) {
@@ -53,20 +57,21 @@ public class CreateTradeButtonMessage {
 			int x = message.x;
 			int y = message.y;
 			int z = message.z;
-			handleButtonAction(entity, buttonID, x, y, z);
+			String tradeName = message.tradeName;
+			handleButtonAction(entity, buttonID, x, y, z, tradeName);
 		});
 		context.setPacketHandled(true);
 	}
 
-	public static void handleButtonAction(Player entity, int buttonID, int x, int y, int z) {
+	public static void handleButtonAction(Player entity, int buttonID, int x, int y, int z, String tradeName) {
 		Level world = entity.level();
 		HashMap guistate = CreateTradeMenu.guistate;
 		// security measure to prevent arbitrary chunk generation
 		if (!world.hasChunkAt(new BlockPos(x, y, z)))
 			return;
 		if (buttonID == 0) {
-
-			CreateTradeValidationProcedure.execute(entity, guistate);
+			// On passe le tradeName directement à la procédure
+			CreateTradeValidationProcedure.execute(entity, guistate, tradeName);
 		}
 	}
 

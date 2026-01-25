@@ -21,6 +21,10 @@ import java.util.function.Supplier;
 public class NpcShopkeeperWandGuiButtonMessage {
 	private final int buttonID, x, y, z;
 	private final String category;
+	private final String name;
+	private final String points;
+	private final String minTimer;
+	private final String maxTimer;
 
 
 	// Constructeur pour désérialisation
@@ -29,16 +33,24 @@ public class NpcShopkeeperWandGuiButtonMessage {
 		this.x = buffer.readInt();
 		this.y = buffer.readInt();
 		this.z = buffer.readInt();
-		this.category = buffer.readUtf(32767); // Lire la catégorie
+		this.category = buffer.readUtf(32767);
+		this.name = buffer.readUtf(32767);
+		this.points = buffer.readUtf(32767);
+		this.minTimer = buffer.readUtf(32767);
+		this.maxTimer = buffer.readUtf(32767);
 	}
 
 	// Constructeur pour création
-	public NpcShopkeeperWandGuiButtonMessage(int buttonID, int x, int y, int z, String category) {
+	public NpcShopkeeperWandGuiButtonMessage(int buttonID, int x, int y, int z, String category, String name, String points, String minTimer, String maxTimer) {
 		this.buttonID = buttonID;
 		this.x = x;
 		this.y = y;
 		this.z = z;
-		this.category = category; // Initialiser la catégorie
+		this.category = category;
+		this.name = name;
+		this.points = points;
+		this.minTimer = minTimer;
+		this.maxTimer = maxTimer;
 	}
 
 	// Sérialisation
@@ -47,7 +59,11 @@ public class NpcShopkeeperWandGuiButtonMessage {
 		buffer.writeInt(message.x);
 		buffer.writeInt(message.y);
 		buffer.writeInt(message.z);
-		buffer.writeUtf(message.category); // Écrire la catégorie
+		buffer.writeUtf(message.category);
+		buffer.writeUtf(message.name);
+		buffer.writeUtf(message.points);
+		buffer.writeUtf(message.minTimer);
+		buffer.writeUtf(message.maxTimer);
 	}
 
 	// Désérialisation
@@ -55,24 +71,23 @@ public class NpcShopkeeperWandGuiButtonMessage {
 		NetworkEvent.Context context = contextSupplier.get();
 		context.enqueueWork(() -> {
 			Player entity = context.getSender();
-			handleButtonAction(entity, message.buttonID, message.x, message.y, message.z, message.category);
+			handleButtonAction(entity, message.buttonID, message.x, message.y, message.z, message.category, message.name, message.points, message.minTimer, message.maxTimer);
 		});
 		context.setPacketHandled(true);
 	}
 
-	public static void handleButtonAction(Player entity, int buttonID, int x, int y, int z, String category) {
+	public static void handleButtonAction(Player entity, int buttonID, int x, int y, int z, String category, String name, String points, String minTimer, String maxTimer) {
 		Level world = entity.level();
 		if (!world.hasChunkAt(new BlockPos(x, y, z))) return;
 
-		// Appeler la procédure associée
 		if (buttonID == 0) {
-			ValidNpcShopkeeperWandGuiProcedure.execute(entity, NpcShopkeeperWandGuiMenu.guistate, category);
+			// On passe toutes les valeurs reçues à la procédure
+			ValidNpcShopkeeperWandGuiProcedure.execute(entity, NpcShopkeeperWandGuiMenu.guistate, category, name, points, minTimer, maxTimer);
 		}
 	}
 	@SubscribeEvent
 	public static void registerMessage(FMLCommonSetupEvent event) {
-		Npcshopkeeper.PACKET_HANDLER.registerMessage(
-				0, // ID du message
+		Npcshopkeeper.addNetworkMessage(
 				NpcShopkeeperWandGuiButtonMessage.class,
 				NpcShopkeeperWandGuiButtonMessage::buffer,
 				NpcShopkeeperWandGuiButtonMessage::new,
@@ -80,5 +95,3 @@ public class NpcShopkeeperWandGuiButtonMessage {
 		);
 	}
 }
-
-

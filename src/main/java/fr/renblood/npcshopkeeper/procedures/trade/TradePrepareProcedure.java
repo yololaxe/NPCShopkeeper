@@ -1,6 +1,6 @@
 package fr.renblood.npcshopkeeper.procedures.trade;
 
-import com.ibm.icu.impl.Pair;
+import org.apache.commons.lang3.tuple.Pair;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
@@ -133,7 +133,7 @@ public class TradePrepareProcedure {
                 Pair<Integer,Integer> minMax = PriceReferenceManager.findReferenceByItem(
                         tItem.getItem(), _player
                 );
-                price = rnd.nextInt(minMax.second - minMax.first + 1) + minMax.first;
+                price = rnd.nextInt(minMax.getRight() - minMax.getLeft() + 1) + minMax.getLeft();
                 qty   = tItem.getMin() + rnd.nextInt(tItem.getMax() - tItem.getMin() + 1);
             }
 

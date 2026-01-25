@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.HashMap;
 
 public class CreateTradeValidationProcedure {
-	public static void execute(Entity entity, HashMap guistate) {
+	public static void execute(Entity entity, HashMap guistate, String tradeName) {
 		if (entity == null || guistate == null)
 			return;
 
@@ -57,11 +57,11 @@ public class CreateTradeValidationProcedure {
 			categoryItem = ((Slot) _slots.get(11)).getItem();
 
 			if (categoryItem != null && !categoryItem.isEmpty() && categoryItem.getItem() != Items.AIR){
-				if (!(guistate.containsKey("text:trade_name") ? ((EditBox) guistate.get("text:trade_name")).getValue() : "").isEmpty()) {
+				// Utilisation du tradeName passé en paramètre au lieu de guistate
+				if (tradeName != null && !tradeName.isEmpty()) {
 					if (trades[0] != null && trades[1] != null) { // On vérifie qu'il y a au moins un trade
-						_player.displayClientMessage(Component.literal(BuiltInRegistries.ITEM.getKey(trades[0].getItem()).toString()), false);
+						// _player.displayClientMessage(Component.literal(BuiltInRegistries.ITEM.getKey(trades[0].getItem()).toString()), false); // Debug spam
 
-						String tradeName = ((EditBox) guistate.get("text:trade_name")).getValue();
 						JsonObject newTrade = new JsonObject();
 						newTrade.addProperty("Name", tradeName);
 						newTrade.addProperty("Category", BuiltInRegistries.ITEM.getKey(categoryItem.getItem()).toString()); // Catégorie du premier item

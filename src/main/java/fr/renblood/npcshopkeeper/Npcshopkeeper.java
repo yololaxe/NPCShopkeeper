@@ -1,23 +1,17 @@
 package fr.renblood.npcshopkeeper;
 
-import fr.renblood.npcshopkeeper.client.renderer.TradeNpcRenderer;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModItems;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModTabs;
-import fr.renblood.npcshopkeeper.manager.road.RoadTickScheduler;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import fr.renblood.npcshopkeeper.network.PacketHandler;
 import fr.renblood.npcshopkeeper.world.WorldEventHandler;
-import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -42,7 +36,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static fr.renblood.npcshopkeeper.init.EntityInit.ENTITY_TYPES;
-import static fr.renblood.npcshopkeeper.init.EntityInit.TRADE_NPC_ENTITY;
 
 @Mod(Npcshopkeeper.MODID)
 public class Npcshopkeeper {
@@ -76,10 +69,6 @@ public class Npcshopkeeper {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
-            EntityRenderers.register(
-                    TRADE_NPC_ENTITY.get(),
-                    TradeNpcRenderer::new
-            );
             PacketHandler.init(); // Initialisation du PacketHandler
         });
     }

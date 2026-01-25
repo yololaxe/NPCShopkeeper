@@ -12,19 +12,18 @@ import java.util.HashMap;
 import static fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.getDataSize;
 
 public class ValidNpcShopkeeperWandGuiProcedure {
-	public static void execute(Entity entity, HashMap guistate, String category) {
+	public static void execute(Entity entity, HashMap guistate, String category, String name, String pointsText, String minTimerText, String maxTimerText) {
 		if (entity == null || guistate == null)
 			return;
 
-		String name = guistate.containsKey("text:name") ? ((EditBox) guistate.get("text:name")).getValue() : "";
-		String pointsText = guistate.containsKey("text:points") ? ((EditBox) guistate.get("text:points")).getValue() : "";
-		String minTimerText = guistate.containsKey("text:minTimer") ? ((EditBox) guistate.get("text:minTimer")).getValue() : "";
-		String maxTimerText = guistate.containsKey("text:maxTimer") ? ((EditBox) guistate.get("text:maxTimer")).getValue() : "";
+		// Les valeurs sont maintenant passées en arguments, plus besoin de les chercher dans guistate
+		// String name = guistate.containsKey("text:name") ? ((EditBox) guistate.get("text:name")).getValue() : "";
+		// ...
 
 		int maxPoints = getDataSize();
 
 		// Vérifications des champs
-		if (name.isEmpty()) {
+		if (name == null || name.isEmpty()) {
 			sendMessageToPlayer(entity, "Le champ Name est vide !");
 			return;
 		}
@@ -71,7 +70,7 @@ public class ValidNpcShopkeeperWandGuiProcedure {
 
 		if (entity instanceof ServerPlayer serverPlayer) {
 			Level world = serverPlayer.level();
-			PointDefiningModeProcedure.start(serverPlayer, world, Integer.parseInt(pointsText), minTimer, maxTimer, category, name);
+			PointDefiningModeProcedure.start(serverPlayer, world, points, minTimer, maxTimer, category, name);
 
 			serverPlayer.closeContainer();
 		}
@@ -83,4 +82,3 @@ public class ValidNpcShopkeeperWandGuiProcedure {
 		}
 	}
 }
-

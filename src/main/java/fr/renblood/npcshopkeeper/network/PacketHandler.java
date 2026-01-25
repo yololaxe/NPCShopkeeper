@@ -21,6 +21,7 @@ public class PacketHandler {
         int id = 0;
         INSTANCE.registerMessage(id++, TravelPacket.class, TravelPacket::toBytes, TravelPacket::new, TravelPacket::handle);
         INSTANCE.registerMessage(id++, SyncPortsPacket.class, SyncPortsPacket::toBytes, SyncPortsPacket::new, SyncPortsPacket::handle);
+        INSTANCE.registerMessage(id++, SyncGlobalNpcDataPacket.class, SyncGlobalNpcDataPacket::toBytes, SyncGlobalNpcDataPacket::new, SyncGlobalNpcDataPacket::handle);
     }
 
     public static void sendToServer(Object msg) {

@@ -1,10 +1,10 @@
 package fr.renblood.npcshopkeeper.manager.trade;
 
 import com.google.gson.*;
-import com.ibm.icu.impl.Pair;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.LevelResource;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -25,6 +25,7 @@ public class PriceReferenceManager {
     public static String pathPrice = PATH_PRICE;
 
     // Cache pour éviter de lire le fichier à chaque appel
+    // Utilisation de org.apache.commons.lang3.tuple.Pair au lieu de com.ibm.icu.impl.Pair
     private static final Map<String, Pair<Integer, Integer>> priceCache = new HashMap<>();
     private static long lastCacheUpdate = 0;
 

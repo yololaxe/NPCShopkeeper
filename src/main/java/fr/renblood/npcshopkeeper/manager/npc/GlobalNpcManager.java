@@ -182,6 +182,18 @@ public class GlobalNpcManager {
     public static Map<String, Object> getNpcData(String npcName) {
         return npcDataMap.getOrDefault(npcName, null);
     }
+    
+    // Méthode pour récupérer toutes les données (pour l'envoi au client)
+    public static Map<String, Map<String, Object>> getAllNpcData() {
+        return Collections.unmodifiableMap(npcDataMap);
+    }
+    
+    // Méthode pour recevoir les données côté client
+    public static void setClientData(Map<String, Map<String, Object>> data) {
+        npcDataMap.clear();
+        npcDataMap.putAll(data);
+        LOGGER.info("Données globales des PNJs synchronisées côté client. Total : " + npcDataMap.size());
+    }
 
     public static Set<String> getActiveNpcs() {
         return Collections.unmodifiableSet(activeNpcs);
