@@ -6,7 +6,10 @@ import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
+import fr.renblood.npcshopkeeper.manager.harbor.TravelManager;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
+import fr.renblood.npcshopkeeper.network.PacketHandler;
+import fr.renblood.npcshopkeeper.network.SyncDepartureTimePacket;
 import fr.renblood.npcshopkeeper.procedures.trade.TradeCommandProcedure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -59,6 +62,9 @@ public class TradeNpcEntity extends Villager {
     private TradeHistory tradeHistory;
     private boolean initialized = false;
     private boolean created = false;
+    
+    // Pour éviter de spammer la téléportation à chaque tick
+    private boolean departureProcessed = false;
 
     public TradeNpcEntity(EntityType<? extends TradeNpcEntity> type, Level world) {
         super(type, world);
@@ -73,6 +79,55 @@ public class TradeNpcEntity extends Villager {
         this.entityData.define(IS_CAPTAIN, false);
         this.entityData.define(PORT_NAME, "");
     }
+    
+    @Override
+    public void tick() {
+        super.tick();
+        if (!this.level().isClientSide && this.isCaptain()) {
+            long time = this.level().getDayTime() % 24000;
+            long departureTime = 6000;
+            
+            // Si on atteint l'heure de départ (avec une marge de 20 ticks)
+            if (time >= departureTime && time < departureTime + 20) {
+                if (!departureProcessed) {
+                    processDepartures();
+                    departureProcessed = true;
+                }
+            } else {
+                departureProcessed = false;
+            }
+        }
+    }
+    
+    private void processDepartures() {
+        String portName = this.getPortName();
+        if (portName == null || portName.isEmpty()) return;
+        
+        List<TravelManager.Passenger> passengers = TravelManager.getPassengers(portName);
+        if (passengers.isEmpty()) return;
+        
+        LOGGER.info("Départ du port {} avec {} passagers.", portName, passengers.size());
+        
+        for (TravelManager.Passenger p : passengers) {
+            ServerPlayer player = this.level().getServer().getPlayerList().getPlayer(p.playerUUID);
+            if (player != null) {
+                player.teleportTo(
+                        player.server.getLevel(player.level().dimension()),
+                        p.destination.getPos().getX() + 0.5,
+                        p.destination.getPos().getY(),
+                        p.destination.getPos().getZ() + 0.5,
+                        player.getYRot(),
+                        player.getXRot()
+                );
+                player.displayClientMessage(Component.literal("⚓ Arrivée à " + p.destination.getName() + " !"), true);
+                
+                // Reset HUD
+                PacketHandler.sendToPlayer(new SyncDepartureTimePacket(-1), player);
+            }
+        }
+        
+        TravelManager.clearPassengers(portName);
+    }
 
     @Override
     public SpawnGroupData finalizeSpawn(
@@ -84,7 +139,6 @@ public class TradeNpcEntity extends Villager {
     ) {
         SpawnGroupData result = super.finalizeSpawn(world, difficulty, reason, data, tag);
         
-        // Si c'est un capitaine, on force la texture ici aussi pour le premier spawn
         if (this.isCaptain()) {
             this.entityData.set(TEXTURE, "textures/entity/captain.png");
             this.setCustomName(Component.literal("Captain " + this.getPortName()));
@@ -109,7 +163,6 @@ public class TradeNpcEntity extends Villager {
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         
-        // Chargement des données de Capitaine
         if (tag.contains("IsCaptain")) {
             this.setCaptain(tag.getBoolean("IsCaptain"));
         }
@@ -117,7 +170,6 @@ public class TradeNpcEntity extends Villager {
             this.setPortName(tag.getString("PortName"));
         }
 
-        // Si c'est un capitaine, on ignore le chargement du modèle TradeNpc
         if (this.isCaptain()) {
             this.setCustomName(Component.literal("Captain " + this.getPortName()));
             this.setCustomNameVisible(true);
@@ -131,16 +183,13 @@ public class TradeNpcEntity extends Villager {
     }
 
     private void applyModelById(UUID id) {
-        // Si c'est un capitaine, on ne charge pas de modèle
         if (this.isCaptain()) return;
 
-        // Force l'initialisation des chemins si nécessaire (Lazy Init)
         MinecraftServer server = this.level().getServer();
         if (server != null) {
             OnServerStartedManager.initPaths(server);
         }
 
-        // Utilisation de OnServerStartedManager.PATH_NPCS au lieu de JsonFileManager.pathNpcs
         String path = OnServerStartedManager.PATH_NPCS;
         if (path == null) {
             LOGGER.error("[TradeNpcEntity] Impossible de charger le modèle : chemin trades_npcs.json non initialisé.");
@@ -163,10 +212,6 @@ public class TradeNpcEntity extends Villager {
         }
     }
 
-    /**
-     * Associe un modèle TradeNpc à cette entité,
-     * initialise nom, texture, position, textes, etc.
-     */
     public void setTradeNpc(TradeNpc model) {
         this.tradeNpc = model;
         this.npcId = model.getNpcId();
@@ -177,7 +222,6 @@ public class TradeNpcEntity extends Villager {
                 ? new ArrayList<>(model.getTexts())
                 : Collections.emptyList();
 
-        // applique la texture
         this.entityData.set(TEXTURE, model.getTexture());
         this.setCustomName(Component.literal(this.npcName));
         this.setCustomNameVisible(true);
@@ -193,9 +237,6 @@ public class TradeNpcEntity extends Villager {
                 this.npcId, this.npcName, model.getTexture());
     }
 
-    /**
-     * Récupère le modèle TradeNpc associé.
-     */
     public TradeNpc getTradeNpc() {
         return this.tradeNpc;
     }
@@ -206,7 +247,6 @@ public class TradeNpcEntity extends Villager {
 
     public void setCaptain(boolean isCaptain) {
         this.entityData.set(IS_CAPTAIN, isCaptain);
-        // Mise à jour immédiate du nom et de la texture si on devient capitaine
         if (isCaptain) {
             this.entityData.set(TEXTURE, "textures/entity/captain.png");
             if (this.getPortName() != null && !this.getPortName().isEmpty()) {
@@ -222,7 +262,6 @@ public class TradeNpcEntity extends Villager {
 
     public void setPortName(String portName) {
         this.entityData.set(PORT_NAME, portName);
-        // Mise à jour du nom si on est déjà capitaine
         if (this.isCaptain()) {
             this.setCustomName(Component.literal("Captain " + portName));
             this.setCustomNameVisible(true);
@@ -237,14 +276,10 @@ public class TradeNpcEntity extends Villager {
 
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
-        // Côté serveur : gérer le trade
         if (!this.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
 
-            // ── Logique Capitaine de Port ──
             if (this.isCaptain()) {
                 long time = this.level().getDayTime() % 24000;
-                // 5 minutes réelles = 5 * 60 * 20 ticks = 6000 ticks
-                // Le jour commence à 0. Donc de 0 à 6000.
                 if (time >= 0 && time <= 6000) {
                     serverPlayer.displayClientMessage(Component.literal("⚓ Bienvenue au port de " + this.getPortName() + " !"), false);
                     OpenTravelGuiCommand.openGui(serverPlayer, this.getPortName());
@@ -254,7 +289,6 @@ public class TradeNpcEntity extends Villager {
                 return InteractionResult.SUCCESS;
             }
             
-            // Affichage d’un texte aléatoire si défini (une seule fois)
             if (this.texts != null && !this.texts.isEmpty()) {
                 String randomText = this.texts.get(RandomSource.create().nextInt(this.texts.size()));
                 serverPlayer.displayClientMessage(Component.literal(randomText), false);
@@ -263,14 +297,12 @@ public class TradeNpcEntity extends Villager {
             }
 
             try {
-                // Vérification des chemins avant utilisation
                 if (OnServerStartedManager.PATH_HISTORY == null || OnServerStartedManager.PATH == null) {
                     LOGGER.error("Chemins JSON non initialisés dans mobInteract !");
                     serverPlayer.displayClientMessage(Component.literal("Erreur interne : Chemins de fichiers non trouvés."), true);
                     return InteractionResult.FAIL;
                 }
 
-                // 1) Charger l’historique des trades
                 JsonRepository<TradeHistory> historyRepo = new JsonRepository<>(
                         Paths.get(OnServerStartedManager.PATH_HISTORY),
                         "history",
@@ -279,13 +311,11 @@ public class TradeNpcEntity extends Villager {
                 );
                 List<TradeHistory> histories = historyRepo.loadAll();
 
-                // 2) Chercher un trade non terminé pour ce PNJ
                 Optional<TradeHistory> ongoing = histories.stream()
                         .filter(th -> !th.isFinished() && th.getNpcId().equals(this.npcId))
                         .findFirst();
 
                 if (ongoing.isPresent()) {
-                    // Trade existant : reprendre
                     this.tradeHistory = ongoing.get();
                     String existingTradeName = this.tradeHistory.getTradeName();
                     serverPlayer.displayClientMessage(
@@ -301,7 +331,6 @@ public class TradeNpcEntity extends Villager {
                             this.npcName
                     );
                 } else {
-                    // Nouveau trade : en choisir un au hasard dans la catégorie
                     if (this.tradeCategory != null && !this.tradeCategory.isEmpty()) {
                         JsonRepository<Trade> tradeRepo = new JsonRepository<>(
                                 Paths.get(OnServerStartedManager.PATH),
@@ -356,7 +385,6 @@ public class TradeNpcEntity extends Villager {
 
     @Override
     public void rewardTradeXp(MerchantOffer offer) {
-        // pas de xp
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -385,7 +413,6 @@ public class TradeNpcEntity extends Villager {
 
     @Override
     public void travel(Vec3 movement) {
-        // reste en place
     }
 
     @Override
@@ -395,15 +422,12 @@ public class TradeNpcEntity extends Villager {
 
     @Override
     protected void doPush(Entity entity) {
-        // pas de push
     }
 
     @Override
     public boolean isNoGravity() {
         return true;
     }
-
-    // getters
 
     public String getNpcId()      { return npcId; }
     public String getNpcName()    { return npcName; }

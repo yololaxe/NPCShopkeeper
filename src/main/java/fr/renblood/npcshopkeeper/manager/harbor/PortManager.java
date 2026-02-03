@@ -23,8 +23,9 @@ public class PortManager {
     // Liste locale pour le client (synchronisée via packet)
     private static List<Port> clientPorts = new ArrayList<>();
     
-    // Configuration du prix (par défaut 50 blocs pour 1 fer)
+    // Configuration
     private static int blocksPerIron = 50;
+    private static int dayLengthInMinutes = 20; // Défaut vanilla
 
     public static void init(MinecraftServer server) {
         PATH_PORTS = server.getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/ports.json").toString();
@@ -74,18 +75,33 @@ public class PortManager {
         blocksPerIron = value;
         saveConfig();
     }
-
-    // Sauvegarde/Chargement simple de la config dans le même fichier ports.json (ou un fichier dédié si on préfère)
-    // Pour simplifier et ne pas casser JsonRepository qui gère une liste, on va utiliser un fichier séparé "harbor_config.json"
-    // ou on triche en lisant/écrivant manuellement.
-    // Allons au plus simple : un fichier dédié "harbor_config.json".
     
+    // Gestion de la durée du jour
+    public static int getDayLengthInMinutes() {
+        return dayLengthInMinutes;
+    }
+
+    public static void setDayLengthInMinutes(int value) {
+        dayLengthInMinutes = value;
+        saveConfig();
+    }
+    
+    // Méthode pour mettre à jour la config côté client (sans sauvegarder)
+    public static void setClientConfig(int blocks, int dayLength) {
+        blocksPerIron = blocks;
+        dayLengthInMinutes = dayLength;
+        LOGGER.info("Config harbor synchronisée côté client : 1 fer/" + blocks + " blocs, Jour=" + dayLength + "min");
+    }
+
     private static void loadConfig() {
         try {
             String configPath = PATH_PORTS.replace("ports.json", "harbor_config.json");
             JsonObject json = JsonFileManager.readJsonFile(configPath);
             if (json.has("blocksPerIron")) {
                 blocksPerIron = json.get("blocksPerIron").getAsInt();
+            }
+            if (json.has("dayLengthInMinutes")) {
+                dayLengthInMinutes = json.get("dayLengthInMinutes").getAsInt();
             }
         } catch (Exception e) {
             LOGGER.error("Erreur chargement config port", e);
@@ -97,6 +113,7 @@ public class PortManager {
             String configPath = PATH_PORTS.replace("ports.json", "harbor_config.json");
             JsonObject json = new JsonObject();
             json.addProperty("blocksPerIron", blocksPerIron);
+            json.addProperty("dayLengthInMinutes", dayLengthInMinutes);
             JsonFileManager.writeJsonFile(configPath, json);
         } catch (Exception e) {
             LOGGER.error("Erreur sauvegarde config port", e);

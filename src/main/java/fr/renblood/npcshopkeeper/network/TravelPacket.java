@@ -1,13 +1,16 @@
 package fr.renblood.npcshopkeeper.network;
 
 import fr.renblood.npcshopkeeper.data.harbor.Port;
+import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.manager.harbor.PortManager;
+import fr.renblood.npcshopkeeper.manager.harbor.TravelManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.AABB;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -45,13 +48,13 @@ public class TravelPacket {
             }
             Port destPort = destPortOpt.get();
 
-            // Calcul du coût réel en "Iron Coins" avec le prix configuré
+            // Calcul du coût réel
             double distance = Math.sqrt(player.blockPosition().distSqr(destPort.getPos()));
             int blocksPerIron = PortManager.getBlocksPerIron();
             int costInIron = (int) Math.ceil(distance / (double)blocksPerIron);
             costInIron = Math.max(1, costInIron);
 
-            // Récupération des items du mod medieval_coins
+            // Récupération des items
             Item ironCoin = ForgeRegistries.ITEMS.getValue(new ResourceLocation("medieval_coins", "iron_coin"));
             Item bronzeCoin = ForgeRegistries.ITEMS.getValue(new ResourceLocation("medieval_coins", "bronze_coin"));
             Item silverCoin = ForgeRegistries.ITEMS.getValue(new ResourceLocation("medieval_coins", "silver_coin"));
@@ -62,7 +65,7 @@ public class TravelPacket {
                 return;
             }
 
-            // Calcul de la richesse totale du joueur en "Iron Coins"
+            // Calcul richesse
             long totalWealth = 0;
             totalWealth += player.getInventory().countItem(ironCoin);
             totalWealth += player.getInventory().countItem(bronzeCoin) * 64L;
@@ -70,8 +73,7 @@ public class TravelPacket {
             totalWealth += player.getInventory().countItem(goldCoin) * 64L * 64L * 64L;
 
             if (totalWealth >= costInIron) {
-                // Paiement : On retire le montant exact en convertissant si nécessaire
-                
+                // Paiement
                 player.getInventory().clearOrCountMatchingItems(p -> p.getItem() == ironCoin, -1, player.inventoryMenu.getCraftSlots());
                 player.getInventory().clearOrCountMatchingItems(p -> p.getItem() == bronzeCoin, -1, player.inventoryMenu.getCraftSlots());
                 player.getInventory().clearOrCountMatchingItems(p -> p.getItem() == silverCoin, -1, player.inventoryMenu.getCraftSlots());
@@ -79,16 +81,13 @@ public class TravelPacket {
 
                 long remainingWealth = totalWealth - costInIron;
                 
-                // Redistribution du reste
+                // Rendu monnaie
                 long goldToGive = remainingWealth / (64 * 64 * 64);
                 remainingWealth %= (64 * 64 * 64);
-                
                 long silverToGive = remainingWealth / (64 * 64);
                 remainingWealth %= (64 * 64);
-                
                 long bronzeToGive = remainingWealth / 64;
                 remainingWealth %= 64;
-                
                 long ironToGive = remainingWealth;
 
                 giveItems(player, goldCoin, (int) goldToGive);
@@ -96,16 +95,28 @@ public class TravelPacket {
                 giveItems(player, bronzeCoin, (int) bronzeToGive);
                 giveItems(player, ironCoin, (int) ironToGive);
 
-                // Téléportation
-                player.teleportTo(
-                        player.server.getLevel(player.level().dimension()),
-                        destPort.getPos().getX() + 0.5,
-                        destPort.getPos().getY(),
-                        destPort.getPos().getZ() + 0.5,
-                        player.getYRot(),
-                        player.getXRot()
-                );
-                player.displayClientMessage(Component.literal("⚓ Arrivée à " + destPort.getName() + " !"), true);
+                // Inscription au voyage au lieu de téléportation immédiate
+                // Trouver le capitaine le plus proche pour identifier le port de départ
+                AABB checkArea = new AABB(player.blockPosition()).inflate(10);
+                TradeNpcEntity captain = player.level().getEntitiesOfClass(TradeNpcEntity.class, checkArea, e -> e.isCaptain()).stream().findFirst().orElse(null);
+                
+                if (captain != null) {
+                    String fromPort = captain.getPortName();
+                    TravelManager.registerPassenger(player, fromPort, destPort);
+                    
+                    // Calcul du temps restant (6000 - temps actuel)
+                    long currentTime = player.level().getDayTime() % 24000;
+                    long departureTime = 6000; // Départ à 6000 ticks
+                    long timeRemaining = departureTime - currentTime;
+                    
+                    // Envoi du temps de départ au client pour le HUD
+                    PacketHandler.sendToPlayer(new SyncDepartureTimePacket(departureTime), player);
+                    
+                    player.displayClientMessage(Component.literal("✅ Billet acheté ! Départ prévu dans " + (timeRemaining / 20) + " secondes."), true);
+                } else {
+                    player.displayClientMessage(Component.literal("Erreur : Capitaine introuvable pour valider le départ."), true);
+                }
+
             } else {
                 player.displayClientMessage(Component.literal("Pas assez de pièces ! Coût : " + formatCost(costInIron)), true);
             }

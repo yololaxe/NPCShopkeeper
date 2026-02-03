@@ -17,7 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CreateNpcScreen extends AbstractContainerScreen<CreateNpcMenu> {
-    private static final ResourceLocation TEXTURE = new ResourceLocation("textures/gui/container/generic_54.png");
+    // Nouvelle texture personnalisée
+    private static final ResourceLocation TEXTURE = new ResourceLocation("npcshopkeeper", "textures/screens/create_npc.png");
 
     EditBox nameBox;
     EditBox skinBox;
@@ -31,7 +32,8 @@ public class CreateNpcScreen extends AbstractContainerScreen<CreateNpcMenu> {
 
     public CreateNpcScreen(CreateNpcMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        this.imageHeight = 220; // Augmenté pour faire de la place
+        this.imageWidth = 176;
+        this.imageHeight = 222; // Taille standard pour correspondre à la texture
         this.inventoryLabelY = this.imageHeight - 94;
     }
 
@@ -104,10 +106,8 @@ public class CreateNpcScreen extends AbstractContainerScreen<CreateNpcMenu> {
     @Override
     protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        int i = (this.width - this.imageWidth) / 2;
-        int j = (this.height - this.imageHeight) / 2;
-        guiGraphics.blit(TEXTURE, i, j, 0, 0, this.imageWidth, 3 * 18 + 17); // Fond générique
-        guiGraphics.blit(TEXTURE, i, j + 3 * 18 + 17, 0, 126, this.imageWidth, 96);
+        // Utilisation de la surcharge blit qui prend la taille de la texture source (176, 222)
+        guiGraphics.blit(TEXTURE, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight, this.imageWidth, this.imageHeight);
     }
     
     @Override

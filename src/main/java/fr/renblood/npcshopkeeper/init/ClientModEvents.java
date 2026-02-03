@@ -1,9 +1,11 @@
 package fr.renblood.npcshopkeeper.init;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.client.gui.TravelHudOverlay;
 import fr.renblood.npcshopkeeper.client.renderer.TradeNpcRenderer;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -21,5 +23,10 @@ public class ClientModEvents {
                     TradeNpcRenderer::new
             );
         });
+    }
+
+    @SubscribeEvent
+    public static void registerGuiOverlays(RegisterGuiOverlaysEvent event) {
+        event.registerAboveAll("travel_hud", TravelHudOverlay.HUD_TRAVEL);
     }
 }
