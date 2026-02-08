@@ -29,14 +29,14 @@ public class DebugCommand {
                                 .executes(context -> {
                                     boolean enabled = BoolArgumentType.getBool(context, "enabled");
                                     Npcshopkeeper.DEBUG_MODE = enabled;
-                                    context.getSource().sendSuccess(() -> Component.literal("NpcShopkeeper Debug Mode: " + (enabled ? "ENABLED" : "DISABLED")), true);
+                                    context.getSource().sendSuccess(() -> Component.translatable("command.npcshopkeeper.debug.log", (enabled ? "ENABLED" : "DISABLED")), true);
                                     return 1;
                                 })
                         )
                         .executes(context -> {
                             // Toggle si aucun argument n'est fourni
                             Npcshopkeeper.DEBUG_MODE = !Npcshopkeeper.DEBUG_MODE;
-                            context.getSource().sendSuccess(() -> Component.literal("NpcShopkeeper Debug Mode: " + (Npcshopkeeper.DEBUG_MODE ? "ENABLED" : "DISABLED")), true);
+                            context.getSource().sendSuccess(() -> Component.translatable("command.npcshopkeeper.debug.log", (Npcshopkeeper.DEBUG_MODE ? "ENABLED" : "DISABLED")), true);
                             return 1;
                         })
                 )
@@ -55,9 +55,9 @@ public class DebugCommand {
                                             120
                                     ));
                                 }
-                                context.getSource().sendSuccess(() -> Component.literal("Added 30 dummy roads for testing."), true);
+                                context.getSource().sendSuccess(() -> Component.translatable("command.npcshopkeeper.debug.dummy_roads_added"), true);
                             } else {
-                                context.getSource().sendFailure(Component.literal("Enable debug mode first: /npcshopkeeper_debug log true"));
+                                context.getSource().sendFailure(Component.translatable("command.npcshopkeeper.debug.enable_first"));
                             }
                             return 1;
                         })

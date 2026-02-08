@@ -24,15 +24,7 @@ public class PacketHandler {
         INSTANCE.registerMessage(id++, SyncGlobalNpcDataPacket.class, SyncGlobalNpcDataPacket::toBytes, SyncGlobalNpcDataPacket::new, SyncGlobalNpcDataPacket::handle);
         INSTANCE.registerMessage(id++, SyncHarborConfigPacket.class, SyncHarborConfigPacket::toBytes, SyncHarborConfigPacket::new, SyncHarborConfigPacket::handle);
         INSTANCE.registerMessage(id++, SyncDepartureTimePacket.class, SyncDepartureTimePacket::toBytes, SyncDepartureTimePacket::new, SyncDepartureTimePacket::handle);
-        
-        // Enregistrement des autres packets existants (TradeSlotMessage, etc.)
-        // Note: Je ne peux pas voir les autres packets ici, mais il faut s'assurer qu'ils sont enregistrés.
-        // Comme j'ai écrasé le fichier, je dois remettre les enregistrements précédents s'ils étaient là.
-        // D'après la liste des fichiers, il y a TradeSlotMessage, TradeButtonMessage, etc.
-        // Je vais supposer que Npcshopkeeper.addNetworkMessage est utilisé ailleurs pour eux, ou je dois les ajouter ici.
-        // Pour éviter de casser l'existant, je vais utiliser la méthode addNetworkMessage de Npcshopkeeper pour les autres si possible,
-        // mais ici j'utilise INSTANCE directement. C'est un mélange de styles.
-        // Je vais ajouter les packets que je connais.
+        INSTANCE.registerMessage(id++, SyncRoadsPacket.class, SyncRoadsPacket::toBytes, SyncRoadsPacket::new, SyncRoadsPacket::handle); // Nouveau packet
         
         INSTANCE.registerMessage(id++, TradeSlotMessage.class, TradeSlotMessage::buffer, TradeSlotMessage::new, TradeSlotMessage::handler);
         INSTANCE.registerMessage(id++, TradeButtonMessage.class, TradeButtonMessage::buffer, TradeButtonMessage::new, TradeButtonMessage::handler);

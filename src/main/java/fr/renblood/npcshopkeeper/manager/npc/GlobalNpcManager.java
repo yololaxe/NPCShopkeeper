@@ -1,5 +1,6 @@
 package fr.renblood.npcshopkeeper.manager.npc;
 
+import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
@@ -81,7 +82,7 @@ public class GlobalNpcManager {
             }
         }
 
-        LOGGER.info("Données PNJ chargées avec succès. Total PNJs : " + npcDataMap.size() + " (dont " + inactiveNpcs.size() + " shopkeepers)");
+        Npcshopkeeper.debugLog(LOGGER, "Données PNJ chargées avec succès. Total PNJs : " + npcDataMap.size() + " (dont " + inactiveNpcs.size() + " shopkeepers)");
     }
     
     public static boolean registerNewNpc(String name, String texture, boolean isShopkeeper, List<String> texts) {
@@ -137,7 +138,7 @@ public class GlobalNpcManager {
         try (FileWriter writer = new FileWriter(path)) {
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             gson.toJson(root, writer);
-            LOGGER.info("Nouveau PNJ sauvegardé : " + name);
+            Npcshopkeeper.debugLog(LOGGER, "Nouveau PNJ sauvegardé : " + name);
             return true;
         } catch (IOException e) {
             LOGGER.error("Erreur lors de la sauvegarde du nouveau PNJ", e);
@@ -148,7 +149,7 @@ public class GlobalNpcManager {
     public static void activateNpc(TradeNpc npc) {
         if (inactiveNpcs.remove(npc.getNpcName())) {
             activeNpcs.add(npc.getNpcName());
-            LOGGER.info("PNJ activé : " + npc.getNpcName());
+            Npcshopkeeper.debugLog(LOGGER, "PNJ activé : " + npc.getNpcName());
             addActiveNpc(npc);
         }
     }
@@ -162,7 +163,7 @@ public class GlobalNpcManager {
             if (isShopkeeper) {
                 inactiveNpcs.add(npcName);
             }
-            LOGGER.info("PNJ désactivé : " + npcName);
+            Npcshopkeeper.debugLog(LOGGER, "PNJ désactivé : " + npcName);
         }
     }
 
@@ -175,7 +176,7 @@ public class GlobalNpcManager {
         Random random = new Random();
         String randomNpcName = inactiveNpcs.get(random.nextInt(inactiveNpcs.size()));
 
-        LOGGER.info("PNJ inactif aléatoire sélectionné : " + randomNpcName);
+        Npcshopkeeper.debugLog(LOGGER, "PNJ inactif aléatoire sélectionné : " + randomNpcName);
         return randomNpcName;
     }
 
@@ -192,7 +193,7 @@ public class GlobalNpcManager {
     public static void setClientData(Map<String, Map<String, Object>> data) {
         npcDataMap.clear();
         npcDataMap.putAll(data);
-        LOGGER.info("Données globales des PNJs synchronisées côté client. Total : " + npcDataMap.size());
+        Npcshopkeeper.debugLog(LOGGER, "Données globales des PNJs synchronisées côté client. Total : " + npcDataMap.size());
     }
 
     public static Set<String> getActiveNpcs() {

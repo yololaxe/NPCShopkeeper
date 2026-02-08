@@ -77,29 +77,42 @@ public class NpcSpawnerManager {
 
     public static void trySpawnNpcForRoad(ServerLevel world, CommercialRoad road) {
         // Récupère (ou crée) la map des PNJs actifs pour cette route
-        // 0) Si on a déjà un PNJ à chaque position, on ne spawn plus rien
-        int occupied = activeNPCs.getOrDefault(road, new HashMap<>()).size();
+        var roadMap = activeNPCs.computeIfAbsent(road, r -> new HashMap<>());
+
+        // 1) Nettoyage des PNJs invalides (morts ou supprimés) AVANT de vérifier la capacité
+        roadMap.entrySet().removeIf(e -> {
+            Mob mob = e.getValue();
+            if (!(mob instanceof TradeNpcEntity) || mob.isRemoved()) {
+                // Si l'entité est supprimée, on doit libérer le nom du PNJ
+                if (mob instanceof TradeNpcEntity npcEntity) {
+                    String npcName = npcEntity.getNpcName();
+                    if (npcName != null) {
+                        GlobalNpcManager.deactivateNpc(npcName);
+                        LOGGER.info("♻️ PNJ '{}' libéré (mort/despawn) sur la route '{}'", npcName, road.getName());
+                    }
+                    // Retirer aussi de la liste persistante de la route
+                    road.getNpcEntities().remove(npcEntity);
+                }
+                return true; // Supprimer de la map active
+            }
+            return false;
+        });
+
+        // 2) Vérification de la capacité
+        int occupied = roadMap.size();
         int capacity = road.getPositions().size();
         if (occupied >= capacity) {
             LOGGER.info("⚠️ Toutes les positions ({}/{}) sont déjà occupées sur la route '{}', aucun spawn supplémentaire.", occupied, capacity, road.getName());
             return;
         }
-            // Récupère (ou crée) la map des PNJs actifs pour cette route
 
-        var roadMap = activeNPCs.computeIfAbsent(road, r -> new HashMap<>());
-
-        // 1) Nettoyage des PNJs invalides
-        roadMap.entrySet().removeIf(e ->
-                !(e.getValue() instanceof TradeNpcEntity) || e.getValue().isRemoved()
-        );
-
-        // 2) On cherche le premier point libre pour spawn
+        // 3) On cherche le premier point libre pour spawn
         for (BlockPos pt : road.getPositions()) {
             if (roadMap.containsKey(pt)) continue;
 
             LOGGER.info("🧭 Spawn NPC sur route '{}' au point {}", road.getName(), pt);
 
-            // ── 2.1) Choix d'un PNJ inactif
+            // ── 3.1) Choix d'un PNJ inactif
             String npcName = GlobalNpcManager.getRandomInactiveNpc();
             if (npcName == null) {
                 LOGGER.error("❌ Aucun PNJ inactif disponible pour la route '{}'", road.getName());
@@ -107,11 +120,11 @@ public class NpcSpawnerManager {
             }
             var npcData = GlobalNpcManager.getNpcData(npcName);
 
-            // ── 2.2) Création du modèle TradeNpc
+            // ── 3.2) Création du modèle TradeNpc
             TradeNpc modelNpc = new TradeNpc(npcName, npcData, road.getCategory(), pt);
             modelNpc.setRouteNpc(true);
 
-            // ── 2.3) **Chargement et assignation d'un Trade**
+            // ── 3.3) **Chargement et assignation d'un Trade**
             JsonRepository<Trade> tradeRepo = new JsonRepository<>(
                     Paths.get(OnServerStartedManager.PATH),    // chemin vers trades.json
                     "trades",
@@ -129,7 +142,7 @@ public class NpcSpawnerManager {
                 LOGGER.warn("⚠️ Aucun trade disponible pour la catégorie '{}'", modelNpc.getTradeCategory());
             }
 
-            // ── 2.4) Création et initialisation de l'entité
+            // ── 3.4) Création et initialisation de l'entité
             TradeNpcEntity npcEnt = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
             modelNpc.setNpcId(npcEnt.getStringUUID());
             npcEnt.setTradeNpc(modelNpc);
@@ -145,7 +158,7 @@ public class NpcSpawnerManager {
             // Marquer le PNJ comme actif pour qu'il ne soit plus choisi
             GlobalNpcManager.activateNpc(modelNpc);
 
-            // ── 2.7) Persistance du nouveau PNJ dans trades_npcs.json
+            // ── 3.7) Persistance du nouveau PNJ dans trades_npcs.json
             JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
                     Paths.get(OnServerStartedManager.PATH_NPCS),
                     "npcs",

@@ -38,7 +38,7 @@ public class SeeTradesScreen extends AbstractContainerScreen<TradeListMenu> {
                             button -> {
                                 // Action à effectuer lors du clic sur le bouton
                                 Minecraft.getInstance().player.displayClientMessage(
-                                        Component.literal("Trade selected: " + trade.getName()), true);
+                                        Component.translatable("gui.npcshopkeeper.see_trades.selected", trade.getName()), true);
                             })
                     .bounds(this.width / 2 - 100, y + i * 25, 200, 20) // Position et dimensions du bouton
                     .build()

@@ -1,0 +1,86 @@
+{
+  "item.npcshopkeeper.npc_shopkeeper_wand": "Baguette de PNJ Commerçant",
+  "itemGroup.tab_npc_shopkeeper": "NPC Shopkeeper",
+
+  "command.npcshopkeeper.debug.log": "Mode Debug NpcShopkeeper : %s",
+  "command.npcshopkeeper.debug.dummy_roads_added": "30 routes factices ajoutées pour test.",
+  "command.npcshopkeeper.debug.enable_first": "Activez d'abord le mode debug : /npcshopkeeper_debug log true",
+
+  "command.npcshopkeeper.define.not_in_mode": "Vous n'êtes pas en mode définir des points.",
+
+  "command.npcshopkeeper.set_harbor.already_exists": "❌ Un capitaine pour le port '%s' existe déjà ici !",
+  "command.npcshopkeeper.set_harbor.success": "✅ Port '%s' créé et Capitaine spawn !",
+  "command.npcshopkeeper.error.internal": "Erreur interne : %s",
+
+  "command.npcshopkeeper.set_travel_config.price_success": "✅ Prix du voyage mis à jour : 1 Fer pour %s blocs.",
+  "command.npcshopkeeper.set_travel_config.day_length_success": "✅ Durée du jour configurée à %s minutes.",
+
+  "command.npcshopkeeper.set_xp_reference.unknown_job": "Erreur : Métier inconnu '%s'.",
+  "command.npcshopkeeper.set_xp_reference.min_greater_than_max": "Erreur : Min doit être inférieur ou égal à Max.",
+  "command.npcshopkeeper.set_xp_reference.success": "Référence XP définie pour %s : Job=%s, XP=%s-%s",
+  "command.npcshopkeeper.set_xp_reference.error": "Erreur lors de l'enregistrement de la référence XP.",
+
+  "command.npcshopkeeper.spawn_decor_npc.unknown_npc": "❌ PNJ inconnu : %s",
+  "command.npcshopkeeper.spawn_decor_npc.success": "✅ PNJ décoratif '%s' spawn !",
+
+  "command.npcshopkeeper.spawntradenpc.already_running": "La commande spawntradenpc est déjà en cours d'exécution.",
+  "command.npcshopkeeper.spawntradenpc.player_only": "[Étape 1] Cette commande ne peut être exécutée que par un joueur.",
+  "command.npcshopkeeper.spawntradenpc.step1_success": "[Étape 1] Joueur vérifié avec succès.",
+  "command.npcshopkeeper.spawntradenpc.offhand_required": "[Étape 2] Vous devez tenir un item dans votre main secondaire pour spécifier la catégorie de commerce.",
+  "command.npcshopkeeper.spawntradenpc.step2_success": "[Étape 2] Item en main secondaire trouvé : %s",
+  "command.npcshopkeeper.spawntradenpc.step3_success": "[Étape 3] Catégorie de commerce déterminée : %s",
+  "command.npcshopkeeper.spawntradenpc.no_inactive_npc": "Aucun PNJ inactif disponible.",
+  "command.npcshopkeeper.spawntradenpc.data_not_found": "Données introuvables pour le PNJ : %s",
+  "command.npcshopkeeper.spawntradenpc.creation_failed": "Impossible de créer une instance de TradeNpcEntity.",
+  "command.npcshopkeeper.spawntradenpc.error": "[Étape 4] Échec du spawn du PNJ : %s",
+  "command.npcshopkeeper.spawntradenpc.success": "[Étape Finale] Commande exécutée avec succès.",
+
+  "gui.npcshopkeeper.create_npc.title": "Créateur de PNJ",
+  "gui.npcshopkeeper.create_npc.name_placeholder": "Nom du PNJ",
+  "gui.npcshopkeeper.create_npc.skin_placeholder": "Skin (Pseudo ou URL)",
+  "gui.npcshopkeeper.create_npc.is_shopkeeper": "Est un Shopkeeper ?",
+  "gui.npcshopkeeper.create_npc.text1": "Texte 1",
+  "gui.npcshopkeeper.create_npc.text2": "Texte 2",
+  "gui.npcshopkeeper.create_npc.text3": "Texte 3",
+  "gui.npcshopkeeper.create_npc.create_button": "Créer PNJ",
+  "gui.npcshopkeeper.create_npc.label_name": "Nom :",
+  "gui.npcshopkeeper.create_npc.label_skin": "Skin (Pseudo) :",
+
+  "gui.npcshopkeeper.create_trade.label_empty": "->",
+  "gui.npcshopkeeper.create_trade.label_empty1": "->",
+  "gui.npcshopkeeper.create_trade.label_empty2": "->",
+  "gui.npcshopkeeper.create_trade.label_empty3": "->",
+  "gui.npcshopkeeper.create_trade.label_category": "Catégorie",
+  "gui.npcshopkeeper.create_trade.label_create_trade": "Créer Trade",
+  "gui.npcshopkeeper.create_trade.label_item": "Item",
+  "gui.npcshopkeeper.create_trade.trade_name": "Nom du Trade",
+
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.label_time_in_minute": "Temps (min)",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.label_max_points": "Points Max : %s",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.npc_number": "Nombre de PNJ",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.name": "Nom",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.points": "Points",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.minTimer": "Timer Min",
+  "gui.npcshopkeeper.npc_shopkeeper_wand_gui.maxTimer": "Timer Max",
+
+  "gui.npcshopkeeper.road_details.delete_road": "Supprimer Route",
+  "gui.npcshopkeeper.road_details.teleport": "Téléporter",
+
+  "gui.npcshopkeeper.see_roads.title": "Routes Commerciales (Page %s)",
+
+  "gui.npcshopkeeper.see_trades.selected": "Trade sélectionné : %s",
+
+  "gui.npcshopkeeper.travel.title": "Voyage depuis %s",
+  "gui.npcshopkeeper.travel.no_ports": "Aucun port trouvé (Sync requise)",
+  "gui.npcshopkeeper.travel.port_button": "%s (%s)",
+  "gui.npcshopkeeper.travel.current_port": "Port Actuel : %s",
+  "gui.npcshopkeeper.travel.welcome": "⚓ Bienvenue au port de %s !",
+  "gui.npcshopkeeper.travel.captain_break": "Le capitaine est en pause. Revenez demain matin !",
+  "gui.npcshopkeeper.travel.arrival": "⚓ Arrivée à %s !",
+
+  "gui.npcshopkeeper.trade.no_text": "Ce PNJ n'a rien à dire pour le moment.",
+  "gui.npcshopkeeper.trade.resume": "Reprise du trade : %s",
+  "gui.npcshopkeeper.trade.new_trade": "Nouveau trade : %s",
+  "gui.npcshopkeeper.trade.no_trade_in_category": "Aucun trade dans la catégorie : %s",
+  "gui.npcshopkeeper.trade.no_category": "Ce PNJ n'a pas de catégorie de trade assignée."
+}

@@ -2,7 +2,7 @@ package fr.renblood.npcshopkeeper.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
-import fr.renblood.npcshopkeeper.command.SeeRoadsCommand;
+import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.network.SeeRoadsButtonMessage;
 import fr.renblood.npcshopkeeper.world.inventory.SeeRoadsMenu;
 import net.minecraft.client.gui.GuiGraphics;
@@ -11,6 +11,10 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
+
+import java.util.List;
 
 public class SeeRoadsScreen extends AbstractContainerScreen<SeeRoadsMenu> {
     private static final ResourceLocation TEXTURE = new ResourceLocation("textures/gui/container/generic_54.png");
@@ -40,6 +44,37 @@ public class SeeRoadsScreen extends AbstractContainerScreen<SeeRoadsMenu> {
                 Npcshopkeeper.PACKET_HANDLER.sendToServer(new SeeRoadsButtonMessage(page + 1));
             }).bounds(this.leftPos + this.imageWidth - 20, this.topPos - 20, 20, 20).build());
         }
+    }
+
+    @Override
+    protected void slotClicked(Slot slot, int slotId, int mouseButton, ClickType type) {
+        // Intercepter le clic sur les slots de routes (0 à 26)
+        if (slot != null && slot.index >= 0 && slot.index < 27) {
+            // Récupérer la route correspondante via le menu (qui a la liste displayedRoads mais elle est privée/locale)
+            // On peut tricher en récupérant l'item du slot et en cherchant la route par nom, ou mieux :
+            // On envoie l'index du slot au serveur, et le serveur (qui a aussi le menu ouvert) saura quelle route c'est.
+            // Mais SeeRoadsButtonMessage attend un ID de route (String) ou une page (int).
+            
+            // Le plus simple est de récupérer l'item dans le slot, qui est nommé avec le nom de la route.
+            if (slot.hasItem()) {
+                String roadName = slot.getItem().getHoverName().getString();
+                // Trouver la route par nom dans la liste globale (côté client, Npcshopkeeper.COMMERCIAL_ROADS est sync ?)
+                // Attention : Npcshopkeeper.COMMERCIAL_ROADS peut être vide sur le client si pas sync.
+                // Mais le menu a rempli les slots, donc il a les infos.
+                
+                // On va chercher dans la liste globale statique (en espérant qu'elle soit sync, sinon le menu n'aurait rien affiché)
+                CommercialRoad road = Npcshopkeeper.COMMERCIAL_ROADS.stream()
+                        .filter(r -> r.getName().equals(roadName))
+                        .findFirst()
+                        .orElse(null);
+                
+                if (road != null) {
+                    Npcshopkeeper.PACKET_HANDLER.sendToServer(new SeeRoadsButtonMessage(road.getId()));
+                    return; // Ne pas appeler super.slotClicked pour éviter de prendre l'item
+                }
+            }
+        }
+        super.slotClicked(slot, slotId, mouseButton, type);
     }
 
     @Override

@@ -23,14 +23,12 @@ public class OpenTravelGuiCommand {
         NetworkHooks.openScreen(player, new MenuProvider() {
             @Override
             public Component getDisplayName() {
-                return Component.literal("Voyage depuis " + currentPortName);
+                return Component.translatable("gui.npcshopkeeper.travel.title", currentPortName);
             }
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inventory, Player p) {
-                FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-                buf.writeUtf(currentPortName);
-                return new TravelMenu(id, inventory, buf);
+                return new TravelMenu(id, inventory, new FriendlyByteBuf(Unpooled.buffer()).writeUtf(currentPortName));
             }
         }, buf -> buf.writeUtf(currentPortName));
     }

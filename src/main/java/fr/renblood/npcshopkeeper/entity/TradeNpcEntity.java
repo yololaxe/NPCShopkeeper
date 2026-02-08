@@ -7,6 +7,7 @@ import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
 import fr.renblood.npcshopkeeper.manager.harbor.TravelManager;
+import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import fr.renblood.npcshopkeeper.network.PacketHandler;
 import fr.renblood.npcshopkeeper.network.SyncDepartureTimePacket;
@@ -63,7 +64,6 @@ public class TradeNpcEntity extends Villager {
     private boolean initialized = false;
     private boolean created = false;
     
-    // Pour éviter de spammer la téléportation à chaque tick
     private boolean departureProcessed = false;
 
     public TradeNpcEntity(EntityType<? extends TradeNpcEntity> type, Level world) {
@@ -85,9 +85,8 @@ public class TradeNpcEntity extends Villager {
         super.tick();
         if (!this.level().isClientSide && this.isCaptain()) {
             long time = this.level().getDayTime() % 24000;
-            long departureTime = 6000;
+            long departureTime = 4000;
             
-            // Si on atteint l'heure de départ (avec une marge de 20 ticks)
             if (time >= departureTime && time < departureTime + 20) {
                 if (!departureProcessed) {
                     processDepartures();
@@ -119,9 +118,8 @@ public class TradeNpcEntity extends Villager {
                         player.getYRot(),
                         player.getXRot()
                 );
-                player.displayClientMessage(Component.literal("⚓ Arrivée à " + p.destination.getName() + " !"), true);
+                player.displayClientMessage(Component.translatable("gui.npcshopkeeper.travel.arrival", p.destination.getName()), true);
                 
-                // Reset HUD
                 PacketHandler.sendToPlayer(new SyncDepartureTimePacket(-1), player);
             }
         }
@@ -152,11 +150,15 @@ public class TradeNpcEntity extends Villager {
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
-        if (npcId != null) {
-            tag.putUUID("TradeNpcId", UUID.fromString(npcId));
-        }
         tag.putBoolean("IsCaptain", this.isCaptain());
         tag.putString("PortName", this.getPortName());
+        
+        if (this.getPersistentData().getBoolean("IsDecor")) {
+            tag.putBoolean("IsDecor", true);
+            tag.putString("DecorName", this.getPersistentData().getString("DecorName"));
+        } else if (npcId != null) {
+            tag.putUUID("TradeNpcId", UUID.fromString(npcId));
+        }
     }
 
     @Override
@@ -174,6 +176,18 @@ public class TradeNpcEntity extends Villager {
             this.setCustomName(Component.literal("Captain " + this.getPortName()));
             this.setCustomNameVisible(true);
             this.entityData.set(TEXTURE, "textures/entity/captain.png");
+            return;
+        }
+        
+        if (tag.getBoolean("IsDecor")) {
+            String decorName = tag.getString("DecorName");
+            if (!decorName.isEmpty()) {
+                Map<String, Object> npcData = GlobalNpcManager.getNpcData(decorName);
+                if (npcData != null) {
+                    TradeNpc model = new TradeNpc(decorName, npcData, "decor", this.blockPosition());
+                    this.setTradeNpc(model);
+                }
+            }
             return;
         }
 
@@ -280,11 +294,11 @@ public class TradeNpcEntity extends Villager {
 
             if (this.isCaptain()) {
                 long time = this.level().getDayTime() % 24000;
-                if (time >= 0 && time <= 6000) {
-                    serverPlayer.displayClientMessage(Component.literal("⚓ Bienvenue au port de " + this.getPortName() + " !"), false);
+                if (time >= 0 && time <= 4000) {
+                    serverPlayer.displayClientMessage(Component.translatable("gui.npcshopkeeper.travel.welcome", this.getPortName()), false);
                     OpenTravelGuiCommand.openGui(serverPlayer, this.getPortName());
                 } else {
-                    serverPlayer.displayClientMessage(Component.literal("Le capitaine est en pause. Revenez demain matin !"), true);
+                    serverPlayer.displayClientMessage(Component.translatable("gui.npcshopkeeper.travel.captain_break"), true);
                 }
                 return InteractionResult.SUCCESS;
             }
@@ -293,13 +307,13 @@ public class TradeNpcEntity extends Villager {
                 String randomText = this.texts.get(RandomSource.create().nextInt(this.texts.size()));
                 serverPlayer.displayClientMessage(Component.literal(randomText), false);
             } else {
-                serverPlayer.displayClientMessage(Component.literal("Ce PNJ n'a rien à dire pour le moment."), false);
+                serverPlayer.displayClientMessage(Component.translatable("gui.npcshopkeeper.trade.no_text"), false);
             }
 
             try {
                 if (OnServerStartedManager.PATH_HISTORY == null || OnServerStartedManager.PATH == null) {
                     LOGGER.error("Chemins JSON non initialisés dans mobInteract !");
-                    serverPlayer.displayClientMessage(Component.literal("Erreur interne : Chemins de fichiers non trouvés."), true);
+                    serverPlayer.displayClientMessage(Component.translatable("command.npcshopkeeper.error.internal", "Chemins non chargés"), true);
                     return InteractionResult.FAIL;
                 }
 
@@ -319,7 +333,7 @@ public class TradeNpcEntity extends Villager {
                     this.tradeHistory = ongoing.get();
                     String existingTradeName = this.tradeHistory.getTradeName();
                     serverPlayer.displayClientMessage(
-                            Component.literal("Reprise du trade : " + existingTradeName),
+                            Component.translatable("gui.npcshopkeeper.trade.resume", existingTradeName),
                             true
                     );
                     TradeCommandProcedure.execute(
@@ -345,7 +359,7 @@ public class TradeNpcEntity extends Villager {
                         if (!available.isEmpty()) {
                             this.trade = available.get(RandomSource.create().nextInt(available.size()));
                             serverPlayer.displayClientMessage(
-                                    Component.literal("Nouveau trade : " + this.trade.getName()),
+                                    Component.translatable("gui.npcshopkeeper.trade.new_trade", this.trade.getName()),
                                     true
                             );
                             TradeCommandProcedure.execute(
@@ -358,20 +372,20 @@ public class TradeNpcEntity extends Villager {
                             );
                         } else {
                             serverPlayer.displayClientMessage(
-                                    Component.literal("Aucun trade dans la catégorie : " + this.tradeCategory),
+                                    Component.translatable("gui.npcshopkeeper.trade.no_trade_in_category", this.tradeCategory),
                                     true
                             );
                         }
                     } else {
                         serverPlayer.displayClientMessage(
-                                Component.literal("Ce PNJ n'a pas de catégorie de trade assignée."),
+                                Component.translatable("gui.npcshopkeeper.trade.no_category"),
                                 true
                         );
                     }
                 }
             } catch (Exception e) {
                 serverPlayer.displayClientMessage(
-                        Component.literal("Erreur lors de l'échange : " + e.getMessage()),
+                        Component.translatable("command.npcshopkeeper.error.internal", e.getMessage()),
                         true
                 );
                 LOGGER.error("Erreur dans mobInteract de TradeNpcEntity", e);

@@ -44,7 +44,7 @@ public class SetHarborCommand {
                                         e -> e.isCaptain() && e.getPortName().equals(portName)).size() > 0;
 
                                 if (alreadyExists) {
-                                    source.sendFailure(Component.literal("❌ Un capitaine pour le port '" + portName + "' existe déjà ici !"));
+                                    source.sendFailure(Component.translatable("command.npcshopkeeper.set_harbor.already_exists", portName));
                                     return 0;
                                 }
 
@@ -68,11 +68,11 @@ public class SetHarborCommand {
                                 PortManager.addPort(port);
                                 LOGGER.info("Port enregistré: {}", portName);
 
-                                source.sendSuccess(() -> Component.literal("✅ Port '" + portName + "' créé et Capitaine spawn !"), true);
+                                source.sendSuccess(() -> Component.translatable("command.npcshopkeeper.set_harbor.success", portName), true);
                                 return 1;
                             } catch (Exception e) {
                                 LOGGER.error("Erreur critique dans SetHarborCommand", e);
-                                context.getSource().sendFailure(Component.literal("Erreur interne : " + e.getMessage()));
+                                context.getSource().sendFailure(Component.translatable("command.npcshopkeeper.error.internal", e.getMessage()));
                                 return 0;
                             }
                         })

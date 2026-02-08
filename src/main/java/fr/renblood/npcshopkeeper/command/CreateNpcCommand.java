@@ -28,9 +28,14 @@ public class CreateNpcCommand {
         dispatcher.register(Commands.literal("createnpc")
                 .requires(source -> source.hasPermission(2))
                 .executes(context -> {
-                    ServerPlayer player = context.getSource().getPlayerOrException();
-                    openGui(player);
-                    return 1;
+                    try {
+                        ServerPlayer player = context.getSource().getPlayerOrException();
+                        openGui(player);
+                        return 1;
+                    } catch (Exception e) {
+                        context.getSource().sendFailure(Component.translatable("command.npcshopkeeper.error.internal", e.getMessage()));
+                        return 0;
+                    }
                 })
         );
     }
@@ -39,7 +44,7 @@ public class CreateNpcCommand {
         NetworkHooks.openScreen(player, new MenuProvider() {
             @Override
             public Component getDisplayName() {
-                return Component.literal("Créateur de PNJ");
+                return Component.translatable("gui.npcshopkeeper.create_npc.title");
             }
 
             @Override

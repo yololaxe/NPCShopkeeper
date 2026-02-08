@@ -30,7 +30,7 @@ public class SetTravelPriceCommand {
                                     int value = IntegerArgumentType.getInteger(context, "blocks_per_iron");
                                     PortManager.setBlocksPerIron(value);
                                     syncConfig();
-                                    context.getSource().sendSuccess(() -> Component.literal("✅ Prix du voyage mis à jour : 1 Fer pour " + value + " blocs."), true);
+                                    context.getSource().sendSuccess(() -> Component.translatable("command.npcshopkeeper.set_travel_config.price_success", value), true);
                                     return 1;
                                 })
                         )
@@ -41,7 +41,7 @@ public class SetTravelPriceCommand {
                                     int value = IntegerArgumentType.getInteger(context, "minutes");
                                     PortManager.setDayLengthInMinutes(value);
                                     syncConfig();
-                                    context.getSource().sendSuccess(() -> Component.literal("✅ Durée du jour configurée à " + value + " minutes."), true);
+                                    context.getSource().sendSuccess(() -> Component.translatable("command.npcshopkeeper.set_travel_config.day_length_success", value), true);
                                     return 1;
                                 })
                         )

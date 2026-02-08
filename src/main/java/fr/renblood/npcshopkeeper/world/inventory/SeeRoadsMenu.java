@@ -110,11 +110,14 @@ public class SeeRoadsMenu extends AbstractContainerMenu implements Supplier<Map<
 
     @Override
     public void clicked(int slotId, int dragType, ClickType clickType, Player player) {
-        if (slotId >= 0 && slotId < displayedRoads.size()) {
-            CommercialRoad road = displayedRoads.get(slotId);
-            if (road != null) {
-                // Envoyer un packet pour ouvrir les détails de la route
-                Npcshopkeeper.PACKET_HANDLER.sendToServer(new SeeRoadsButtonMessage(road.getId()));
+        // Vérification côté client uniquement pour l'envoi de packet
+        if (player.level().isClientSide()) {
+            if (slotId >= 0 && slotId < displayedRoads.size()) {
+                CommercialRoad road = displayedRoads.get(slotId);
+                if (road != null) {
+                    // Envoyer un packet pour ouvrir les détails de la route
+                    Npcshopkeeper.PACKET_HANDLER.sendToServer(new SeeRoadsButtonMessage(road.getId()));
+                }
             }
         }
         super.clicked(slotId, dragType, clickType, player);

@@ -9,6 +9,7 @@ import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.procedures.trade.TradeCommandProcedure;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.Entity;
@@ -30,21 +31,27 @@ public class TradeCommand {
 	public static void registerCommand(RegisterCommandsEvent event) {
 		event.getDispatcher().register(
 				Commands.literal("trade")
+						.requires(source -> source.hasPermission(2))
 						.then(Commands.argument("name", StringArgumentType.word())
 								.suggests(TRADE_SUGGESTIONS)
 								.executes(ctx -> {
-									Level world = ctx.getSource().getLevel();
-									double x = ctx.getSource().getPosition().x();
-									double y = ctx.getSource().getPosition().y();
-									double z = ctx.getSource().getPosition().z();
-									Entity entity = ctx.getSource().getEntity();
-									if (entity == null && world instanceof ServerLevel sl)
-										entity = FakePlayerFactory.getMinecraft(sl);
-									Direction direction = entity != null ? entity.getDirection() : Direction.DOWN;
-									String inputName = StringArgumentType.getString(ctx, "name");
-									TradeCommandProcedure.execute(world, x, y, z,
-											inputName, entity, "", "");
-									return 0;
+									try {
+										Level world = ctx.getSource().getLevel();
+										double x = ctx.getSource().getPosition().x();
+										double y = ctx.getSource().getPosition().y();
+										double z = ctx.getSource().getPosition().z();
+										Entity entity = ctx.getSource().getEntity();
+										if (entity == null && world instanceof ServerLevel sl)
+											entity = FakePlayerFactory.getMinecraft(sl);
+										Direction direction = entity != null ? entity.getDirection() : Direction.DOWN;
+										String inputName = StringArgumentType.getString(ctx, "name");
+										TradeCommandProcedure.execute(world, x, y, z,
+												inputName, entity, "", "");
+										return 1;
+									} catch (Exception e) {
+										ctx.getSource().sendFailure(Component.translatable("command.npcshopkeeper.error.internal", e.getMessage()));
+										return 0;
+									}
 								})
 						)
 		);

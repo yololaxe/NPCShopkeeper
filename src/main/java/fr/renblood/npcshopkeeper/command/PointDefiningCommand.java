@@ -19,7 +19,7 @@ public class PointDefiningCommand {
                     if (PointDefiningModeProcedure.isInMode(player)) {
                         PointDefiningModeProcedure.getMode(player).removeLastPoint();
                     } else {
-                        player.displayClientMessage(Component.literal("Vous n'êtes pas en mode définir des points."), false);
+                        player.displayClientMessage(Component.translatable("command.npcshopkeeper.define.not_in_mode"), false);
                     }
                     return 1;
                 }))
@@ -28,7 +28,7 @@ public class PointDefiningCommand {
                     if (PointDefiningModeProcedure.isInMode(player)) {
                         PointDefiningModeProcedure.getMode(player).cancel();
                     } else {
-                        player.displayClientMessage(Component.literal("Vous n'êtes pas en mode définir des points."), false);
+                        player.displayClientMessage(Component.translatable("command.npcshopkeeper.define.not_in_mode"), false);
                     }
                     return 1;
                 }))
@@ -37,7 +37,7 @@ public class PointDefiningCommand {
                     if (PointDefiningModeProcedure.isInMode(player)) {
                         PointDefiningModeProcedure.getMode(player).finish();
                     } else {
-                        player.displayClientMessage(Component.literal("Vous n'êtes pas en mode définir des points."), false);
+                        player.displayClientMessage(Component.translatable("command.npcshopkeeper.define.not_in_mode"), false);
                     }
                     return 1;
                 }))

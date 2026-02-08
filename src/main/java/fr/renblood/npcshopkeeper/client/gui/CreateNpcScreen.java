@@ -45,34 +45,34 @@ public class CreateNpcScreen extends AbstractContainerScreen<CreateNpcMenu> {
         int centerY = (this.height - this.imageHeight) / 2;
 
         // Champ Nom
-        this.nameBox = new EditBox(this.font, centerX + 10, centerY + 20, 150, 20, Component.literal("Nom du PNJ"));
+        this.nameBox = new EditBox(this.font, centerX + 10, centerY + 20, 150, 20, Component.translatable("gui.npcshopkeeper.create_npc.name_placeholder"));
         this.nameBox.setMaxLength(32);
         this.addRenderableWidget(this.nameBox);
 
         // Champ Skin (URL ou Pseudo)
-        this.skinBox = new EditBox(this.font, centerX + 10, centerY + 50, 150, 20, Component.literal("Skin (Pseudo ou URL)"));
+        this.skinBox = new EditBox(this.font, centerX + 10, centerY + 50, 150, 20, Component.translatable("gui.npcshopkeeper.create_npc.skin_placeholder"));
         this.skinBox.setMaxLength(256);
         this.addRenderableWidget(this.skinBox);
 
         // Checkbox Shopkeeper
-        this.isShopkeeperCheckbox = new Checkbox(centerX + 10, centerY + 80, 150, 20, Component.literal("Est un Shopkeeper ?"), true);
+        this.isShopkeeperCheckbox = new Checkbox(centerX + 10, centerY + 80, 150, 20, Component.translatable("gui.npcshopkeeper.create_npc.is_shopkeeper"), true);
         this.addRenderableWidget(this.isShopkeeperCheckbox);
         
         // Champs Textes
-        this.text1Box = new EditBox(this.font, centerX + 10, centerY + 110, 150, 20, Component.literal("Texte 1"));
+        this.text1Box = new EditBox(this.font, centerX + 10, centerY + 110, 150, 20, Component.translatable("gui.npcshopkeeper.create_npc.text1"));
         this.text1Box.setMaxLength(256);
         this.addRenderableWidget(this.text1Box);
         
-        this.text2Box = new EditBox(this.font, centerX + 10, centerY + 135, 150, 20, Component.literal("Texte 2"));
+        this.text2Box = new EditBox(this.font, centerX + 10, centerY + 135, 150, 20, Component.translatable("gui.npcshopkeeper.create_npc.text2"));
         this.text2Box.setMaxLength(256);
         this.addRenderableWidget(this.text2Box);
         
-        this.text3Box = new EditBox(this.font, centerX + 10, centerY + 160, 150, 20, Component.literal("Texte 3"));
+        this.text3Box = new EditBox(this.font, centerX + 10, centerY + 160, 150, 20, Component.translatable("gui.npcshopkeeper.create_npc.text3"));
         this.text3Box.setMaxLength(256);
         this.addRenderableWidget(this.text3Box);
 
         // Bouton Créer
-        this.createButton = Button.builder(Component.literal("Créer PNJ"), button -> {
+        this.createButton = Button.builder(Component.translatable("gui.npcshopkeeper.create_npc.create_button"), button -> {
             String name = nameBox.getValue();
             String skin = skinBox.getValue();
             boolean isShopkeeper = isShopkeeperCheckbox.selected();
@@ -99,8 +99,8 @@ public class CreateNpcScreen extends AbstractContainerScreen<CreateNpcMenu> {
         int centerX = (this.width - this.imageWidth) / 2;
         int centerY = (this.height - this.imageHeight) / 2;
         
-        guiGraphics.drawString(this.font, "Nom :", centerX + 10, centerY + 10, 0x404040, false);
-        guiGraphics.drawString(this.font, "Skin (Pseudo) :", centerX + 10, centerY + 40, 0x404040, false);
+        guiGraphics.drawString(this.font, Component.translatable("gui.npcshopkeeper.create_npc.label_name"), centerX + 10, centerY + 10, 0x404040, false);
+        guiGraphics.drawString(this.font, Component.translatable("gui.npcshopkeeper.create_npc.label_skin"), centerX + 10, centerY + 40, 0x404040, false);
     }
 
     @Override

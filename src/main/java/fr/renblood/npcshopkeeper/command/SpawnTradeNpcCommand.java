@@ -38,7 +38,7 @@ public class SpawnTradeNpcCommand {
     private static int executeCommand(CommandSourceStack source) {
         if (isCommandRunning) {
             LOGGER.warn("Commande spawntradenpc déjà en cours d'exécution.");
-            source.sendFailure(Component.literal("La commande est déjà en cours d'exécution."));
+            source.sendFailure(Component.translatable("command.npcshopkeeper.spawntradenpc.already_running"));
             return 0;
         }
 
@@ -48,22 +48,22 @@ public class SpawnTradeNpcCommand {
             if (source.getEntity() instanceof ServerPlayer) {
                 // Étape 1 : Vérification du joueur
                 if (!(source.getEntity() instanceof Player player)) {
-                    source.sendFailure(Component.literal("[Step 1] This command can only be executed by a player."));
+                    source.sendFailure(Component.translatable("command.npcshopkeeper.spawntradenpc.player_only"));
                     return 0;
                 }
-                source.sendSuccess(() -> Component.literal("[Step 1] Player verified successfully."), true);
+                source.sendSuccess(() -> Component.translatable("command.npcshopkeeper.spawntradenpc.step1_success"), true);
 
                 // Étape 2 : Vérification de l'item en main secondaire
                 ItemStack offhandItem = player.getOffhandItem();
                 if (offhandItem.isEmpty()) {
-                    source.sendFailure(Component.literal("[Step 2] You must hold an item in your offhand to specify the trade category."));
+                    source.sendFailure(Component.translatable("command.npcshopkeeper.spawntradenpc.offhand_required"));
                     return 0;
                 }
-                source.sendSuccess(() -> Component.literal("[Step 2] Offhand item found: " + offhandItem.getItem().getDescriptionId()), true);
+                source.sendSuccess(() -> Component.translatable("command.npcshopkeeper.spawntradenpc.step2_success", offhandItem.getItem().getDescriptionId()), true);
 
                 // Étape 3 : Récupération de l'ID de l'item pour la catégorie
                 String category = offhandItem.getItem().builtInRegistryHolder().key().location().toString();
-                source.sendSuccess(() -> Component.literal("[Step 3] Trade category determined: " + category), true);
+                source.sendSuccess(() -> Component.translatable("command.npcshopkeeper.spawntradenpc.step3_success", category), true);
 
                 // Étape 4 : Création et ajout du PNJ
                 BlockPos position = BlockPos.containing(source.getPosition());
@@ -74,7 +74,7 @@ public class SpawnTradeNpcCommand {
                 String npcName = GlobalNpcManager.getRandomInactiveNpc(); // ON GET LE RANDOM NAME
                 if (npcName == null) {
                     LOGGER.error("Aucun PNJ inactif disponible.");
-                    source.sendFailure(Component.literal("No inactive NPCs available."));
+                    source.sendFailure(Component.translatable("command.npcshopkeeper.spawntradenpc.no_inactive_npc"));
                     return 0;
                 }
                 LOGGER.info("PNJ inactif aléatoire sélectionné : " + npcName);
@@ -83,7 +83,7 @@ public class SpawnTradeNpcCommand {
                 Map<String, Object> npcData = GlobalNpcManager.getNpcData(npcName); //ON GET LES DATAS CONSTANTE
                 if (npcData == null) {
                     LOGGER.error("Données introuvables pour le PNJ : " + npcName);
-                    source.sendFailure(Component.literal("Failed to retrieve NPC data for: " + npcName));
+                    source.sendFailure(Component.translatable("command.npcshopkeeper.spawntradenpc.data_not_found", npcName));
                     return 0;
                 }
                 LOGGER.info("Données du PNJ : " + npcData);
@@ -99,7 +99,7 @@ public class SpawnTradeNpcCommand {
 
                 if (npc == null) {
                     LOGGER.error("Impossible de créer une instance de TradeNpcEntity.");
-                    source.sendFailure(Component.literal("Failed to create NPC instance."));
+                    source.sendFailure(Component.translatable("command.npcshopkeeper.spawntradenpc.creation_failed"));
                     return 0;
                 }
                 ActiveNpcManager.printActiveNpcs();
@@ -114,14 +114,14 @@ public class SpawnTradeNpcCommand {
             }
         } catch (Exception e) {
             LOGGER.error("Erreur lors de la création ou de l'ajout du PNJ : ", e);
-            source.sendFailure(Component.literal("[Step 4] Failed to spawn NPC: " + e.getMessage()));
+            source.sendFailure(Component.translatable("command.npcshopkeeper.spawntradenpc.error", e.getMessage()));
             e.printStackTrace();
             return 0;
         } finally {
             isCommandRunning = false; // Libération du verrou
         }
 
-        source.sendSuccess(() -> Component.literal("[Final Step] Command executed successfully."), true);
+        source.sendSuccess(() -> Component.translatable("command.npcshopkeeper.spawntradenpc.success"), true);
         return 1;
     }
 }

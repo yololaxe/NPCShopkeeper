@@ -28,6 +28,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.phys.AABB;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -155,19 +156,32 @@ public class TradeProcedure {
 						String npcUuid = finishedTh.getNpcId();
 						ServerLevel serverLevel = (ServerLevel) player.level();
 						
-						// Essayer de trouver l'entité par UUID
-						Entity ent = null;
-						try {
-							ent = serverLevel.getEntity(UUID.fromString(npcUuid));
-						} catch (Exception e) {
-							LOGGER.warn("UUID invalide pour le PNJ : " + npcUuid);
+						// Recherche plus robuste du PNJ : d'abord par UUID direct, puis par proximité
+						Entity ent = serverLevel.getEntity(UUID.fromString(npcUuid));
+						
+						if (ent == null) {
+							// Fallback : chercher autour du joueur
+							AABB searchBox = player.getBoundingBox().inflate(10);
+							List<TradeNpcEntity> nearbyNpcs = serverLevel.getEntitiesOfClass(TradeNpcEntity.class, searchBox);
+							for (TradeNpcEntity nearby : nearbyNpcs) {
+								if (nearby.getUUID().toString().equals(npcUuid)) {
+									ent = nearby;
+									break;
+								}
+							}
 						}
 						
 						if (ent instanceof TradeNpcEntity npcEnt) {
+							// Vérifier si c'est un PNJ de route (qui doit disparaître)
+							// Les PNJs fixes (non route) ne doivent pas disparaître
+							// On vérifie s'il appartient à une route active
+							boolean isRouteNpc = false;
+							
 							for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
 								// vérifie qu'il était bien sur cette route
 								if (road.getNpcEntities().stream()
 										.anyMatch(e -> e.getUUID().toString().equals(npcUuid))) {
+									isRouteNpc = true;
 
 									// 1) retire du JSON et mémoire forte
 									road.removeNpcAndPersist(npcEnt);
@@ -186,30 +200,39 @@ public class TradeProcedure {
 									break;
 								}
 							}
-
-							// 2) despawn
-							npcEnt.discard();
-
-							// 3) supprime du JSON trades_npcs.json et recharge GlobalNpcManager
-							JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
-									Paths.get(OnServerStartedManager.PATH_NPCS),
-									"npcs",
-									TradeNpc::fromJson,
-									TradeNpc::toJson
-							);
-							List<TradeNpc> kept = npcRepo.loadAll().stream()
-									.filter(n -> !n.getNpcId().equals(npcUuid))
-									.collect(Collectors.toList());
-							npcRepo.saveAll(kept);
 							
-							// 4) Libérer le nom du PNJ pour qu'il puisse être réutilisé plus tard
-							GlobalNpcManager.deactivateNpc(npcEnt.getNpcName());
-							ActiveNpcManager.removeActiveNpc(UUID.fromString(npcUuid));
+							// Si ce n'est pas un PNJ de route, on vérifie s'il est marqué comme tel dans son modèle
+							if (!isRouteNpc && npcEnt.getTradeNpc() != null && npcEnt.getTradeNpc().isRouteNpc()) {
+								isRouteNpc = true;
+							}
 
-							Npcshopkeeper.debugLog(LOGGER, "🗑️ PNJ {} supprimé à la fin du trade", npcUuid);
+							if (isRouteNpc) {
+								// 2) despawn
+								npcEnt.discard();
+
+								// 3) supprime du JSON trades_npcs.json et recharge GlobalNpcManager
+								JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
+										Paths.get(OnServerStartedManager.PATH_NPCS),
+										"npcs",
+										TradeNpc::fromJson,
+										TradeNpc::toJson
+								);
+								List<TradeNpc> kept = npcRepo.loadAll().stream()
+										.filter(n -> !n.getNpcId().equals(npcUuid))
+										.collect(Collectors.toList());
+								npcRepo.saveAll(kept);
+								
+								// 4) Libérer le nom du PNJ pour qu'il puisse être réutilisé plus tard
+								GlobalNpcManager.deactivateNpc(npcEnt.getNpcName());
+								ActiveNpcManager.removeActiveNpc(UUID.fromString(npcUuid));
+
+								Npcshopkeeper.debugLog(LOGGER, "🗑️ PNJ {} supprimé à la fin du trade", npcUuid);
+							} else {
+								Npcshopkeeper.debugLog(LOGGER, "PNJ {} est fixe, il ne disparaît pas.", npcUuid);
+							}
 						}
 						else {
-							LOGGER.warn("PNJ {} introuvable pour suppression", npcUuid);
+							LOGGER.warn("PNJ {} introuvable pour suppression (même après recherche locale)", npcUuid);
 						}
 					}
 				} else {
@@ -331,7 +354,7 @@ public class TradeProcedure {
 				xpGains.put(job, xpGains.getOrDefault(job, 0f) + totalXp);
 				
 				// Log de vérification
-				player.displayClientMessage(Component.literal("XP calculée pour " + info.getItem() + " : " + totalXp + " (" + job + ")"), false);
+				Npcshopkeeper.debugLog(LOGGER, "XP calculée pour " + info.getItem() + " : " + totalXp + " (" + job + ")");
 			} else {
 				// Log si pas de ref
 				// player.displayClientMessage(Component.literal("Pas de ref XP pour " + info.getItem()), false);
@@ -340,7 +363,7 @@ public class TradeProcedure {
 		
 		for (Map.Entry<String, Float> entry : xpGains.entrySet()) {
 			MedievalCoinsIntegration.addXp(player, entry.getKey(), entry.getValue());
-			player.displayClientMessage(Component.literal("Envoi XP à MedievalCoins : " + entry.getKey() + " -> " + entry.getValue()), false);
+			Npcshopkeeper.debugLog(LOGGER, "Envoi XP à MedievalCoins : " + entry.getKey() + " -> " + entry.getValue());
 		}
 		// ─────────────────────────────────────────────────────────────────────
 

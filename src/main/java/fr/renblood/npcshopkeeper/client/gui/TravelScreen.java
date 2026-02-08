@@ -38,7 +38,7 @@ public class TravelScreen extends AbstractContainerScreen<TravelMenu> {
         
         if (ports.isEmpty()) {
              this.addRenderableWidget(Button.builder(
-                    Component.literal("Aucun port trouvé (Sync requise)"),
+                    Component.translatable("gui.npcshopkeeper.travel.no_ports"),
                     button -> this.onClose())
                     .bounds(x + (this.imageWidth - 150) / 2, y + 20, 150, 20)
                     .build());
@@ -57,7 +57,7 @@ public class TravelScreen extends AbstractContainerScreen<TravelMenu> {
             String costText = formatCost(costInIron);
             
             this.addRenderableWidget(Button.builder(
-                    Component.literal(port.getName() + " (" + costText + ")"),
+                    Component.translatable("gui.npcshopkeeper.travel.port_button", port.getName(), costText),
                     button -> {
                         PacketHandler.sendToServer(new TravelPacket(port.getName(), costInIron));
                         this.onClose();
@@ -75,11 +75,6 @@ public class TravelScreen extends AbstractContainerScreen<TravelMenu> {
         double distance = Math.sqrt(Minecraft.getInstance().player.blockPosition().distSqr(destination.getPos()));
         
         // Utilisation du prix configuré (par défaut 50)
-        // Note: PortManager.getBlocksPerIron() est statique, mais côté client il peut ne pas être sync.
-        // Pour l'instant on suppose que la config par défaut est utilisée ou qu'on sync aussi la config.
-        // TODO: Sync la config blocksPerIron via packet si nécessaire. Pour l'instant on hardcode 50 ou on espère que c'est sync.
-        // En vrai, le client n'a pas besoin d'être exact car le serveur re-vérifie.
-        // Mais pour l'affichage c'est mieux. On va utiliser 50 par défaut si non sync.
         int blocksPerIron = 50; // PortManager.getBlocksPerIron(); // Risque de désynchro
         
         int cost = (int) Math.ceil(distance / (double)blocksPerIron);
@@ -118,8 +113,8 @@ public class TravelScreen extends AbstractContainerScreen<TravelMenu> {
     @Override
     protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         // Centrer le titre
-        String title = "Port Actuel: " + currentPortName;
+        Component title = Component.translatable("gui.npcshopkeeper.travel.current_port", currentPortName);
         int titleWidth = this.font.width(title);
-        guiGraphics.drawString(this.font, Component.literal(title), (this.imageWidth - titleWidth) / 2, 10, 4210752, false);
+        guiGraphics.drawString(this.font, title, (this.imageWidth - titleWidth) / 2, 10, 4210752, false);
     }
 }

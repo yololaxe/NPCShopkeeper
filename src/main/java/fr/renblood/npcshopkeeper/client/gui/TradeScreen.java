@@ -65,6 +65,14 @@ public class TradeScreen extends AbstractContainerScreen<TradeMenu> {
 
 	@Override
 	protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+		// Afficher le titre du trade (récupéré depuis le menu)
+		if (this.menu.tradeName != null && !this.menu.tradeName.isEmpty()) {
+			guiGraphics.drawString(this.font, Component.literal(this.menu.tradeName), 8, 6, 4210752, false);
+		}
+		// Afficher le nom du PNJ si disponible
+		if (this.menu.npcName != null && !this.menu.npcName.isEmpty()) {
+			guiGraphics.drawString(this.font, Component.literal(this.menu.npcName), 8, this.imageHeight - 96 + 2, 4210752, false);
+		}
 	}
 
 	@Override

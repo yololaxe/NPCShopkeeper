@@ -25,7 +25,7 @@ public class RoadDetailsScreen extends AbstractContainerScreen<RoadDetailsMenu> 
         super.init();
         
         // Bouton Supprimer la route
-        this.addRenderableWidget(Button.builder(Component.literal("Supprimer Route"), button -> {
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.npcshopkeeper.road_details.delete_road"), button -> {
             if (menu.road != null) {
                 Npcshopkeeper.PACKET_HANDLER.sendToServer(new RoadDetailsButtonMessage(0, menu.road.getId()));
                 this.onClose();
@@ -33,7 +33,7 @@ public class RoadDetailsScreen extends AbstractContainerScreen<RoadDetailsMenu> 
         }).bounds(this.leftPos + 7, this.topPos - 25, 100, 20).build());
 
         // Bouton Téléporter (au premier PNJ ou au premier point)
-        this.addRenderableWidget(Button.builder(Component.literal("Téléporter"), button -> {
+        this.addRenderableWidget(Button.builder(Component.translatable("gui.npcshopkeeper.road_details.teleport"), button -> {
             if (menu.road != null) {
                 Npcshopkeeper.PACKET_HANDLER.sendToServer(new RoadDetailsButtonMessage(1, menu.road.getId()));
                 this.onClose();

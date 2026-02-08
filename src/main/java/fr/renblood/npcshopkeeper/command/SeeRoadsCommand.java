@@ -3,6 +3,8 @@ package fr.renblood.npcshopkeeper.command;
 import com.mojang.brigadier.CommandDispatcher;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
+import fr.renblood.npcshopkeeper.network.PacketHandler;
+import fr.renblood.npcshopkeeper.network.SyncRoadsPacket;
 import fr.renblood.npcshopkeeper.world.inventory.SeeRoadsMenu;
 import io.netty.buffer.Unpooled;
 import net.minecraft.commands.CommandSourceStack;
@@ -38,10 +40,14 @@ public class SeeRoadsCommand {
     }
 
     public static void openGui(ServerPlayer player, int page) {
+        // 1. Synchroniser les routes avec le client
+        PacketHandler.sendToPlayer(new SyncRoadsPacket(Npcshopkeeper.COMMERCIAL_ROADS), player);
+
+        // 2. Ouvrir le GUI
         NetworkHooks.openScreen(player, new MenuProvider() {
             @Override
             public Component getDisplayName() {
-                return Component.literal("Routes Commerciales (Page " + (page + 1) + ")");
+                return Component.translatable("gui.npcshopkeeper.see_roads.title", (page + 1));
             }
 
             @Override
