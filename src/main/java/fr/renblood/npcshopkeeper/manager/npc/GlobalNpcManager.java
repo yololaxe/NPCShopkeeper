@@ -1,6 +1,7 @@
 package fr.renblood.npcshopkeeper.manager.npc;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.data.api.NpcTemplate;
 import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
@@ -83,6 +84,30 @@ public class GlobalNpcManager {
         }
 
         Npcshopkeeper.debugLog(LOGGER, "Données PNJ chargées avec succès. Total PNJs : " + npcDataMap.size() + " (dont " + inactiveNpcs.size() + " shopkeepers)");
+    }
+    
+    // Méthode pour ajouter un PNJ depuis un template API
+    public static void addNpcFromTemplate(NpcTemplate template) {
+        if (template == null) return;
+        
+        Map<String, Object> data = new HashMap<>();
+        data.put("Texture", template.texture);
+        data.put("Texts", template.dialogue != null ? template.dialogue : new ArrayList<String>());
+        boolean isShopkeeper = "SHOPKEEPER".equals(template.type);
+        data.put("IsShopkeeper", isShopkeeper);
+        data.put("IsCreatedByPlayer", true);
+        
+        // On utilise le nom comme clé pour l'instant (compatibilité)
+        // Idéalement, on devrait utiliser npc_id, mais le reste du code utilise le nom.
+        npcDataMap.put(template.name, data);
+        
+        if (isShopkeeper) {
+            if (!activeNpcs.contains(template.name) && !inactiveNpcs.contains(template.name)) {
+                inactiveNpcs.add(template.name);
+            }
+        }
+        
+        Npcshopkeeper.debugLog(LOGGER, "PNJ ajouté depuis template API : " + template.name);
     }
     
     public static boolean registerNewNpc(String name, String texture, boolean isShopkeeper, List<String> texts) {

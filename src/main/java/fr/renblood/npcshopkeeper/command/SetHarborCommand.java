@@ -2,10 +2,12 @@ package fr.renblood.npcshopkeeper.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import fr.renblood.npcshopkeeper.data.api.NpcSpawn;
 import fr.renblood.npcshopkeeper.data.harbor.Port;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
 import fr.renblood.npcshopkeeper.manager.harbor.PortManager;
+import fr.renblood.npcshopkeeper.manager.integration.MedievalCoinsIntegration;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
@@ -17,6 +19,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.UUID;
 
 @Mod.EventBusSubscriber
 public class SetHarborCommand {
@@ -67,6 +71,22 @@ public class SetHarborCommand {
                                 );
                                 PortManager.addPort(port);
                                 LOGGER.info("Port enregistré: {}", portName);
+                                
+                                // 3. Enregistrer le spawn dans le backend via l'API
+                                // Note: Pour les capitaines, on n'a pas forcément de template NPC associé pour l'instant
+                                // On peut créer un spawn générique ou attendre que le système de template soit complet.
+                                // Pour l'instant, on enregistre juste le spawn avec un ID spécial.
+                                NpcSpawn spawn = new NpcSpawn();
+                                spawn.spawn_id = UUID.randomUUID().toString();
+                                spawn.npc_id = "captain_" + portName; // ID fictif pour le capitaine
+                                spawn.world = world.dimension().location().toString();
+                                spawn.x = pos.getX();
+                                spawn.y = pos.getY();
+                                spawn.z = pos.getZ();
+                                spawn.spawn_rule = "STATIC";
+                                spawn.active = true;
+                                
+                                MedievalCoinsIntegration.createNpcSpawn(spawn);
 
                                 source.sendSuccess(() -> Component.translatable("command.npcshopkeeper.set_harbor.success", portName), true);
                                 return 1;

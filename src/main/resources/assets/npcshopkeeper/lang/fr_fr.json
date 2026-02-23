@@ -35,6 +35,9 @@
   "command.npcshopkeeper.spawntradenpc.error": "[Étape 4] Échec du spawn du PNJ : %s",
   "command.npcshopkeeper.spawntradenpc.success": "[Étape Finale] Commande exécutée avec succès.",
 
+  "command.npcshopkeeper.createreference.success": "Référence de prix créée pour %s (Min: %s, Max: %s)",
+  "command.npcshopkeeper.createreference.failure": "Échec de la création de la référence de prix.",
+
   "gui.npcshopkeeper.create_npc.title": "Créateur de PNJ",
   "gui.npcshopkeeper.create_npc.name_placeholder": "Nom du PNJ",
   "gui.npcshopkeeper.create_npc.skin_placeholder": "Skin (Pseudo ou URL)",

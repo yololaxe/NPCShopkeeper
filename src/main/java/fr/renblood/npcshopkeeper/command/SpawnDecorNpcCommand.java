@@ -3,9 +3,11 @@ package fr.renblood.npcshopkeeper.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
+import fr.renblood.npcshopkeeper.data.api.NpcSpawn;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
+import fr.renblood.npcshopkeeper.manager.integration.MedievalCoinsIntegration;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -17,7 +19,9 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 @Mod.EventBusSubscriber
 public class SpawnDecorNpcCommand {
@@ -46,15 +50,13 @@ public class SpawnDecorNpcCommand {
                                     return 0;
                                 }
 
-                                // 2. Créer le modèle TradeNpc (sans trade, hors route)
-                                TradeNpc modelNpc = new TradeNpc(npcName, npcData, "decor", pos);
-                                modelNpc.setRouteNpc(false); // Ce n'est pas un PNJ de route
-                                
-                                // 3. Créer l'entité
+                                // 2. Créer l'entité
                                 TradeNpcEntity npc = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
                                 npc.setPos(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
                                 
-                                // 4. Associer le modèle
+                                // 3. Configurer l'entité (pour affichage immédiat)
+                                TradeNpc modelNpc = new TradeNpc(npcName, npcData, "decor", pos);
+                                modelNpc.setRouteNpc(false);
                                 modelNpc.setNpcId(npc.getStringUUID());
                                 npc.setTradeNpc(modelNpc);
                                 
@@ -62,6 +64,31 @@ public class SpawnDecorNpcCommand {
                                 npc.getPersistentData().putString("DecorName", npcName);
 
                                 world.addFreshEntity(npc);
+                                
+                                // 4. Enregistrer le spawn dans le backend via l'API
+                                NpcSpawn spawn = new NpcSpawn();
+                                spawn.spawn_id = UUID.randomUUID().toString();
+                                
+                                // Récupération de l'ID correct (slug)
+                                // On essaie de le trouver dans les données si disponible, sinon on le régénère comme à la création
+                                String npcId = (String) npcData.getOrDefault("npcId", null);
+                                if (npcId == null) {
+                                    // Fallback : régénération du slug comme dans CreateNpcButtonMessage
+                                    npcId = npcName.toLowerCase(Locale.ROOT)
+                                            .replaceAll("[^a-z0-9]+", "-")
+                                            .replaceAll("^-|-$", "");
+                                    if (npcId.isEmpty()) npcId = "npc-" + System.currentTimeMillis();
+                                }
+                                spawn.npc_id = npcId;
+
+                                spawn.world = world.dimension().location().toString();
+                                spawn.x = pos.getX();
+                                spawn.y = pos.getY();
+                                spawn.z = pos.getZ();
+                                spawn.spawn_rule = "STATIC";
+                                spawn.active = true;
+                                
+                                MedievalCoinsIntegration.createNpcSpawn(spawn);
 
                                 source.sendSuccess(() -> Component.translatable("command.npcshopkeeper.spawn_decor_npc.success", npcName), true);
                                 return 1;

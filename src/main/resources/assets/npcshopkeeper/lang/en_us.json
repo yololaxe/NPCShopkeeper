@@ -35,6 +35,9 @@
   "command.npcshopkeeper.spawntradenpc.error": "[Step 4] Failed to spawn NPC: %s",
   "command.npcshopkeeper.spawntradenpc.success": "[Final Step] Command executed successfully.",
 
+  "command.npcshopkeeper.createreference.success": "Price reference created for %s (Min: %s, Max: %s)",
+  "command.npcshopkeeper.createreference.failure": "Failed to create price reference.",
+
   "gui.npcshopkeeper.create_npc.title": "NPC Creator",
   "gui.npcshopkeeper.create_npc.name_placeholder": "NPC Name",
   "gui.npcshopkeeper.create_npc.skin_placeholder": "Skin (Name or URL)",
