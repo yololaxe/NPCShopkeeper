@@ -310,6 +310,11 @@ public class TradeNpcEntity extends Villager {
                 serverPlayer.displayClientMessage(Component.translatable("gui.npcshopkeeper.trade.no_text"), false);
             }
 
+            if (this.getPersistentData().contains("ApiNpcSpawnId")
+                    && !this.getPersistentData().getBoolean("ApiIsShopkeeper")) {
+                return InteractionResult.SUCCESS;
+            }
+
             try {
                 if (OnServerStartedManager.PATH_HISTORY == null || OnServerStartedManager.PATH == null) {
                     LOGGER.error("Chemins JSON non initialisés dans mobInteract !");

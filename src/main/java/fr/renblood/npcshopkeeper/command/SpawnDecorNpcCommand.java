@@ -63,8 +63,6 @@ public class SpawnDecorNpcCommand {
                                 npc.getPersistentData().putBoolean("IsDecor", true);
                                 npc.getPersistentData().putString("DecorName", npcName);
 
-                                world.addFreshEntity(npc);
-                                
                                 // 4. Enregistrer le spawn dans le backend via l'API
                                 NpcSpawn spawn = new NpcSpawn();
                                 spawn.spawn_id = UUID.randomUUID().toString();
@@ -88,7 +86,15 @@ public class SpawnDecorNpcCommand {
                                 spawn.spawn_rule = "STATIC";
                                 spawn.active = true;
                                 
-                                MedievalCoinsIntegration.createNpcSpawn(spawn);
+                                if (!MedievalCoinsIntegration.createNpcSpawn(spawn)) {
+                                    source.sendFailure(Component.literal("Le backend a refusé la création du spawn PNJ."));
+                                    return 0;
+                                }
+
+                                npc.getPersistentData().putString("ApiNpcSpawnId", spawn.spawn_id);
+                                npc.getPersistentData().putString("ApiNpcType", "DECO");
+                                npc.getPersistentData().putBoolean("ApiIsShopkeeper", false);
+                                world.addFreshEntity(npc);
 
                                 source.sendSuccess(() -> Component.translatable("command.npcshopkeeper.spawn_decor_npc.success", npcName), true);
                                 return 1;

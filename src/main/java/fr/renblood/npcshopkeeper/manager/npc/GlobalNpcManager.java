@@ -88,14 +88,17 @@ public class GlobalNpcManager {
     
     // Méthode pour ajouter un PNJ depuis un template API
     public static void addNpcFromTemplate(NpcTemplate template) {
-        if (template == null) return;
+        if (template == null || template.name == null || template.name.isBlank()) return;
         
         Map<String, Object> data = new HashMap<>();
+        data.put("npcId", template.npc_id);
+        data.put("NpcType", template.type);
         data.put("Texture", template.texture);
         data.put("Texts", template.dialogue != null ? template.dialogue : new ArrayList<String>());
         boolean isShopkeeper = "SHOPKEEPER".equals(template.type);
         data.put("IsShopkeeper", isShopkeeper);
         data.put("IsCreatedByPlayer", true);
+        data.put("TradeCategory", template.trade_category);
         
         // On utilise le nom comme clé pour l'instant (compatibilité)
         // Idéalement, on devrait utiliser npc_id, mais le reste du code utilise le nom.
@@ -110,6 +113,23 @@ public class GlobalNpcManager {
         Npcshopkeeper.debugLog(LOGGER, "PNJ ajouté depuis template API : " + template.name);
     }
     
+    public static Map<String, Object> getNpcDataById(String npcId) {
+        if (npcId == null) return null;
+        return npcDataMap.values().stream()
+                .filter(data -> npcId.equals(data.get("npcId")))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static String getNpcNameById(String npcId) {
+        if (npcId == null) return null;
+        return npcDataMap.entrySet().stream()
+                .filter(entry -> npcId.equals(entry.getValue().get("npcId")))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
+    }
+
     public static boolean registerNewNpc(String name, String texture, boolean isShopkeeper, List<String> texts) {
         if (npcDataMap.containsKey(name)) {
             LOGGER.warn("Tentative de création d'un PNJ existant : " + name);

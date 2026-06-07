@@ -12,6 +12,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class MedievalCoinsIntegration {
     private static final Logger LOGGER = LogManager.getLogger(MedievalCoinsIntegration.class);
@@ -19,6 +20,7 @@ public class MedievalCoinsIntegration {
     private static Method addJobXpMethod;
     private static Method getNpcsMethod;
     private static Method getNpcSpawnsMethod;
+    private static Method getNpcSpawnsByWorldMethod;
     private static Method createNpcMethod;
     private static Method createNpcSpawnMethod;
     
@@ -51,6 +53,11 @@ public class MedievalCoinsIntegration {
                 addJobXpMethod = apiClass.getMethod("addJobXp", ServerPlayer.class, String.class, int.class);
                 getNpcsMethod = apiClass.getMethod("getNpcs");
                 getNpcSpawnsMethod = apiClass.getMethod("getNpcSpawns");
+                try {
+                    getNpcSpawnsByWorldMethod = apiClass.getMethod("getNpcSpawns", String.class, boolean.class);
+                } catch (NoSuchMethodException e) {
+                    LOGGER.warn("getNpcSpawns(String, boolean) indisponible, utilisation du fallback global.");
+                }
                 
                 if (npcModelClass != null) {
                     createNpcMethod = apiClass.getMethod("createNpc", npcModelClass);
@@ -121,6 +128,7 @@ public class MedievalCoinsIntegration {
             setField(model, "pitch", spawn.pitch);
             setField(model, "spawnRule", spawn.spawn_rule); // spawn_rule -> spawnRule
             setField(model, "active", spawn.active);
+            setField(model, "meta", spawn.meta);
             
             return (boolean) createNpcSpawnMethod.invoke(null, model);
         } catch (Exception e) {
@@ -175,17 +183,68 @@ public class MedievalCoinsIntegration {
                 spawn.spawn_id = getStringField(obj, clazz, "spawnId"); // spawn_id -> spawnId
                 spawn.npc_id = getStringField(obj, clazz, "npcId"); // npc_id -> npcId
                 spawn.world = getStringField(obj, clazz, "world");
-                spawn.x = getIntField(obj, clazz, "x");
-                spawn.y = getIntField(obj, clazz, "y");
-                spawn.z = getIntField(obj, clazz, "z");
+                spawn.x = getDoubleField(obj, clazz, "x");
+                spawn.y = getDoubleField(obj, clazz, "y");
+                spawn.z = getDoubleField(obj, clazz, "z");
+                spawn.yaw = (float) getDoubleField(obj, clazz, "yaw");
+                spawn.pitch = (float) getDoubleField(obj, clazz, "pitch");
                 spawn.spawn_rule = getStringField(obj, clazz, "spawnRule"); // spawn_rule -> spawnRule
                 spawn.active = getBooleanField(obj, clazz, "active");
+                spawn.npc_name = getStringField(obj, clazz, "npcName");
+                spawn.npc_type = getStringField(obj, clazz, "npcType");
+                spawn.npc_skin = getStringField(obj, clazz, "npcSkin");
+                spawn.dialogue = (List<String>) getField(obj, clazz, "dialogue");
+                spawn.quest_ids = (List<String>) getField(obj, clazz, "questIds");
+                spawn.meta = (Map<String, Object>) getField(obj, clazz, "meta");
 
                 result.add(spawn);
             }
             Npcshopkeeper.debugLog(LOGGER, "Récupéré {} NpcSpawns depuis l'API.", result.size());
         } catch (Exception e) {
             LOGGER.error("Erreur getNpcSpawns", e);
+        }
+        return result;
+    }
+
+    public static List<NpcSpawn> getNpcSpawns(String world) {
+        if (isMedievalCoinsLoaded && getNpcSpawnsByWorldMethod != null) {
+            try {
+                List<?> apiList = (List<?>) getNpcSpawnsByWorldMethod.invoke(null, world, true);
+                return convertNpcSpawns(apiList);
+            } catch (Exception e) {
+                LOGGER.error("Erreur getNpcSpawns({}, true), utilisation du fallback global.", world, e);
+            }
+        }
+        return getNpcSpawns().stream()
+                .filter(spawn -> world != null && world.equals(spawn.world))
+                .toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<NpcSpawn> convertNpcSpawns(List<?> apiList) {
+        List<NpcSpawn> result = new ArrayList<>();
+        if (apiList == null) return result;
+
+        for (Object obj : apiList) {
+            NpcSpawn spawn = new NpcSpawn();
+            Class<?> clazz = obj.getClass();
+            spawn.spawn_id = getStringField(obj, clazz, "spawnId");
+            spawn.npc_id = getStringField(obj, clazz, "npcId");
+            spawn.world = getStringField(obj, clazz, "world");
+            spawn.x = getDoubleField(obj, clazz, "x");
+            spawn.y = getDoubleField(obj, clazz, "y");
+            spawn.z = getDoubleField(obj, clazz, "z");
+            spawn.yaw = (float) getDoubleField(obj, clazz, "yaw");
+            spawn.pitch = (float) getDoubleField(obj, clazz, "pitch");
+            spawn.spawn_rule = getStringField(obj, clazz, "spawnRule");
+            spawn.active = getBooleanField(obj, clazz, "active");
+            spawn.npc_name = getStringField(obj, clazz, "npcName");
+            spawn.npc_type = getStringField(obj, clazz, "npcType");
+            spawn.npc_skin = getStringField(obj, clazz, "npcSkin");
+            spawn.dialogue = (List<String>) getField(obj, clazz, "dialogue");
+            spawn.quest_ids = (List<String>) getField(obj, clazz, "questIds");
+            spawn.meta = (Map<String, Object>) getField(obj, clazz, "meta");
+            result.add(spawn);
         }
         return result;
     }
@@ -222,6 +281,12 @@ public class MedievalCoinsIntegration {
         Object val = getField(obj, clazz, fieldName);
         if (val instanceof Number) return ((Number) val).intValue();
         return 0;
+    }
+
+    private static double getDoubleField(Object obj, Class<?> clazz, String fieldName) {
+        Object val = getField(obj, clazz, fieldName);
+        if (val instanceof Number) return ((Number) val).doubleValue();
+        return 0.0D;
     }
 
     private static boolean getBooleanField(Object obj, Class<?> clazz, String fieldName) {

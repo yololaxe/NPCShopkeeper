@@ -13,6 +13,7 @@ import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
 import fr.renblood.npcshopkeeper.manager.harbor.PortManager;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
+import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcSpawnManager;
 import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
 import fr.renblood.npcshopkeeper.manager.road.RoadTickScheduler;
 import net.minecraft.core.BlockPos;
@@ -185,6 +186,7 @@ public class OnServerStartedManager {
         LOGGER.info("✅ activeNPCs prérempli pour {} routes", NpcSpawnerManager.activeNPCs.size());
         // ────────────────────────────────────────────────────────────────────
 
+        GlobalNpcSpawnManager.synchronize(server);
         LOGGER.info("✅ Initialisation des PNJs et des routes terminée.");
     }
 
