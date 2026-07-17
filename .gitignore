@@ -1,3 +1,17 @@
 # Project exclude paths
 /.gradle/
 /build/
+# Logs
+*.log
+logs/
+
+# Runtime
+run/
+
+# Environment
+.env
+.env.*
+
+# IDE
+.idea/
+*.iml
