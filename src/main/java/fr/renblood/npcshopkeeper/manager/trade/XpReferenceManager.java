@@ -3,8 +3,8 @@ package fr.renblood.npcshopkeeper.manager.trade;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.ibm.icu.impl.Pair;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.manager.integration.MedievalCoinsIntegration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 
@@ -72,7 +73,9 @@ public class XpReferenceManager {
                     max = reference.get("max").getAsFloat();
                 }
                 
-                xpCache.put(item, new XpInfo(job, min, max));
+                XpInfo info = new XpInfo(job, min, max);
+                xpCache.put(item, info);
+                xpCache.put(normalizeItemId(item), info);
             }
         }
         lastCacheUpdate = file.lastModified();
@@ -81,8 +84,26 @@ public class XpReferenceManager {
 
     // Chercher une référence XP par nom d'item
     public static XpInfo getXpReference(String itemName) {
+        var apiReference = MedievalCoinsIntegration.getReferenceXp(null, itemName);
+        if (apiReference.isEmpty()) {
+            apiReference = MedievalCoinsIntegration.getReferenceXp(null, normalizeItemId(itemName));
+        }
+
+        if (apiReference.isPresent()) {
+            MedievalCoinsIntegration.XpReferenceInfo reference = apiReference.get();
+            return new XpInfo(reference.job(), reference.amount(), reference.amount());
+        }
+
         refreshCache();
-        return xpCache.get(itemName);
+        XpInfo info = xpCache.get(itemName);
+        return info != null ? info : xpCache.get(normalizeItemId(itemName));
+    }
+
+    private static String normalizeItemId(String itemName) {
+        if (itemName == null) return "";
+        String normalized = itemName.toLowerCase(Locale.ROOT);
+        int separator = normalized.indexOf(':');
+        return separator >= 0 ? normalized.substring(separator + 1) : normalized;
     }
 
     // Créer ou mettre à jour une référence XP

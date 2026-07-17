@@ -99,6 +99,8 @@ public class GlobalNpcManager {
         data.put("IsShopkeeper", isShopkeeper);
         data.put("IsCreatedByPlayer", true);
         data.put("TradeCategory", template.trade_category);
+        data.put("QuestLinks", template.quest_links != null ? template.quest_links : List.of());
+        data.put("Implementation", template.implementation != null ? template.implementation : Map.of());
         
         // On utilise le nom comme clé pour l'instant (compatibilité)
         // Idéalement, on devrait utiliser npc_id, mais le reste du code utilise le nom.

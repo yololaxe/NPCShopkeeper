@@ -1,6 +1,7 @@
 package fr.renblood.npcshopkeeper.manager.trade;
 
 import com.google.gson.*;
+import fr.renblood.npcshopkeeper.manager.integration.MedievalCoinsIntegration;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.LevelResource;
@@ -66,6 +67,12 @@ public class PriceReferenceManager {
 
     // Chercher une référence par nom d'item
     public static Pair<Integer, Integer> findReferenceByItem(String itemName, Player player) {
+        var apiPrice = MedievalCoinsIntegration.getReferencePrice(itemName);
+        if (apiPrice.isPresent()) {
+            int price = Math.max(1, apiPrice.get());
+            return Pair.of(price, price);
+        }
+
         refreshCache();
         return priceCache.getOrDefault(itemName, Pair.of(1, 1));
     }

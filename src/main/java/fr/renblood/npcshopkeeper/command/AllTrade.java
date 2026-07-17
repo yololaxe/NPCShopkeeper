@@ -1,6 +1,8 @@
 package fr.renblood.npcshopkeeper.command;
 
+import com.mojang.brigadier.CommandDispatcher;
 import fr.renblood.npcshopkeeper.procedures.trade.CreateTradeCommandProcedure;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -11,12 +13,14 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-@Mod.EventBusSubscriber
 public class AllTrade {
 
-    @SubscribeEvent
     public static void registerCommand(RegisterCommandsEvent event) {
-        event.getDispatcher().register(Commands.literal("alltrade").requires(s -> s.hasPermission(4)).executes(arguments -> {
+        register(event.getDispatcher());
+    }
+
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(Commands.literal("alltrade").requires(CommandPermissions::isAdmin).executes(arguments -> {
             Level world = arguments.getSource().getUnsidedLevel();
             double x = arguments.getSource().getPosition().x();
             double y = arguments.getSource().getPosition().y();

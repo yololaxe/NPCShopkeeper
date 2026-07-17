@@ -21,22 +21,26 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.NetworkHooks;
 
-@Mod.EventBusSubscriber
 public class SeeRoadsCommand {
-    @SubscribeEvent
     public static void register(RegisterCommandsEvent event) {
         register(event.getDispatcher());
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("seeroads")
-                .requires(source -> source.hasPermission(2))
-                .executes(context -> {
-                    ServerPlayer player = context.getSource().getPlayerOrException();
-                    openGui(player, 0);
-                    return 1;
-                })
+                .requires(CommandPermissions::isAdmin)
+                .executes(context -> execute(context.getSource()))
         );
+    }
+
+    public static int execute(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        if (!CommandPermissions.isAdmin(source)) {
+            source.sendFailure(Component.translatable("command.npcshopkeeper.permission.denied"));
+            return 0;
+        }
+        ServerPlayer player = source.getPlayerOrException();
+        openGui(player, 0);
+        return 1;
     }
 
     public static void openGui(ServerPlayer player, int page) {

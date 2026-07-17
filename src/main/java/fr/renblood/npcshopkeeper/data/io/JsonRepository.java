@@ -4,6 +4,8 @@ import com.google.gson.*;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -11,6 +13,9 @@ import static fr.renblood.npcshopkeeper.data.io.JsonFileManager.readJsonFile;
 
 public class JsonRepository<T> {
     private static final Logger LOGGER = LogManager.getLogger(JsonRepository.class);
+    private static final Map<String, List<?>> CACHE = new ConcurrentHashMap<>();
+    private static final AtomicLong CACHE_HITS = new AtomicLong();
+    private static final AtomicLong CACHE_MISSES = new AtomicLong();
 
     private final Path file;
     private final String rootKey;
@@ -28,6 +33,12 @@ public class JsonRepository<T> {
     }
 
     public List<T> loadAll() {
+        List<?> cached = CACHE.get(cacheKey());
+        if (cached != null) {
+            CACHE_HITS.incrementAndGet();
+            return new ArrayList<>((List<T>) cached);
+        }
+        CACHE_MISSES.incrementAndGet();
         JsonObject root = readJsonFile(file.toString());
         if (root == null || !root.has(rootKey) || !root.get(rootKey).isJsonArray()) {
             return List.of();
@@ -47,7 +58,8 @@ public class JsonRepository<T> {
                 LOGGER.error("Failed to parse element in '{}' array: {}", rootKey, elem, e);
             }
         }
-        return list;
+        CACHE.put(cacheKey(), List.copyOf(list));
+        return new ArrayList<>(list);
     }
 
     public void saveAll(Collection<T> items) {
@@ -59,6 +71,7 @@ public class JsonRepository<T> {
         JsonObject root = new JsonObject();
         root.add(rootKey, arr);
         JsonFileManager.writeJsonFile(file.toString(), root);
+        CACHE.put(cacheKey(), List.copyOf(items));
     }
 
     public void add(T item) {
@@ -66,6 +79,20 @@ public class JsonRepository<T> {
         list.add(item);
         saveAll(list);
     }
+
+    private String cacheKey() {
+        return file.toAbsolutePath().normalize() + "#" + rootKey;
+    }
+
+    public static void invalidate(Path file) {
+        String prefix = file.toAbsolutePath().normalize() + "#";
+        CACHE.keySet().removeIf(key -> key.startsWith(prefix));
+    }
+
+    public static void invalidateAll() { CACHE.clear(); }
+    public static long getCacheHits() { return CACHE_HITS.get(); }
+    public static long getCacheMisses() { return CACHE_MISSES.get(); }
+    public static int getCachedRepositoryCount() { return CACHE.size(); }
 
     // À l'avenir, vous pourrez ajouter remove(Predicate<T> filter) si besoin
 }

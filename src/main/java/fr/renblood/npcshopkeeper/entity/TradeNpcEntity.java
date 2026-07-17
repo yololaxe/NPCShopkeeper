@@ -7,7 +7,9 @@ import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.data.trade.TradeHistory;
 import fr.renblood.npcshopkeeper.manager.harbor.TravelManager;
+import fr.renblood.npcshopkeeper.manager.data.RuntimeDataCache;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
+import fr.renblood.npcshopkeeper.manager.quest.QuestNpcInteractionManager;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import fr.renblood.npcshopkeeper.network.PacketHandler;
 import fr.renblood.npcshopkeeper.network.SyncDepartureTimePacket;
@@ -18,7 +20,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
@@ -52,6 +53,8 @@ public class TradeNpcEntity extends Villager {
             SynchedEntityData.defineId(TradeNpcEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<String> PORT_NAME =
             SynchedEntityData.defineId(TradeNpcEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<String> API_NPC_SPAWN_ID =
+            SynchedEntityData.defineId(TradeNpcEntity.class, EntityDataSerializers.STRING);
 
     private TradeNpc tradeNpc;
     private String npcId;
@@ -78,6 +81,7 @@ public class TradeNpcEntity extends Villager {
         this.entityData.define(TEXTURE, "textures/entity/banker.png");
         this.entityData.define(IS_CAPTAIN, false);
         this.entityData.define(PORT_NAME, "");
+        this.entityData.define(API_NPC_SPAWN_ID, "");
     }
     
     @Override
@@ -141,7 +145,7 @@ public class TradeNpcEntity extends Villager {
             this.entityData.set(TEXTURE, "textures/entity/captain.png");
             this.setCustomName(Component.literal("Captain " + this.getPortName()));
             this.setCustomNameVisible(true);
-        } else if (tag != null && tag.hasUUID("TradeNpcId")) {
+        } else if (!isApiManaged() && tag != null && tag.hasUUID("TradeNpcId")) {
             applyModelById(tag.getUUID("TradeNpcId"));
         }
         return result;
@@ -156,7 +160,7 @@ public class TradeNpcEntity extends Villager {
         if (this.getPersistentData().getBoolean("IsDecor")) {
             tag.putBoolean("IsDecor", true);
             tag.putString("DecorName", this.getPersistentData().getString("DecorName"));
-        } else if (npcId != null) {
+        } else if (!isApiManaged() && npcId != null) {
             tag.putUUID("TradeNpcId", UUID.fromString(npcId));
         }
     }
@@ -171,11 +175,20 @@ public class TradeNpcEntity extends Villager {
         if (tag.contains("PortName")) {
             this.setPortName(tag.getString("PortName"));
         }
+        String apiNpcSpawnId = this.getPersistentData().getString("ApiNpcSpawnId");
+        if (!apiNpcSpawnId.isBlank()) {
+            this.entityData.set(API_NPC_SPAWN_ID, apiNpcSpawnId);
+        }
 
         if (this.isCaptain()) {
             this.setCustomName(Component.literal("Captain " + this.getPortName()));
             this.setCustomNameVisible(true);
             this.entityData.set(TEXTURE, "textures/entity/captain.png");
+            return;
+        }
+
+        // Les PNJ API sont reconstruits par GlobalNpcSpawnManager et n'existent pas dans trades_npcs.json.
+        if (isApiManaged()) {
             return;
         }
         
@@ -199,25 +212,13 @@ public class TradeNpcEntity extends Villager {
     private void applyModelById(UUID id) {
         if (this.isCaptain()) return;
 
-        MinecraftServer server = this.level().getServer();
-        if (server != null) {
-            OnServerStartedManager.initPaths(server);
-        }
-
         String path = OnServerStartedManager.PATH_NPCS;
         if (path == null) {
             LOGGER.error("[TradeNpcEntity] Impossible de charger le modèle : chemin trades_npcs.json non initialisé.");
             return;
         }
 
-        TradeNpc model = new JsonRepository<>(
-                Paths.get(path),
-                "npcs",
-                TradeNpc::fromJson,
-                TradeNpc::toJson
-        ).loadAll().stream()
-                .filter(n -> n.getNpcId().equals(id.toString()))
-                .findFirst().orElse(null);
+        TradeNpc model = RuntimeDataCache.getNpc(id);
 
         if (model != null) {
             setTradeNpc(model);
@@ -282,6 +283,23 @@ public class TradeNpcEntity extends Villager {
         }
     }
 
+    private boolean isApiManaged() {
+        return !this.entityData.get(API_NPC_SPAWN_ID).isBlank()
+                || !this.getPersistentData().getString("ApiNpcSpawnId").isBlank();
+    }
+
+    public String getApiNpcSpawnId() {
+        return this.entityData.get(API_NPC_SPAWN_ID);
+    }
+
+    public void setApiNpcSpawnId(String spawnId) {
+        String value = spawnId == null ? "" : spawnId;
+        this.entityData.set(API_NPC_SPAWN_ID, value);
+        if (!value.isBlank()) {
+            this.getPersistentData().putString("ApiNpcSpawnId", value);
+        }
+    }
+
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(1, new RandomStrollGoal(this, 0.5D));
@@ -302,17 +320,23 @@ public class TradeNpcEntity extends Villager {
                 }
                 return InteractionResult.SUCCESS;
             }
+
+            CompoundTag persistentData = this.getPersistentData();
+            if (QuestNpcInteractionManager.handle(serverPlayer, List.of(), persistentData.getString("ApiNpcSpawnId"),
+                    this.getNpcName(), this.getTexture())) {
+                return InteractionResult.SUCCESS;
+            }
+
+            if (persistentData.contains("ApiNpcSpawnId")
+                    && !persistentData.getBoolean("ApiIsShopkeeper")) {
+                return InteractionResult.SUCCESS;
+            }
             
             if (this.texts != null && !this.texts.isEmpty()) {
                 String randomText = this.texts.get(RandomSource.create().nextInt(this.texts.size()));
                 serverPlayer.displayClientMessage(Component.literal(randomText), false);
             } else {
                 serverPlayer.displayClientMessage(Component.translatable("gui.npcshopkeeper.trade.no_text"), false);
-            }
-
-            if (this.getPersistentData().contains("ApiNpcSpawnId")
-                    && !this.getPersistentData().getBoolean("ApiIsShopkeeper")) {
-                return InteractionResult.SUCCESS;
             }
 
             try {

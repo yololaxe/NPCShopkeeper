@@ -1,11 +1,12 @@
 package fr.renblood.npcshopkeeper.command;
 
+import com.mojang.brigadier.CommandDispatcher;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
 import fr.renblood.npcshopkeeper.manager.npc.ActiveNpcManager;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
-import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
+import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
@@ -30,12 +31,21 @@ public class SpawnTradeNpcCommand {
 
     @SubscribeEvent
     public static void registerCommand(RegisterCommandsEvent event) {
-        event.getDispatcher().register(Commands.literal("spawntradenpc")
-                .requires(s -> s.hasPermission(4))
+        register(event.getDispatcher());
+    }
+
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(Commands.literal("spawntradenpc")
+                .requires(CommandPermissions::isAdmin)
                 .executes(context -> executeCommand(context.getSource())));
     }
 
-    private static int executeCommand(CommandSourceStack source) {
+    public static int executeCommand(CommandSourceStack source) {
+        if (!CommandPermissions.isAdmin(source)) {
+            source.sendFailure(Component.translatable("command.npcshopkeeper.permission.denied"));
+            return 0;
+        }
+
         if (isCommandRunning) {
             LOGGER.warn("Commande spawntradenpc déjà en cours d'exécution.");
             source.sendFailure(Component.translatable("command.npcshopkeeper.spawntradenpc.already_running"));
@@ -95,6 +105,7 @@ public class SpawnTradeNpcCommand {
                 TradeNpcEntity npc = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), source.getUnsidedLevel());
                 modelNpc.setNpcId(npc.getStringUUID());
                 npc.setTradeNpc(modelNpc);
+                npc.setPos(position.getX() + 0.5, position.getY(), position.getZ() + 0.5);
 
 
                 if (npc == null) {
@@ -104,12 +115,14 @@ public class SpawnTradeNpcCommand {
                 }
                 ActiveNpcManager.printActiveNpcs();
                 JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
-                        Paths.get(JsonFileManager.pathNpcs),  // chemin vers npcshopkeeper/npcs.json
+                        Paths.get(OnServerStartedManager.PATH_NPCS),  // chemin vers npcshopkeeper/npcs.json
                         "npcs",                              // clé racine dans le JSON
                         TradeNpc::fromJson,                  // désérialiseur
                         TradeNpc::toJson                     // sérialiseur
                 );
                 npcRepo.add(modelNpc);// Enregistrement dans le fichier JSON
+                source.getLevel().addFreshEntity(npc);
+                GlobalNpcManager.activateNpc(modelNpc);
 
             }
         } catch (Exception e) {

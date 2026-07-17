@@ -17,6 +17,7 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.InteractionHand;
 
 import java.util.Set;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import java.nio.file.Paths;
 
@@ -84,8 +85,10 @@ public class NpcShopkeerperWandItem extends Item {
 			return InteractionResultHolder.fail(wand);
 		}
 
+		String matchedCategory = findMatchingCategory(validCategories, itemId);
+
 		// 4) Check category
-		if (!validCategories.contains(itemId)) {
+		if (matchedCategory == null) {
 			serverPlayer.displayClientMessage(
 					Component.literal("Cet objet n'est pas valide pour créer une route commerciale."),
 					true
@@ -100,7 +103,7 @@ public class NpcShopkeerperWandItem extends Item {
 				serverPlayer.getY(),
 				serverPlayer.getZ(),
 				serverPlayer,
-				itemId
+				matchedCategory
 		);
 		serverPlayer.displayClientMessage(
 				Component.literal("Début de la création de la route commerciale."),
@@ -108,5 +111,28 @@ public class NpcShopkeerperWandItem extends Item {
 		);
 
 		return InteractionResultHolder.success(wand);
+	}
+
+	private static String findMatchingCategory(Set<String> validCategories, String itemId) {
+		String normalizedItemId = normalizeCategory(itemId);
+		for (String category : validCategories) {
+			if (normalizeCategory(category).equals(normalizedItemId)) {
+				return category;
+			}
+		}
+		return null;
+	}
+
+	private static String normalizeCategory(String category) {
+		if (category == null) {
+			return "";
+		}
+
+		String normalized = category.trim().toLowerCase(Locale.ROOT);
+		int namespaceSeparator = normalized.indexOf(':');
+		if (namespaceSeparator >= 0 && namespaceSeparator + 1 < normalized.length()) {
+			return normalized.substring(namespaceSeparator + 1);
+		}
+		return normalized;
 	}
 }

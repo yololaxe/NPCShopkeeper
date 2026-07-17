@@ -3,6 +3,8 @@ package fr.renblood.npcshopkeeper.world;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
+import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcSpawnManager;
+import fr.renblood.npcshopkeeper.manager.npc.NpcEntityIndex;
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
@@ -13,6 +15,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -57,9 +60,20 @@ public class WorldEventHandler {
         Entity entity = evt.getEntity();
         if (!(entity instanceof TradeNpcEntity npcEnt)) return;
 
+        if (GlobalNpcSpawnManager.shouldRejectJoiningEntity(world, npcEnt)) {
+            evt.setCanceled(true);
+            return;
+        }
+        NpcEntityIndex.add(npcEnt);
+
         // Si c'est un capitaine, on ignore la logique TradeNpc
         if (npcEnt.isCaptain()) {
             LOGGER.info("onEntityJoin: Capitaine détecté ({}), pas de modèle TradeNpc requis.", npcEnt.getPortName());
+            return;
+        }
+
+        // Les PNJ API sont configurés par GlobalNpcSpawnManager, pas par trades_npcs.json.
+        if (npcEnt.getPersistentData().contains("ApiNpcSpawnId")) {
             return;
         }
 
@@ -86,6 +100,13 @@ public class WorldEventHandler {
                     npcEnt.getUUID(),
                     npcEnt.getTradeNpc().getTexture()
             );
+        }
+    }
+
+    @SubscribeEvent
+    public static void onEntityLeave(EntityLeaveLevelEvent event) {
+        if (event.getEntity() instanceof TradeNpcEntity npc) {
+            NpcEntityIndex.remove(npc);
         }
     }
 

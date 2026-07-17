@@ -1,5 +1,6 @@
 package fr.renblood.npcshopkeeper.command;
 
+import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.Suggestions;
@@ -25,36 +26,43 @@ import java.util.concurrent.CompletableFuture;
 
 import static com.mojang.text2speech.Narrator.LOGGER;
 
-@Mod.EventBusSubscriber
 public class TradeCommand {
-	@SubscribeEvent
 	public static void registerCommand(RegisterCommandsEvent event) {
-		event.getDispatcher().register(
+		register(event.getDispatcher());
+	}
+
+	public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+		dispatcher.register(
 				Commands.literal("trade")
-						.requires(source -> source.hasPermission(2))
+						.requires(CommandPermissions::isAdmin)
 						.then(Commands.argument("name", StringArgumentType.word())
 								.suggests(TRADE_SUGGESTIONS)
-								.executes(ctx -> {
-									try {
-										Level world = ctx.getSource().getLevel();
-										double x = ctx.getSource().getPosition().x();
-										double y = ctx.getSource().getPosition().y();
-										double z = ctx.getSource().getPosition().z();
-										Entity entity = ctx.getSource().getEntity();
-										if (entity == null && world instanceof ServerLevel sl)
-											entity = FakePlayerFactory.getMinecraft(sl);
-										Direction direction = entity != null ? entity.getDirection() : Direction.DOWN;
-										String inputName = StringArgumentType.getString(ctx, "name");
-										TradeCommandProcedure.execute(world, x, y, z,
-												inputName, entity, "", "");
-										return 1;
-									} catch (Exception e) {
-										ctx.getSource().sendFailure(Component.translatable("command.npcshopkeeper.error.internal", e.getMessage()));
-										return 0;
-									}
-								})
+								.executes(ctx -> execute(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
 						)
 		);
+	}
+
+	public static int execute(CommandSourceStack source, String inputName) {
+		if (!CommandPermissions.isAdmin(source)) {
+			source.sendFailure(Component.translatable("command.npcshopkeeper.permission.denied"));
+			return 0;
+		}
+
+		try {
+			Level world = source.getLevel();
+			double x = source.getPosition().x();
+			double y = source.getPosition().y();
+			double z = source.getPosition().z();
+			Entity entity = source.getEntity();
+			if (entity == null && world instanceof ServerLevel sl)
+				entity = FakePlayerFactory.getMinecraft(sl);
+			Direction direction = entity != null ? entity.getDirection() : Direction.DOWN;
+			TradeCommandProcedure.execute(world, x, y, z, inputName, entity, "", "");
+			return 1;
+		} catch (Exception e) {
+			source.sendFailure(Component.translatable("command.npcshopkeeper.error.internal", e.getMessage()));
+			return 0;
+		}
 	}
 
 	private static final SuggestionProvider<CommandSourceStack> TRADE_SUGGESTIONS =

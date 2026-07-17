@@ -1,6 +1,7 @@
 package fr.renblood.npcshopkeeper.data.api;
 
 import java.util.List;
+import java.util.Map;
 
 public class NpcTemplate {
     public String npc_id;
@@ -9,6 +10,8 @@ public class NpcTemplate {
     public String texture;
     public List<String> dialogue;
     public List<String> tags;
+    public List<QuestLink> quest_links;
+    public Map<String, Object> implementation;
     public boolean enabled;
     
     // Champs spécifiques (simplifiés pour l'instant, on pourra utiliser des maps ou sous-objets)

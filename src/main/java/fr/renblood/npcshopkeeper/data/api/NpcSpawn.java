@@ -19,7 +19,7 @@ public class NpcSpawn {
     public String npc_type;
     public String npc_skin;
     public List<String> dialogue;
-    public List<String> quest_ids;
+    public List<QuestLink> quest_links;
     public Map<String, Object> meta;
 
     public BlockPos getPos() {

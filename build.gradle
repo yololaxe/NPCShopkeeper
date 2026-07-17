@@ -4,6 +4,31 @@ plugins {
     id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
 }
 
+def versionedBuildTasks = ['build', 'jar', 'reobfJar', 'deployToModrinth']
+def shouldIncrementModVersion = gradle.startParameter.taskNames.any { requested ->
+    versionedBuildTasks.any { requested == it || requested.endsWith(":${it}") }
+}
+
+def incrementPatchVersionIfNeeded = {
+    if (!shouldIncrementModVersion) return mod_version
+
+    def propertiesFile = file('gradle.properties')
+    def propertiesText = propertiesFile.getText('UTF-8')
+    def matcher = propertiesText =~ /(?m)^mod_version=(\d+)\.(\d+)\.(\d+)(.*)$/
+    if (!matcher.find()) {
+        throw new GradleException("mod_version doit etre au format X.Y.Z dans gradle.properties pour l'increment automatique.")
+    }
+
+    def major = matcher.group(1)
+    def minor = matcher.group(2)
+    def patch = matcher.group(3).toInteger() + 1
+    def suffix = matcher.group(4)
+    def nextVersion = "${major}.${minor}.${patch}${suffix}"
+    propertiesFile.setText(propertiesText.replaceFirst(/(?m)^mod_version=.*$/, "mod_version=${nextVersion}"), 'UTF-8')
+    return nextVersion
+}
+
+ext.mod_version = incrementPatchVersionIfNeeded()
 
 group = mod_group_id
 version = mod_version
@@ -168,9 +193,12 @@ tasks.named('processResources', ProcessResources).configure {
 
 // Example for how to get properties into the manifest for reading at runtime.
 tasks.named('jar', Jar).configure {
-//    destinationDirectory = file('E:\\Minecraft\\curse\\Instances\\Test 1.20.1\\mods')
-//    destinationDirectory = file('C:\\Users\\yolol\\AppData\\Roaming\\ModrinthApp\\profiles\\Test Renblood\\mods')
-    destinationDirectory = file('C:\\Users\\alban\\AppData\\Roaming\\ModrinthApp\\profiles\\Test Mods RP\\mods')
+    destinationDirectory = layout.buildDirectory.dir('libs')
+    doFirst {
+        delete fileTree(destinationDirectory.get().asFile) {
+            include "${mod_id}-*.jar"
+        }
+    }
     manifest {
         attributes(["Specification-Title"     : mod_id,
                     "Specification-Vendor"    : mod_authors,
@@ -183,6 +211,22 @@ tasks.named('jar', Jar).configure {
 
     // This is the preferred method to reobfuscate your jar file
     finalizedBy 'reobfJar'
+}
+
+tasks.register('deployToModrinth', Copy) {
+    dependsOn 'reobfJar'
+    from tasks.named('jar').flatMap { it.archiveFile }
+    def modsDirectory = file('C:\\Users\\alban\\AppData\\Roaming\\ModrinthApp\\profiles\\Test Mods RP\\mods')
+    into modsDirectory
+    doFirst {
+        delete fileTree(modsDirectory) {
+            include "${mod_id}-*.jar"
+        }
+    }
+}
+
+tasks.named('build').configure {
+    finalizedBy 'deployToModrinth'
 }
 
 tasks.withType(JavaCompile).configureEach {

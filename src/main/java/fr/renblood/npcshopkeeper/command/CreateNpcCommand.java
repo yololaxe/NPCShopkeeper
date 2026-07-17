@@ -17,16 +17,14 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.NetworkHooks;
 
-@Mod.EventBusSubscriber
 public class CreateNpcCommand {
-    @SubscribeEvent
     public static void register(RegisterCommandsEvent event) {
         register(event.getDispatcher());
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("createnpc")
-                .requires(source -> source.hasPermission(2))
+                .requires(CommandPermissions::isAdmin)
                 .executes(context -> {
                     try {
                         ServerPlayer player = context.getSource().getPlayerOrException();

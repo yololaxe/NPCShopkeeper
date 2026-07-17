@@ -9,6 +9,7 @@ import fr.renblood.npcshopkeeper.data.trade.Trade;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
 import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
+import fr.renblood.npcshopkeeper.manager.data.RuntimeDataCache;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
@@ -33,6 +34,13 @@ public class NpcSpawnerManager {
     public static final HashMap<CommercialRoad, HashMap<BlockPos, Mob>> activeNPCs = new HashMap<>();
     private static final Random random = new Random();
     private static final Logger LOGGER = LogManager.getLogger(NpcSpawnerManager.class);
+
+    public enum SpawnResult {
+        SPAWNED,
+        FULL,
+        NO_NPC_AVAILABLE,
+        NO_FREE_POINT
+    }
 
     // Appelle cette méthode périodiquement
     public static void updateSpawn(ServerLevel world, CommercialRoad road) {
@@ -75,7 +83,7 @@ public class NpcSpawnerManager {
         }
     }
 
-    public static void trySpawnNpcForRoad(ServerLevel world, CommercialRoad road) {
+    public static SpawnResult trySpawnNpcForRoad(ServerLevel world, CommercialRoad road) {
         // Récupère (ou crée) la map des PNJs actifs pour cette route
         var roadMap = activeNPCs.computeIfAbsent(road, r -> new HashMap<>());
 
@@ -102,8 +110,8 @@ public class NpcSpawnerManager {
         int occupied = roadMap.size();
         int capacity = road.getPositions().size();
         if (occupied >= capacity) {
-            LOGGER.info("⚠️ Toutes les positions ({}/{}) sont déjà occupées sur la route '{}', aucun spawn supplémentaire.", occupied, capacity, road.getName());
-            return;
+            LOGGER.info("Route '{}' pleine ({}/{}), prochain controle repousse.", road.getName(), occupied, capacity);
+            return SpawnResult.FULL;
         }
 
         // 3) On cherche le premier point libre pour spawn
@@ -116,7 +124,7 @@ public class NpcSpawnerManager {
             String npcName = GlobalNpcManager.getRandomInactiveNpc();
             if (npcName == null) {
                 LOGGER.error("❌ Aucun PNJ inactif disponible pour la route '{}'", road.getName());
-                return;
+                return SpawnResult.NO_NPC_AVAILABLE;
             }
             var npcData = GlobalNpcManager.getNpcData(npcName);
 
@@ -125,15 +133,7 @@ public class NpcSpawnerManager {
             modelNpc.setRouteNpc(true);
 
             // ── 3.3) **Chargement et assignation d'un Trade**
-            JsonRepository<Trade> tradeRepo = new JsonRepository<>(
-                    Paths.get(OnServerStartedManager.PATH),    // chemin vers trades.json
-                    "trades",
-                    Trade::fromJson,
-                    Trade::toJson
-            );
-            List<Trade> available = tradeRepo.loadAll().stream()
-                    .filter(t -> t.getCategory().equalsIgnoreCase(modelNpc.getTradeCategory()))
-                    .toList();
+            List<Trade> available = RuntimeDataCache.getTradesByCategory(modelNpc.getTradeCategory());
             if (!available.isEmpty()) {
                 Trade chosen = available.get(random.nextInt(available.size()));
                 modelNpc.setTrade(chosen);
@@ -146,7 +146,7 @@ public class NpcSpawnerManager {
             TradeNpcEntity npcEnt = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
             modelNpc.setNpcId(npcEnt.getStringUUID());
             npcEnt.setTradeNpc(modelNpc);
-            npcEnt.setPos(pt.getX(), pt.getY(), pt.getZ());
+            npcEnt.setPos(pt.getX() + 0.5D, pt.getY(), pt.getZ() + 0.5D);
             world.addFreshEntity(npcEnt);
 
             // … après world.addFreshEntity(npcEnt);
@@ -169,9 +169,10 @@ public class NpcSpawnerManager {
             LOGGER.info("💾 PNJ '{}' enregistré dans '{}'", npcName, OnServerStartedManager.PATH_NPCS);
 
             // Un seul PNJ spawné à la volée, on stoppe la boucle
-            return;
+            return SpawnResult.SPAWNED;
         }
 
         LOGGER.info("⚠️ Tous les points sont occupés sur la route '{}'", road.getName());
+        return SpawnResult.NO_FREE_POINT;
     }
 }

@@ -12,6 +12,8 @@ import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.EntityInit;
 import fr.renblood.npcshopkeeper.manager.harbor.PortManager;
+import fr.renblood.npcshopkeeper.manager.data.RuntimeDataCache;
+import fr.renblood.npcshopkeeper.manager.data.DataValidator;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcSpawnManager;
 import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
@@ -21,8 +23,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.storage.LevelResource;
-import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -61,6 +63,7 @@ public class OnServerStartedManager {
 
         // Charge des données globales (liste des noms de PNJ possibles)
         GlobalNpcManager.loadNpcData();
+        RuntimeDataCache.reloadAll();
 
         // ── Chargement de TOUS les TradeNpc depuis le JSON ──────────────────
         JsonRepository<TradeNpc> npcRepo = new JsonRepository<>(
@@ -80,7 +83,14 @@ public class OnServerStartedManager {
                 .collect(Collectors.toList());
 
         // ── Spawn / sync des PNJ fixes ─────────────────────────────────────
-        var existingFixed = world.getEntitiesOfClass(TradeNpcEntity.class, fullWorldAABB());
+        var existingFixed = new ArrayList<TradeNpcEntity>();
+        for (TradeNpc npc : fixedNpcs) {
+            try {
+                var entity = world.getEntity(UUID.fromString(npc.getNpcId()));
+                if (entity instanceof TradeNpcEntity tradeNpcEntity) existingFixed.add(tradeNpcEntity);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
         // suppression
         existingFixed.stream()
                 .filter(e -> fixedNpcs.stream()
@@ -98,7 +108,7 @@ public class OnServerStartedManager {
                 ent.setUUID(UUID.fromString(npcData.getNpcId()));
                 ent.setTradeNpc(npcData);
                 BlockPos p = npcData.getPos();
-                ent.setPos(p.getX(), p.getY(), p.getZ());
+                ent.setPos(p.getX() + 0.5D, p.getY(), p.getZ() + 0.5D);
                 world.addFreshEntity(ent);
                 LOGGER.info("📦 PNJ fixe ajouté : {} ({})", npcData.getNpcId(), npcData.getNpcName());
             }
@@ -145,11 +155,8 @@ public class OnServerStartedManager {
                             }
 
                             // Vérifier si l'entité existe déjà dans le monde pour éviter les doublons
-                            List<TradeNpcEntity> existingEntities = world.getEntitiesOfClass(TradeNpcEntity.class, fullWorldAABB());
-                            TradeNpcEntity ent = existingEntities.stream()
-                                    .filter(e -> e.getUUID().toString().equals(uuidStr))
-                                    .findFirst()
-                                    .orElse(null);
+                            TradeNpcEntity ent = world.getEntity(UUID.fromString(uuidStr)) instanceof TradeNpcEntity existing
+                                    ? existing : null;
 
                             if (ent == null) {
                                 // recrée l'entité route-PNJ si elle n'existe pas
@@ -157,7 +164,7 @@ public class OnServerStartedManager {
                                 ent.setUUID(UUID.fromString(uuidStr));
                                 ent.setTradeNpc(model);
                                 BlockPos pos = model.getPos();
-                                ent.setPos(pos.getX(), pos.getY(), pos.getZ());
+                                ent.setPos(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D);
                                 world.addFreshEntity(ent);
                                 LOGGER.info("🔄 PNJ de route recréé : {} ({})", uuidStr, model.getNpcName());
                             } else {
@@ -186,8 +193,16 @@ public class OnServerStartedManager {
         LOGGER.info("✅ activeNPCs prérempli pour {} routes", NpcSpawnerManager.activeNPCs.size());
         // ────────────────────────────────────────────────────────────────────
 
-        GlobalNpcSpawnManager.synchronize(server);
+        List<String> validationIssues = DataValidator.validate();
+        if (!validationIssues.isEmpty()) {
+            LOGGER.warn("Validation des donnees: {} probleme(s): {}", validationIssues.size(), validationIssues);
+        }
         LOGGER.info("✅ Initialisation des PNJs et des routes terminée.");
+    }
+
+    @SubscribeEvent
+    public static void onServerStarted(ServerStartedEvent event) {
+        GlobalNpcSpawnManager.synchronizeAsync(event.getServer());
     }
 
     public static void initPaths(MinecraftServer server) {
@@ -210,13 +225,6 @@ public class OnServerStartedManager {
         checkFileExists(PATH_COMMERCIAL, "commercial_road.json");
         checkFileExists(PATH_NPCS, "trades_npcs.json");
         // ────────────────────────────────────────────────────────────────────
-    }
-
-    private static AABB fullWorldAABB() {
-        return new AABB(
-                Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY,
-                Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY
-        );
     }
 
     private static void checkFileExists(String path, String desc) {
