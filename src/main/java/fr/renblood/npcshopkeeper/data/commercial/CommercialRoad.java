@@ -27,6 +27,20 @@ import java.util.stream.Collectors;
 import static com.mojang.text2speech.Narrator.LOGGER;
 
 public class CommercialRoad {
+    public enum RoadType {
+        TRADE,
+        INN_MENU;
+
+        public static RoadType fromId(String value) {
+            if (value == null || value.isBlank()) return TRADE;
+            try {
+                return valueOf(value.trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ignored) {
+                return TRADE;
+            }
+        }
+    }
+
     private String id;
     private String name;
     private String category;
@@ -34,6 +48,7 @@ public class CommercialRoad {
     private ArrayList<TradeNpcEntity> npcEntities;
     private int minTimer;
     private int maxTimer;
+    private RoadType roadType;
 
 
     public String getId() {
@@ -54,6 +69,18 @@ public class CommercialRoad {
 
     public String getCategory() {
         return category;
+    }
+
+    public RoadType getRoadType() {
+        return roadType == null ? RoadType.TRADE : roadType;
+    }
+
+    public boolean isTradeRoute() {
+        return getRoadType() == RoadType.TRADE;
+    }
+
+    public boolean isInnMenuRoute() {
+        return getRoadType() == RoadType.INN_MENU;
     }
 
     public void setCategory(String category) {
@@ -163,6 +190,11 @@ public class CommercialRoad {
     }
 
     public CommercialRoad(String id, String name, String category, ArrayList<BlockPos> positions, ArrayList<TradeNpcEntity> npcEntities, int minTimer, int maxTimer) {
+        this(id, name, category, positions, npcEntities, minTimer, maxTimer, RoadType.TRADE);
+    }
+
+    public CommercialRoad(String id, String name, String category, ArrayList<BlockPos> positions,
+                          ArrayList<TradeNpcEntity> npcEntities, int minTimer, int maxTimer, RoadType roadType) {
         this.id = id;
         this.name = name;
         this.category = category;
@@ -170,6 +202,7 @@ public class CommercialRoad {
         this.npcEntities = npcEntities;
         this.minTimer = minTimer;
         this.maxTimer = maxTimer;
+        this.roadType = roadType == null ? RoadType.TRADE : roadType;
     }
 
     public static String generateUniqueId() {
@@ -194,6 +227,7 @@ public class CommercialRoad {
         o.addProperty("category", category);
         o.addProperty("minTimer", minTimer);
         o.addProperty("maxTimer", maxTimer);
+        o.addProperty("roadType", getRoadType().name());
 
         JsonArray posArr = new JsonArray();
         for (BlockPos p : positions) {
@@ -227,6 +261,7 @@ public class CommercialRoad {
         String category = o.get("category").getAsString();
         int minTimer    = o.get("minTimer").getAsInt();
         int maxTimer    = o.get("maxTimer").getAsInt();
+        RoadType roadType = RoadType.fromId(o.has("roadType") ? o.get("roadType").getAsString() : null);
 
         // positions
         List<BlockPos> positions = new ArrayList<>();
@@ -256,7 +291,7 @@ public class CommercialRoad {
         return new CommercialRoad(id, name, category,
                 new ArrayList<>(positions),
                 new ArrayList<>(npcEntities),
-                minTimer, maxTimer);
+                minTimer, maxTimer, roadType);
     }
 
 }

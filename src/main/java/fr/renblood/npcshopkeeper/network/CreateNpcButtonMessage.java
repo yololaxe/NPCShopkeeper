@@ -39,6 +39,7 @@ public class CreateNpcButtonMessage {
         this.type = buffer.readUtf();
         
         int size = buffer.readInt();
+        if (size < 0 || size > 8) throw new IllegalArgumentException("Nombre de dialogues invalide");
         this.texts = new ArrayList<>();
         for (int i = 0; i < size; i++) {
             this.texts.add(buffer.readUtf());
@@ -65,6 +66,20 @@ public class CreateNpcButtonMessage {
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
             if (player != null) {
+                if (!player.hasPermissions(2)) {
+                    player.displayClientMessage(Component.literal("La creation de PNJ est reservee aux administrateurs."), false);
+                    return;
+                }
+                if (message.name == null || message.name.isBlank() || message.name.length() > 64
+                        || message.skin == null || message.skin.length() > 256
+                        || !List.of("DECO", "SHOPKEEPER", "QUEST").contains(message.type)
+                        || message.texts == null || message.texts.size() > 8
+                        || message.texts.stream().anyMatch(text -> text == null || text.length() > 1024)
+                        || (message.tradeCategory != null && message.tradeCategory.length() > 64)) {
+                    player.displayClientMessage(Component.literal("Donnees de PNJ invalides."), false);
+                    return;
+                }
+
                 // Création du template pour l'API
                 NpcTemplate template = new NpcTemplate();
                 

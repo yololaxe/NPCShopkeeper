@@ -18,7 +18,7 @@ public class TradeNpcRenderer extends HumanoidMobRenderer<TradeNpcEntity, Player
     private static final Logger LOGGER = LogManager.getLogger(TradeNpcRenderer.class);
 
     public TradeNpcRenderer(EntityRendererProvider.Context context) {
-        super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 1F);
+        super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.45F);
     }
 
     @Override

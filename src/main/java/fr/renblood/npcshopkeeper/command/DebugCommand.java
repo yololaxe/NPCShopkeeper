@@ -39,7 +39,7 @@ public class DebugCommand {
             return 0;
         }
 
-        Npcshopkeeper.DEBUG_MODE = enabled;
+        Npcshopkeeper.setDebugMode(enabled);
         source.sendSuccess(() -> Component.translatable("command.npcshopkeeper.debug.log", enabled ? "ENABLED" : "DISABLED"), true);
         return 1;
     }

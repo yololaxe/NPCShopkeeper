@@ -45,27 +45,54 @@ public class JsonFileManager {
         }
     }
 
+    private static final java.util.concurrent.ConcurrentHashMap<Path, Object> WRITE_LOCKS = new java.util.concurrent.ConcurrentHashMap<>();
+    static Object writeLock(Path file) {
+        return WRITE_LOCKS.computeIfAbsent(file.toAbsolutePath().normalize(), ignored -> new Object());
+    }
+
+    /** Compatibility entry point: failure is observable by the caller, never a success acknowledgement. */
     public static void writeJsonFile(String writePath, JsonObject object) {
-        if (writePath == null) {
-            LOGGER.error("Tentative d'ecriture dans un fichier avec un chemin null.");
-            return;
+        try { writeJsonFileOrThrow(writePath, object); }
+        catch (IOException failure) {
+            LOGGER.error("Ecriture JSON echouee: {}", writePath, failure);
+            throw new java.io.UncheckedIOException("Sauvegarde locale non confirmée", failure);
         }
-        Path target = Path.of(writePath);
-        Path temp = target.resolveSibling(target.getFileName() + ".tmp");
-        try {
-            if (target.getParent() != null) Files.createDirectories(target.getParent());
-            try (FileWriter writer = new FileWriter(temp.toFile(), StandardCharsets.UTF_8)) {
-                new GsonBuilder().setPrettyPrinting().create().toJson(object, writer);
-            }
+    }
+
+    public static void writeJsonFileOrThrow(String writePath, JsonObject object) throws IOException {
+        if (writePath == null) throw new IOException("Chemin de sauvegarde absent");
+        Path target = Path.of(writePath).toAbsolutePath().normalize();
+        synchronized (writeLock(target)) {
+            Files.createDirectories(target.getParent());
+            Path temp = Files.createTempFile(target.getParent(), target.getFileName() + ".", ".tmp");
             try {
-                Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException ignored) {
-                Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+                try (var writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
+                    new GsonBuilder().setPrettyPrinting().create().toJson(object, writer);
+                }
+                try { Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE); }
+                catch (AtomicMoveNotSupportedException unsupported) { Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING); }
+                JsonRepository.invalidate(target);
+                WRITE_COUNT.incrementAndGet();
+            } finally { Files.deleteIfExists(temp); }
+        }
+    }
+
+    /** Read/modify/write share the same path lock as repository saves. Existing fields are preserved. */
+    public static void updateJsonFile(String filePath, java.util.function.Consumer<JsonObject> change) throws IOException {
+        if (filePath == null) throw new IOException("Chemin de sauvegarde absent");
+        Path target = Path.of(filePath).toAbsolutePath().normalize();
+        synchronized (writeLock(target)) {
+            JsonObject object = new JsonObject();
+            if (Files.exists(target)) {
+                READ_COUNT.incrementAndGet();
+                try {
+                    JsonElement parsed = JsonParser.parseString(Files.readString(target, StandardCharsets.UTF_8));
+                    if (!parsed.isJsonObject()) throw new IOException("Le catalogue existant est invalide");
+                    object = parsed.getAsJsonObject();
+                } catch (com.google.gson.JsonParseException invalid) { throw new IOException("Le catalogue existant est illisible", invalid); }
             }
-            JsonRepository.invalidate(target);
-            WRITE_COUNT.incrementAndGet();
-        } catch (IOException e) {
-            LOGGER.error("Ecriture JSON echouee: {}", writePath, e);
+            change.accept(object);
+            writeJsonFileOrThrow(target.toString(), object);
         }
     }
 

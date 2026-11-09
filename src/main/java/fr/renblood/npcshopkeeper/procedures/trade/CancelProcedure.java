@@ -34,6 +34,12 @@ public class CancelProcedure {
 
     public static void execute(Entity entity) {
         if (!(entity instanceof ServerPlayer player)) return;
+        if (player.containerMenu instanceof fr.renblood.npcshopkeeper.world.inventory.TradeMenu menu && menu.isSettlementPending()) {
+            player.displayClientMessage(Component.literal("Attends la fin du règlement avant d’abandonner ce contrat.")
+                    .withStyle(net.minecraft.ChatFormatting.YELLOW), true);
+            return;
+        }
+
 
         try {
             Npcshopkeeper.debugLog(LOGGER, ">>> CancelProcedure START <<<");
@@ -105,6 +111,11 @@ public class CancelProcedure {
                     }
                     
                     if (ent instanceof TradeNpcEntity npcEnt) {
+                        boolean temporaryNpc = npcEnt.getTradeNpc() != null && npcEnt.getTradeNpc().isRouteNpc();
+                        if (!temporaryNpc) temporaryNpc = Npcshopkeeper.COMMERCIAL_ROADS.stream()
+                                .anyMatch(road -> road.getNpcEntities().stream()
+                                        .anyMatch(member -> member.getUUID().equals(npcEnt.getUUID())));
+                        if (temporaryNpc) {
                         // Nettoyage des routes
                         for (CommercialRoad road : Npcshopkeeper.COMMERCIAL_ROADS) {
                             if (road.getNpcEntities().stream()
@@ -144,7 +155,12 @@ public class CancelProcedure {
                         ActiveNpcManager.removeActiveNpc(UUID.fromString(npcUuid));
 
                         LOGGER.info("🗑️ PNJ {} supprimé suite à l'annulation du trade", npcUuid);
-                        player.displayClientMessage(Component.literal("Vous avez refusé l'offre. Le marchand s'en va."), true);
+                        player.displayClientMessage(Component.literal("Offre abandonnée. Le marchand de route s’en va.")
+                                .withStyle(net.minecraft.ChatFormatting.YELLOW), true);
+                        } else {
+                            player.displayClientMessage(Component.literal("Offre abandonnée. Tu peux reparler à ce marchand pour une autre proposition.")
+                                    .withStyle(net.minecraft.ChatFormatting.YELLOW), true);
+                        }
                     }
                 }
             }
@@ -154,6 +170,8 @@ public class CancelProcedure {
 
         } catch (Exception e) {
             LOGGER.error("Erreur lors de l'annulation du trade", e);
+            player.displayClientMessage(Component.literal("Abandon non confirmé. La sauvegarde locale doit être vérifiée par l’équipe.")
+                    .withStyle(net.minecraft.ChatFormatting.RED), false);
             player.closeContainer();
         }
     }

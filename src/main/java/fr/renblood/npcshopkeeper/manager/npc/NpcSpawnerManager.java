@@ -1,6 +1,5 @@
 package fr.renblood.npcshopkeeper.manager.npc;
 
-import com.google.gson.Gson;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
@@ -16,8 +15,6 @@ import net.minecraft.world.entity.Mob;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.FileWriter;
-import java.io.Writer;
 import java.util.*;
 
 import java.nio.file.Paths;
@@ -39,7 +36,8 @@ public class NpcSpawnerManager {
         SPAWNED,
         FULL,
         NO_NPC_AVAILABLE,
-        NO_FREE_POINT
+        NO_FREE_POINT,
+        NO_LOADED_POINT
     }
 
     // Appelle cette méthode périodiquement
@@ -52,35 +50,6 @@ public class NpcSpawnerManager {
 
     public static int getRandomTime(int min, int max) {
         return random.nextInt(max - min + 1) + min;
-    }
-
-    private static final String NPC_DATA_FILE = "npc_data.json"; // Chemin du fichier JSON
-    private static List<NpcData> npcDataList;
-
-    public static void saveNpcData(ServerLevel world) {
-        List<NpcData> npcDataList = new ArrayList<>();
-
-        world.getEntities().getAll().forEach(entity -> {
-            if (entity instanceof TradeNpcEntity) {
-                TradeNpcEntity npc = (TradeNpcEntity) entity;
-                NpcData npcData = new NpcData();
-                npcData.id = npc.getNpcId();
-                npcData.name = npc.getNpcName();
-                npcData.texture = npc.getTexture();
-                npcData.x = (int) npc.getX();
-                npcData.y = (int) npc.getY();
-                npcData.z = (int) npc.getZ();
-                npcData.category = npc.getTradeCategory();
-                npcDataList.add(npcData);
-            }
-        });
-
-        try (Writer writer = new FileWriter(NPC_DATA_FILE)) {
-            Gson gson = new Gson();
-            gson.toJson(npcDataList, writer);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     public static SpawnResult trySpawnNpcForRoad(ServerLevel world, CommercialRoad road) {
@@ -115,7 +84,10 @@ public class NpcSpawnerManager {
         }
 
         // 3) On cherche le premier point libre pour spawn
+        boolean loadedPoint = false;
         for (BlockPos pt : road.getPositions()) {
+            if (!world.getChunkSource().hasChunk(pt.getX() >> 4, pt.getZ() >> 4)) continue;
+            loadedPoint = true;
             if (roadMap.containsKey(pt)) continue;
 
             LOGGER.info("🧭 Spawn NPC sur route '{}' au point {}", road.getName(), pt);
@@ -173,6 +145,6 @@ public class NpcSpawnerManager {
         }
 
         LOGGER.info("⚠️ Tous les points sont occupés sur la route '{}'", road.getName());
-        return SpawnResult.NO_FREE_POINT;
+        return loadedPoint ? SpawnResult.NO_FREE_POINT : SpawnResult.NO_LOADED_POINT;
     }
 }

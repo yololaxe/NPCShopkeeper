@@ -1,6 +1,7 @@
 package fr.renblood.npcshopkeeper.entity;
 
 import fr.renblood.npcshopkeeper.command.OpenTravelGuiCommand;
+import fr.renblood.npcshopkeeper.api.NpcShopkeeperAPI;
 import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
 import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
@@ -56,6 +57,8 @@ public class TradeNpcEntity extends Villager {
     private static final EntityDataAccessor<String> API_NPC_SPAWN_ID =
             SynchedEntityData.defineId(TradeNpcEntity.class, EntityDataSerializers.STRING);
 
+    private static final String INN_CUSTOMER_TEXTURE = "RenbloodInnCustomerTexture";
+
     private TradeNpc tradeNpc;
     private String npcId;
     private String npcName;
@@ -87,6 +90,10 @@ public class TradeNpcEntity extends Villager {
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && tradeNpc == null && isInnCustomer()
+                && (tickCount == 1 || tickCount % 100 == 0)) {
+            restoreInnCustomer("");
+        }
         if (!this.level().isClientSide && this.isCaptain()) {
             long time = this.level().getDayTime() % 24000;
             long departureTime = 4000;
@@ -157,7 +164,11 @@ public class TradeNpcEntity extends Villager {
         tag.putBoolean("IsCaptain", this.isCaptain());
         tag.putString("PortName", this.getPortName());
         
-        if (this.getPersistentData().getBoolean("IsDecor")) {
+        if (isInnCustomer()) {
+            if (tradeNpc != null && !getTexture().isBlank()) {
+                tag.putString(INN_CUSTOMER_TEXTURE, getTexture());
+            }
+        } else if (this.getPersistentData().getBoolean("IsDecor")) {
             tag.putBoolean("IsDecor", true);
             tag.putString("DecorName", this.getPersistentData().getString("DecorName"));
         } else if (!isApiManaged() && npcId != null) {
@@ -192,6 +203,12 @@ public class TradeNpcEntity extends Villager {
             return;
         }
         
+        if (isInnCustomer() || tag.getCompound("ForgeData").getBoolean(NpcShopkeeperAPI.INN_CUSTOMER_TAG)) {
+            String texture = tag.getString(INN_CUSTOMER_TEXTURE);
+            if (!texture.isBlank()) restoreInnCustomer(texture);
+            return;
+        }
+
         if (tag.getBoolean("IsDecor")) {
             String decorName = tag.getString("DecorName");
             if (!decorName.isEmpty()) {
@@ -227,7 +244,39 @@ public class TradeNpcEntity extends Villager {
         }
     }
 
+    public boolean isInnCustomer() {
+        return getPersistentData().getBoolean(NpcShopkeeperAPI.INN_CUSTOMER_TAG);
+    }
+
+    private void restoreInnCustomer(String texture) {
+        Component name = getCustomName();
+        if (name == null || name.getString().isBlank()) return;
+        if (texture.isBlank()) {
+            var template = GlobalNpcManager.getNpcData(name.getString());
+            if (template == null || !(template.get("Texture") instanceof String original) || original.isBlank()) return;
+            texture = original;
+        }
+        var model = new TradeNpc(getStringUUID(), name.getString(), Map.of("Texture", texture),
+                "inn_customer", blockPosition());
+        model.setRouteNpc(true);
+        applyTradeNpcModel(model);
+    }
+
     public void setTradeNpc(TradeNpc model) {
+        applyTradeNpcModel(model);
+        this.moveTo(
+                this.position.getX() + 0.5D,
+                this.position.getY(),
+                this.position.getZ() + 0.5D,
+                this.getYRot(),
+                this.getXRot()
+        );
+
+        LOGGER.info("[TradeNpcEntity] setTradeNpc() id={} name='{}' tex='{}'",
+                this.npcId, this.npcName, model.getTexture());
+    }
+
+    private void applyTradeNpcModel(TradeNpc model) {
         this.tradeNpc = model;
         this.npcId = model.getNpcId();
         this.npcName = model.getNpcName();
@@ -240,16 +289,6 @@ public class TradeNpcEntity extends Villager {
         this.entityData.set(TEXTURE, model.getTexture());
         this.setCustomName(Component.literal(this.npcName));
         this.setCustomNameVisible(true);
-        this.moveTo(
-                this.position.getX() + 0.5D,
-                this.position.getY(),
-                this.position.getZ() + 0.5D,
-                this.getYRot(),
-                this.getXRot()
-        );
-
-        LOGGER.info("[TradeNpcEntity] setTradeNpc() id={} name='{}' tex='{}'",
-                this.npcId, this.npcName, model.getTexture());
     }
 
     public TradeNpc getTradeNpc() {
@@ -308,6 +347,7 @@ public class TradeNpcEntity extends Villager {
 
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
+        if (hand != InteractionHand.MAIN_HAND) return InteractionResult.SUCCESS;
         if (!this.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
 
             if (this.isCaptain()) {
@@ -322,6 +362,12 @@ public class TradeNpcEntity extends Villager {
             }
 
             CompoundTag persistentData = this.getPersistentData();
+            if (persistentData.getBoolean(NpcShopkeeperAPI.INN_CUSTOMER_TAG)) {
+                return NpcShopkeeperAPI.handleInnCustomerInteraction(serverPlayer, this)
+                        ? InteractionResult.SUCCESS
+                        : InteractionResult.PASS;
+            }
+
             if (QuestNpcInteractionManager.handle(serverPlayer, List.of(), persistentData.getString("ApiNpcSpawnId"),
                     this.getNpcName(), this.getTexture())) {
                 return InteractionResult.SUCCESS;
@@ -346,25 +392,11 @@ public class TradeNpcEntity extends Villager {
                     return InteractionResult.FAIL;
                 }
 
-                JsonRepository<TradeHistory> historyRepo = new JsonRepository<>(
-                        Paths.get(OnServerStartedManager.PATH_HISTORY),
-                        "history",
-                        TradeHistory::fromJson,
-                        TradeHistory::toJson
-                );
-                List<TradeHistory> histories = historyRepo.loadAll();
-
-                Optional<TradeHistory> ongoing = histories.stream()
-                        .filter(th -> !th.isFinished() && th.getNpcId().equals(this.npcId))
-                        .findFirst();
+                Optional<TradeHistory> ongoing = RuntimeDataCache.getOpenHistory(this.npcId);
 
                 if (ongoing.isPresent()) {
                     this.tradeHistory = ongoing.get();
                     String existingTradeName = this.tradeHistory.getTradeName();
-                    serverPlayer.displayClientMessage(
-                            Component.translatable("gui.npcshopkeeper.trade.resume", existingTradeName),
-                            true
-                    );
                     TradeCommandProcedure.execute(
                             this.level(),
                             serverPlayer.getX(), serverPlayer.getY(), serverPlayer.getZ(),
@@ -375,22 +407,10 @@ public class TradeNpcEntity extends Villager {
                     );
                 } else {
                     if (this.tradeCategory != null && !this.tradeCategory.isEmpty()) {
-                        JsonRepository<Trade> tradeRepo = new JsonRepository<>(
-                                Paths.get(OnServerStartedManager.PATH),
-                                "trades",
-                                Trade::fromJson,
-                                Trade::toJson
-                        );
-                        List<Trade> available = tradeRepo.loadAll().stream()
-                                .filter(t -> t.getCategory().equalsIgnoreCase(this.tradeCategory))
-                                .toList();
+                        List<Trade> available = RuntimeDataCache.getTradesByCategory(this.tradeCategory);
 
                         if (!available.isEmpty()) {
                             this.trade = available.get(RandomSource.create().nextInt(available.size()));
-                            serverPlayer.displayClientMessage(
-                                    Component.translatable("gui.npcshopkeeper.trade.new_trade", this.trade.getName()),
-                                    true
-                            );
                             TradeCommandProcedure.execute(
                                     this.level(),
                                     serverPlayer.getX(), serverPlayer.getY(), serverPlayer.getZ(),
@@ -399,24 +419,10 @@ public class TradeNpcEntity extends Villager {
                                     this.npcId,
                                     this.npcName
                             );
-                        } else {
-                            serverPlayer.displayClientMessage(
-                                    Component.translatable("gui.npcshopkeeper.trade.no_trade_in_category", this.tradeCategory),
-                                    true
-                            );
                         }
-                    } else {
-                        serverPlayer.displayClientMessage(
-                                Component.translatable("gui.npcshopkeeper.trade.no_category"),
-                                true
-                        );
                     }
                 }
             } catch (Exception e) {
-                serverPlayer.displayClientMessage(
-                        Component.translatable("command.npcshopkeeper.error.internal", e.getMessage()),
-                        true
-                );
                 LOGGER.error("Erreur dans mobInteract de TradeNpcEntity", e);
                 return InteractionResult.FAIL;
             }
@@ -452,6 +458,16 @@ public class TradeNpcEntity extends Villager {
     @Override
     public boolean isInvulnerableTo(DamageSource source) {
         return true;
+    }
+
+    @Override
+    public boolean canBeSeenAsEnemy() {
+        return false;
+    }
+
+    @Override
+    public boolean isAttackable() {
+        return false;
     }
 
     @Override

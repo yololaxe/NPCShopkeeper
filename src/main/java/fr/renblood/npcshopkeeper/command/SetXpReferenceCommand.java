@@ -21,7 +21,7 @@ import java.util.List;
 @Mod.EventBusSubscriber
 public class SetXpReferenceCommand {
 
-    private static final List<String> JOBS = List.of(
+    static final List<String> JOBS = List.of(
             "lumberjack", "naval_architect", "artisan", "carpenter", "miner",
             "blacksmith", "glassmaker", "mason", "farmer", "breeder",
             "fisherman", "innkeeper", "guard", "merchant", "transporter",

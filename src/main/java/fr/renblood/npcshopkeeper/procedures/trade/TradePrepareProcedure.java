@@ -36,22 +36,15 @@ public class TradePrepareProcedure {
                                String npcId,
                                String npcName) {
         if (!(entity instanceof ServerPlayer _player)) return;
+        if (!(_player.containerMenu instanceof fr.renblood.npcshopkeeper.world.inventory.TradeMenu expectedTrade)
+                || !Objects.equals(expectedTrade.tradeName, cleanTradeName) || !Objects.equals(expectedTrade.npcId, npcId)) return;
 
         // LOG DE DEBUG CRITIQUE
         Npcshopkeeper.debugLog(LOGGER, ">>> TradePrepareProcedure START <<<");
         Npcshopkeeper.debugLog(LOGGER, "Trade: " + cleanTradeName + ", NPC: " + npcName + " (" + npcId + ")");
 
         // 1️⃣ Load all trades and find the one we want
-        JsonRepository<Trade> tradeRepo = new JsonRepository<>(
-                Paths.get(OnServerStartedManager.PATH),
-                "trades",
-                Trade::fromJson,
-                Trade::toJson
-        );
-        Trade trade = tradeRepo.loadAll().stream()
-                .filter(t -> t.getName().equals(cleanTradeName))
-                .findFirst()
-                .orElse(null);
+        Trade trade = fr.renblood.npcshopkeeper.manager.data.RuntimeDataCache.getTrade(cleanTradeName);
         if (trade == null) {
             _player.displayClientMessage(
                     Component.literal("Trade inconnu : " + cleanTradeName),
@@ -61,6 +54,16 @@ public class TradePrepareProcedure {
             return;
         }
 
+        if(trade.getTrades()==null||trade.getTrades().isEmpty()||trade.getTrades().size()>4){
+            _player.sendSystemMessage(Component.literal("Cette offre doit contenir entre 1 et 4 lots."));return;
+        }
+        for(var requested:trade.getTrades()){
+            var item=BuiltInRegistries.ITEM.get(new ResourceLocation(requested.getItem()));
+            if(requested.getMin()<1||requested.getMax()<requested.getMin()||requested.getMax()>item.getMaxStackSize()){
+                _player.sendSystemMessage(Component.literal("Offre à corriger : chaque lot doit tenir dans un emplacement."));return;
+            }
+        }
+        fr.renblood.npcshopkeeper.manager.integration.CommerceAdapter.status(_player,"npc-contracts");
         // 2️⃣ Load history and check for an existing open trade for this NPC
         JsonRepository<TradeHistory> historyRepo = new JsonRepository<>(
                 Paths.get(OnServerStartedManager.PATH_HISTORY),
@@ -68,10 +71,7 @@ public class TradePrepareProcedure {
                 TradeHistory::fromJson,
                 TradeHistory::toJson
         );
-        List<TradeHistory> allHistories = historyRepo.loadAll();
-        Optional<TradeHistory> ongoing = allHistories.stream()
-                .filter(h -> !h.isFinished() && h.getNpcId().equals(npcId))
-                .findFirst();
+        Optional<TradeHistory> ongoing = fr.renblood.npcshopkeeper.manager.data.RuntimeDataCache.getOpenHistory(npcId);
 
         boolean checkExist = ongoing.isPresent();
         TradeHistory tradeHistory = ongoing.orElse(null);
@@ -115,7 +115,8 @@ public class TradePrepareProcedure {
 
         int slotIndex = 0;
         for (var tItem : trade.getTrades()) {
-            final int price, qty;
+            final long price;
+            final int qty;
 
             if (checkExist) {
                 // reuse existing
@@ -130,10 +131,13 @@ public class TradePrepareProcedure {
                 }
             } else {
                 // compute fresh
-                Pair<Integer,Integer> minMax = PriceReferenceManager.findReferenceByItem(
+                Pair<Long,Long> minMax = PriceReferenceManager.findReferenceByItem(
                         tItem.getItem(), _player
                 );
-                price = rnd.nextInt(minMax.getRight() - minMax.getLeft() + 1) + minMax.getLeft();
+                if(minMax.getLeft()<1||minMax.getRight()<minMax.getLeft()){
+                    _player.sendSystemMessage(Component.literal("Prix inconnu pour "+tItem.getItem()+". Offre suspendue."));return;
+                }
+                price = rnd.nextLong(minMax.getRight() - minMax.getLeft() + 1) + minMax.getLeft();
                 qty   = tItem.getMin() + rnd.nextInt(tItem.getMax() - tItem.getMin() + 1);
             }
 
@@ -193,27 +197,16 @@ public class TradePrepareProcedure {
             return m;
         }).toList();
 
-        int totalCopper = MoneyCalculator.calculateTotalMoneyFromTrade(flat);
+        long totalCopper;
+        try{totalCopper=MoneyCalculator.calculateTotalMoneyFromTrade(flat);}
+        catch(IllegalArgumentException|ArithmeticException invalid){_player.sendSystemMessage(Component.literal("Montant de l’offre invalide. Aucun paiement lancé."));return;}
+        ItemStack bankReceipt=new ItemStack(Items.PAPER);
+        bankReceipt.setHoverName(Component.literal("Paiement en pièces : "
+                + fr.renblood.npcshopkeeper.manager.integration.MedievalCoinsIntegration.formatMoney(totalCopper))
+                .withStyle(net.minecraft.ChatFormatting.GOLD));
+        if(slots.containsKey(13))slots.get(13).set(bankReceipt);
+        if(slots.containsKey(14))slots.get(14).set(ItemStack.EMPTY);
 
-        int[] coins = MoneyCalculator.getIntInCoins(totalCopper);
-        String[] coinIds = {
-                "medieval_coins:gold_coin",
-                "medieval_coins:silver_coin",
-                "medieval_coins:bronze_coin",
-                "medieval_coins:iron_coin"
-        };
-
-        int coinSlot = 13;
-        for (int i = 0; i < coins.length && coinSlot <= 14; i++) {
-            if (coins[i] > 0) {
-                Item coinItem = BuiltInRegistries.ITEM.get(new ResourceLocation(coinIds[i]));
-                if (slots.containsKey(coinSlot)) {
-                    slots.get(coinSlot).set(new ItemStack(coinItem, coins[i]));
-                }
-                coinSlot++;
-            }
-        }
-        
         // 7️⃣ Set XP Info (Slot 15)
         if (slots.containsKey(15)) {
             float totalXp = 0;
@@ -239,10 +232,6 @@ public class TradePrepareProcedure {
 
         // 8️⃣ Log the start of a new trade if needed
         if (!checkExist) {
-            _player.displayClientMessage(
-                    Component.literal("Enregistrement du trade dans l'historique…"),
-                    false
-            );
             var newHistory = new TradeHistory(
                     List.of(_player.getGameProfile().getName()),
                     cleanTradeName,
@@ -253,7 +242,14 @@ public class TradePrepareProcedure {
                     npcId,
                     npcName
             );
-            historyRepo.add(newHistory);
+            try { historyRepo.add(newHistory); }
+            catch (java.io.UncheckedIOException failure) {
+                TradeSessionManager.clearTradeId(_player.getUUID());
+                _player.displayClientMessage(Component.literal("Contrat non préparé : la sauvegarde locale doit être vérifiée par l’équipe.")
+                        .withStyle(net.minecraft.ChatFormatting.RED), false);
+                if (_player.containerMenu == expectedTrade) _player.closeContainer();
+                return;
+            }
         }
         
         Npcshopkeeper.debugLog(LOGGER, ">>> TradePrepareProcedure END <<<");

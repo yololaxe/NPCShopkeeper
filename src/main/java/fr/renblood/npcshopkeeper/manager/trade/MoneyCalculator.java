@@ -12,45 +12,15 @@ public class MoneyCalculator {
     private static final Logger LOGGER = LogManager.getLogger(MoneyCalculator.class);
 
     // Méthode pour calculer l'argent total rapporté par un trade
-    public static int calculateTotalMoneyFromTrade(List<Map<String, Object>> trades) {
-        int totalMoney = 0;
-        Npcshopkeeper.debugLog(LOGGER, "Début du calcul de l'argent total pour le trade.");
-
-        // Parcourir chaque trade
-        for (Map<String, Object> trade : trades) {
-            try {
-                // Vérification des clés dans chaque Map
-                if (!trade.containsKey("quantity") || !trade.containsKey("price")) {
-                    LOGGER.error("Clés manquantes dans le trade : " + trade);
-                    continue; // Passer à l'élément suivant si les clés ne sont pas présentes
-                }
-
-                // Assurez-vous que les types sont corrects
-                Object countObj = trade.get("quantity"); // Utilisation de "count" au lieu de "quantity"
-                Object priceObj = trade.get("price");
-
-                // Vérifier que les valeurs sont bien des entiers
-                if (!(countObj instanceof Integer) || !(priceObj instanceof Integer)) {
-                    LOGGER.error("Les types ne sont pas des entiers. Quantité : " + countObj + ", Prix : " + priceObj);
-                    continue; // Passer à l'élément suivant si les types sont incorrects
-                }
-
-                int count = (int) countObj;
-                int price = (int) priceObj;
-
-                // Calculer le total pour ce trade
-                int tradeValue = count * price;
-                totalMoney += tradeValue;
-
-                Npcshopkeeper.debugLog(LOGGER, "Trade - Item: " + trade.get("item") + ", Quantity: " + count + ", Price: " + price + ", Total pour cet item: " + tradeValue);
-
-            } catch (Exception e) {
-                LOGGER.error("Erreur lors du calcul de l'argent pour un trade : " + trade, e);
-            }
-        }
-
-        Npcshopkeeper.debugLog(LOGGER, "Total d'argent calculé pour le trade : " + totalMoney + " en cuivre.");
-        return totalMoney;
+    public static long calculateTotalMoneyFromTrade(List<Map<String, Object>> trades) {
+        long total=0;
+        for(Map<String,Object> trade:trades){
+            if(!(trade.get("quantity") instanceof Integer count)||!(trade.get("price") instanceof Number number)||count<1)
+                throw new IllegalArgumentException("Quantité et prix entiers positifs requis");
+            long price=new java.math.BigDecimal(number.toString()).longValueExact();
+            if(price<1)throw new IllegalArgumentException("Prix positif requis");
+            total=Math.addExact(total,Math.multiplyExact((long)count,price));
+        }return total;
     }
 
 

@@ -19,6 +19,9 @@ import java.util.List;
 public class TravelScreen extends AbstractContainerScreen<TravelMenu> {
     private static final ResourceLocation TEXTURE = new ResourceLocation("npcshopkeeper", "textures/screens/travel_gui.png");
     private final String currentPortName;
+    private static final int PAGE_SIZE = 5;
+    private int currentPage = 0;
+    private int pageCount = 1;
 
     public TravelScreen(TravelMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -34,48 +37,59 @@ public class TravelScreen extends AbstractContainerScreen<TravelMenu> {
         int x = (this.width - this.imageWidth) / 2;
         int y = (this.height - this.imageHeight) / 2;
 
-        List<Port> ports = PortManager.getAllPorts(); 
-        
-        if (ports.isEmpty()) {
-             this.addRenderableWidget(Button.builder(
-                    Component.translatable("gui.npcshopkeeper.travel.no_ports"),
-                    button -> this.onClose())
-                    .bounds(x + (this.imageWidth - 150) / 2, y + 20, 150, 20)
-                    .build());
-             return;
+        List<Port> destinations = PortManager.getAllPorts().stream()
+                .filter(port -> !port.getName().equals(currentPortName))
+                .toList();
+        pageCount = Math.max(1, (destinations.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+        currentPage = Math.max(0, Math.min(currentPage, pageCount - 1));
+
+        if (destinations.isEmpty()) {
+            Button empty = Button.builder(Component.translatable("gui.npcshopkeeper.travel.no_destinations"), button -> {})
+                    .bounds(x + 38, y + 82, 200, 22).build();
+            empty.active = false;
+            addRenderableWidget(empty);
+            return;
         }
 
-        int i = 0;
-        int buttonWidth = 180;
-        int buttonX = x + (this.imageWidth - buttonWidth) / 2; // Centré horizontalement
-        int startY = y + 30; // Marge du haut
-
-        for (Port port : ports) {
-            if (port.getName().equals(currentPortName)) continue;
-
+        int buttonWidth = 190;
+        int buttonX = x + (imageWidth - buttonWidth) / 2;
+        int start = currentPage * PAGE_SIZE;
+        int end = Math.min(destinations.size(), start + PAGE_SIZE);
+        for (int index = start; index < end; index++) {
+            Port port = destinations.get(index);
             int costInIron = calculateCost(port);
             String costText = formatCost(costInIron);
-            
-            this.addRenderableWidget(Button.builder(
+            addRenderableWidget(Button.builder(
                     Component.translatable("gui.npcshopkeeper.travel.port_button", port.getName(), costText),
                     button -> {
                         PacketHandler.sendToServer(new TravelPacket(port.getName(), costInIron));
-                        this.onClose();
+                        onClose();
                     })
-                    .bounds(buttonX, startY + (i * 25), buttonWidth, 20)
+                    .bounds(buttonX, y + 30 + (index - start) * 25, buttonWidth, 20)
                     .build());
-            i++;
-            if (i >= 6) break;
         }
-    }
 
+        Button previous = Button.builder(Component.translatable("gui.npcshopkeeper.travel.previous"), button -> {
+                    currentPage--;
+                    rebuildWidgets();
+                }).bounds(x + 8, y + 166, 68, 20).build();
+        previous.active = currentPage > 0;
+        addRenderableWidget(previous);
+
+        Button next = Button.builder(Component.translatable("gui.npcshopkeeper.travel.next"), button -> {
+                    currentPage++;
+                    rebuildWidgets();
+                }).bounds(x + imageWidth - 76, y + 166, 68, 20).build();
+        next.active = currentPage < pageCount - 1;
+        addRenderableWidget(next);
+    }
     private int calculateCost(Port destination) {
         if (Minecraft.getInstance().player == null) return 0;
         
         double distance = Math.sqrt(Minecraft.getInstance().player.blockPosition().distSqr(destination.getPos()));
         
         // Utilisation du prix configuré (par défaut 50)
-        int blocksPerIron = 50; // PortManager.getBlocksPerIron(); // Risque de désynchro
+        int blocksPerIron = Math.max(1, PortManager.getBlocksPerIron());
         
         int cost = (int) Math.ceil(distance / (double)blocksPerIron);
         return Math.max(1, cost);
@@ -84,16 +98,21 @@ public class TravelScreen extends AbstractContainerScreen<TravelMenu> {
     private String formatCost(int ironCost) {
         if (ironCost >= 64 * 64 * 64) { // Gold
             int gold = ironCost / (64 * 64 * 64);
-            return gold + " Gold" + (gold > 1 ? "s" : "");
+            return coinLabel("gold", gold);
         } else if (ironCost >= 64 * 64) { // Silver
             int silver = ironCost / (64 * 64);
-            return silver + " Silver" + (silver > 1 ? "s" : "");
+            return coinLabel("silver", silver);
         } else if (ironCost >= 64) { // Bronze
             int bronze = ironCost / 64;
-            return bronze + " Bronze" + (bronze > 1 ? "s" : "");
+            return coinLabel("bronze", bronze);
         } else { // Iron
-            return ironCost + " Iron" + (ironCost > 1 ? "s" : "");
+            return coinLabel("iron", ironCost);
         }
+    }
+
+    private String coinLabel(String type, int amount) {
+        String quantity = amount == 1 ? "one" : "other";
+        return Component.translatable("gui.npcshopkeeper.travel.currency." + type + "." + quantity, amount).getString();
     }
 
     @Override
@@ -116,5 +135,7 @@ public class TravelScreen extends AbstractContainerScreen<TravelMenu> {
         Component title = Component.translatable("gui.npcshopkeeper.travel.current_port", currentPortName);
         int titleWidth = this.font.width(title);
         guiGraphics.drawString(this.font, title, (this.imageWidth - titleWidth) / 2, 10, 4210752, false);
+        Component page = Component.translatable("gui.npcshopkeeper.travel.page", currentPage + 1, pageCount);
+        guiGraphics.drawCenteredString(this.font, page, this.imageWidth / 2, 172, 0xFF5A5147);
     }
 }

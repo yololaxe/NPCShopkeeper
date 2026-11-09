@@ -27,7 +27,7 @@ public class PriceReferenceManager {
 
     // Cache pour éviter de lire le fichier à chaque appel
     // Utilisation de org.apache.commons.lang3.tuple.Pair au lieu de com.ibm.icu.impl.Pair
-    private static final Map<String, Pair<Integer, Integer>> priceCache = new HashMap<>();
+    private static final Map<String, Pair<Long, Long>> priceCache = new HashMap<>();
     private static long lastCacheUpdate = 0;
 
     // Écrire dans le fichier JSON
@@ -57,8 +57,8 @@ public class PriceReferenceManager {
             for (JsonElement element : referencesArray) {
                 JsonObject reference = element.getAsJsonObject();
                 String item = reference.get("item").getAsString();
-                int min = reference.get("min").getAsInt();
-                int max = reference.get("max").getAsInt();
+                long min = new java.math.BigDecimal(reference.get("min").getAsString()).longValueExact();
+                long max = new java.math.BigDecimal(reference.get("max").getAsString()).longValueExact();
                 priceCache.put(item, Pair.of(min, max));
             }
         }
@@ -66,15 +66,15 @@ public class PriceReferenceManager {
     }
 
     // Chercher une référence par nom d'item
-    public static Pair<Integer, Integer> findReferenceByItem(String itemName, Player player) {
-        var apiPrice = MedievalCoinsIntegration.getReferencePrice(itemName);
+    public static Pair<Long, Long> findReferenceByItem(String itemName, Player player) {
+        var apiPrice = MedievalCoinsIntegration.getReferencePriceLong(itemName);
         if (apiPrice.isPresent()) {
-            int price = Math.max(1, apiPrice.get());
+            long price = apiPrice.get();
             return Pair.of(price, price);
         }
 
         refreshCache();
-        return priceCache.getOrDefault(itemName, Pair.of(1, 1));
+        return priceCache.getOrDefault(itemName, Pair.of(0L, 0L));
     }
 
     // Créer une nouvelle référence
@@ -86,13 +86,21 @@ public class PriceReferenceManager {
 
             JsonArray referencesArray = jsonObject.has("references") ? jsonObject.getAsJsonArray("references") : new JsonArray();
 
-            // Créer un nouvel objet JSON pour la référence de prix
-            JsonObject reference = new JsonObject();
-            reference.addProperty("item", item);
+            JsonObject reference = null;
+            for (JsonElement element : referencesArray) {
+                JsonObject candidate = element.getAsJsonObject();
+                if (item.equals(candidate.get("item").getAsString())) {
+                    reference = candidate;
+                    break;
+                }
+            }
+            if (reference == null) {
+                reference = new JsonObject();
+                reference.addProperty("item", item);
+                referencesArray.add(reference);
+            }
             reference.addProperty("min", min);
             reference.addProperty("max", max);
-
-            referencesArray.add(reference);
             jsonObject.add("references", referencesArray);
 
             // Vérifier et créer le répertoire parent si nécessaire

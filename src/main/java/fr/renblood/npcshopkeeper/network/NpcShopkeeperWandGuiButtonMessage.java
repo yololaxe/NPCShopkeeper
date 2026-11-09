@@ -21,6 +21,7 @@ import java.util.function.Supplier;
 public class NpcShopkeeperWandGuiButtonMessage {
 	private final int buttonID, x, y, z;
 	private final String category;
+	private final String roadType;
 	private final String name;
 	private final String points;
 	private final String minTimer;
@@ -34,6 +35,7 @@ public class NpcShopkeeperWandGuiButtonMessage {
 		this.y = buffer.readInt();
 		this.z = buffer.readInt();
 		this.category = buffer.readUtf(32767);
+		this.roadType = buffer.readUtf(32);
 		this.name = buffer.readUtf(32767);
 		this.points = buffer.readUtf(32767);
 		this.minTimer = buffer.readUtf(32767);
@@ -41,12 +43,13 @@ public class NpcShopkeeperWandGuiButtonMessage {
 	}
 
 	// Constructeur pour création
-	public NpcShopkeeperWandGuiButtonMessage(int buttonID, int x, int y, int z, String category, String name, String points, String minTimer, String maxTimer) {
+	public NpcShopkeeperWandGuiButtonMessage(int buttonID, int x, int y, int z, String roadType, String category, String name, String points, String minTimer, String maxTimer) {
 		this.buttonID = buttonID;
 		this.x = x;
 		this.y = y;
 		this.z = z;
 		this.category = category;
+		this.roadType = roadType;
 		this.name = name;
 		this.points = points;
 		this.minTimer = minTimer;
@@ -60,6 +63,7 @@ public class NpcShopkeeperWandGuiButtonMessage {
 		buffer.writeInt(message.y);
 		buffer.writeInt(message.z);
 		buffer.writeUtf(message.category);
+		buffer.writeUtf(message.roadType);
 		buffer.writeUtf(message.name);
 		buffer.writeUtf(message.points);
 		buffer.writeUtf(message.minTimer);
@@ -71,18 +75,18 @@ public class NpcShopkeeperWandGuiButtonMessage {
 		NetworkEvent.Context context = contextSupplier.get();
 		context.enqueueWork(() -> {
 			Player entity = context.getSender();
-			handleButtonAction(entity, message.buttonID, message.x, message.y, message.z, message.category, message.name, message.points, message.minTimer, message.maxTimer);
+			handleButtonAction(entity, message.buttonID, message.x, message.y, message.z, message.roadType, message.category, message.name, message.points, message.minTimer, message.maxTimer);
 		});
 		context.setPacketHandled(true);
 	}
 
-	public static void handleButtonAction(Player entity, int buttonID, int x, int y, int z, String category, String name, String points, String minTimer, String maxTimer) {
+	public static void handleButtonAction(Player entity, int buttonID, int x, int y, int z, String roadType, String category, String name, String points, String minTimer, String maxTimer) {
 		Level world = entity.level();
 		if (!world.hasChunkAt(new BlockPos(x, y, z))) return;
 
 		if (buttonID == 0) {
 			// On passe toutes les valeurs reçues à la procédure
-			ValidNpcShopkeeperWandGuiProcedure.execute(entity, NpcShopkeeperWandGuiMenu.guistate, category, name, points, minTimer, maxTimer);
+			ValidNpcShopkeeperWandGuiProcedure.execute(entity, NpcShopkeeperWandGuiMenu.guistate, roadType, category, name, points, minTimer, maxTimer);
 		}
 	}
 	@SubscribeEvent

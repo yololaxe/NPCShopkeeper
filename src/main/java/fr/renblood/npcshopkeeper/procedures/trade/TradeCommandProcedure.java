@@ -36,52 +36,15 @@ public class TradeCommandProcedure {
 			return;
 		}
 
-		// Charger dynamiquement la liste des noms de trades depuis trades.json
-		List<String> tradeNames;
-		try {
-			// Utilisation de OnServerStartedManager.PATH au lieu de JsonFileManager.path
-			String path = OnServerStartedManager.PATH;
-			if (path == null) {
-				LOGGER.error("Chemin trades.json non initialisé !");
-				if (entity instanceof Player p) p.displayClientMessage(Component.literal("Erreur interne : Chemins non chargés."), false);
-				return;
-			}
-
-			JsonRepository<Trade> repo = new JsonRepository<>(
-					Paths.get(path),
-					"trades",
-					Trade::fromJson,
-					Trade::toJson
-			);
-			tradeNames = repo.loadAll().stream()
-					.map(Trade::getName)
-					.distinct()
-					.collect(Collectors.toList());
-			LOGGER.info("Trade names loaded successfully: {}", tradeNames);
-		} catch (Exception e) {
-			LOGGER.error("Failed to load trade names via JsonRepository.", e);
-			return;
-		}
-
-		// Vérifier que c'est bien un ServerPlayer
-		if (!(entity instanceof ServerPlayer serverPlayer)) {
-			LOGGER.warn("Entity is not a ServerPlayer. Trade command cannot be executed.");
-			return;
-		}
-
-		LOGGER.info("Executing trade command for player: {}", serverPlayer.getName().getString());
-
-		if (!tradeNames.contains(cleanTradeName)) {
-			serverPlayer.displayClientMessage(
-					Component.literal("Ce trade n'existe pas : " + cleanTradeName),
-					false
-			);
-			LOGGER.warn("Trade '{}' not found. Available: {}", cleanTradeName, tradeNames);
-			return;
-		}
+        if (!(entity instanceof ServerPlayer serverPlayer)) return;
+        if (fr.renblood.npcshopkeeper.manager.data.RuntimeDataCache.getTrade(cleanTradeName) == null) {
+            serverPlayer.displayClientMessage(Component.literal("Cette offre n’est plus disponible. Demande à l’équipe de vérifier le catalogue.")
+                    .withStyle(net.minecraft.ChatFormatting.RED), false);
+            return;
+        }
 
 		BlockPos blockPos = BlockPos.containing(x, y, z);
-		LOGGER.info("Trade '{}' found. Opening TradeMenu at {}", cleanTradeName, blockPos);
+		LOGGER.debug("Trade '{}' found. Opening TradeMenu at {}", cleanTradeName, blockPos);
 
 		try {
 			NetworkHooks.openScreen(serverPlayer, new MenuProvider() {
@@ -92,7 +55,7 @@ public class TradeCommandProcedure {
 
 				@Override
 				public AbstractContainerMenu createMenu(int id, Inventory playerInventory, Player player) {
-					LOGGER.info("Creating TradeMenu for player {} at {}", serverPlayer.getName().getString(), blockPos);
+					LOGGER.debug("Creating TradeMenu for player {} at {}", serverPlayer.getName().getString(), blockPos);
 					FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
 					buf.writeBlockPos(blockPos)
 							.writeUtf(cleanTradeName)
@@ -107,13 +70,16 @@ public class TradeCommandProcedure {
 						.writeUtf(npcName);
 			});
 
-			LOGGER.info("Trade menu opened successfully for player: {}", serverPlayer.getName().getString());
+			LOGGER.debug("Trade menu opened successfully for player: {}", serverPlayer.getName().getString());
 			
 			// Appel différé de TradePrepareProcedure pour laisser le temps au client d'ouvrir le GUI
 			// 2 ticks = 100ms, devrait suffire pour la synchro sans casser l'ID
-			Npcshopkeeper.queueServerWork(2, () -> {
-				TradePrepareProcedure.execute(entity, cleanTradeName, npcId, npcName);
-			});
+            AbstractContainerMenu expectedMenu = serverPlayer.containerMenu;
+            Npcshopkeeper.queueServerWork(2, () -> {
+                if (!serverPlayer.hasDisconnected() && serverPlayer.containerMenu == expectedMenu) {
+                    TradePrepareProcedure.execute(entity, cleanTradeName, npcId, npcName);
+                }
+            });
 
 		} catch (Exception e) {
 			LOGGER.error("Failed to open trade menu for player: {}", serverPlayer.getName().getString(), e);

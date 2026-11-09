@@ -1,5 +1,7 @@
 package fr.renblood.npcshopkeeper.procedures.route;
 
+import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
+import fr.renblood.npcshopkeeper.manager.data.RuntimeDataCache;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.Entity;
@@ -8,11 +10,13 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.world.level.Level;
 
 import java.util.HashMap;
+import java.util.Locale;
 
 import static fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.getDataSize;
 
 public class ValidNpcShopkeeperWandGuiProcedure {
-	public static void execute(Entity entity, HashMap guistate, String category, String name, String pointsText, String minTimerText, String maxTimerText) {
+	public static void execute(Entity entity, HashMap guistate, String roadTypeId, String category, String name,
+						   String pointsText, String minTimerText, String maxTimerText) {
 		if (entity == null || guistate == null)
 			return;
 
@@ -20,7 +24,18 @@ public class ValidNpcShopkeeperWandGuiProcedure {
 		// String name = guistate.containsKey("text:name") ? ((EditBox) guistate.get("text:name")).getValue() : "";
 		// ...
 
-		int maxPoints = getDataSize();
+		int maxPoints = 32;
+		CommercialRoad.RoadType roadType = CommercialRoad.RoadType.fromId(roadTypeId);
+		String resolvedCategory = roadType == CommercialRoad.RoadType.INN_MENU ? "inn_menu" : resolveTradeCategory(category);
+		if (roadType == CommercialRoad.RoadType.TRADE && resolvedCategory == null) {
+			String available = RuntimeDataCache.getTrades().stream()
+					.map(trade -> trade.getCategory())
+					.filter(value -> value != null && !value.isBlank())
+					.distinct().sorted(String.CASE_INSENSITIVE_ORDER).limit(8)
+					.reduce((left, right) -> left + ", " + right).orElse("aucune");
+			sendMessageToPlayer(entity, "Categorie de trade inconnue. Disponibles: " + available);
+			return;
+		}
 
 		// Vérifications des champs
 		if (name == null || name.isEmpty()) {
@@ -70,10 +85,25 @@ public class ValidNpcShopkeeperWandGuiProcedure {
 
 		if (entity instanceof ServerPlayer serverPlayer) {
 			Level world = serverPlayer.level();
-			PointDefiningModeProcedure.start(serverPlayer, world, points, minTimer, maxTimer, category, name);
+			PointDefiningModeProcedure.start(serverPlayer, world, points, minTimer, maxTimer, resolvedCategory, name, roadType);
 
 			serverPlayer.closeContainer();
 		}
+	}
+
+	private static String resolveTradeCategory(String requested) {
+		String normalized = normalize(requested);
+		return RuntimeDataCache.getTrades().stream()
+				.map(trade -> trade.getCategory())
+				.filter(value -> value != null && normalize(value).equals(normalized))
+				.findFirst().orElse(null);
+	}
+
+	private static String normalize(String value) {
+		if (value == null) return "";
+		String normalized = value.trim().toLowerCase(Locale.ROOT);
+		int separator = normalized.indexOf(':');
+		return separator >= 0 ? normalized.substring(separator + 1) : normalized;
 	}
 
 	private static void sendMessageToPlayer(Entity entity, String message) {

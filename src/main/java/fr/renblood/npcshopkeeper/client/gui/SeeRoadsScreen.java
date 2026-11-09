@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.network.SeeRoadsButtonMessage;
+import fr.renblood.npcshopkeeper.network.SyncRoadsPacket;
 import fr.renblood.npcshopkeeper.world.inventory.SeeRoadsMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -29,7 +30,7 @@ public class SeeRoadsScreen extends AbstractContainerScreen<SeeRoadsMenu> {
     protected void init() {
         super.init();
         int page = this.menu.getPage();
-        int totalRoads = Npcshopkeeper.COMMERCIAL_ROADS.size();
+        int totalRoads = SyncRoadsPacket.clientRoads().size();
         boolean hasNext = (page + 1) * 27 < totalRoads;
         boolean hasPrev = page > 0;
 
@@ -63,7 +64,7 @@ public class SeeRoadsScreen extends AbstractContainerScreen<SeeRoadsMenu> {
                 // Mais le menu a rempli les slots, donc il a les infos.
                 
                 // On va chercher dans la liste globale statique (en espérant qu'elle soit sync, sinon le menu n'aurait rien affiché)
-                CommercialRoad road = Npcshopkeeper.COMMERCIAL_ROADS.stream()
+                CommercialRoad road = SyncRoadsPacket.clientRoads().stream()
                         .filter(r -> r.getName().equals(roadName))
                         .findFirst()
                         .orElse(null);

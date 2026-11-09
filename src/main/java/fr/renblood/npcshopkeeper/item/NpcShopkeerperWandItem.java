@@ -1,10 +1,7 @@
 package fr.renblood.npcshopkeeper.item;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
-import fr.renblood.npcshopkeeper.data.io.JsonFileManager; // pour path
-import fr.renblood.npcshopkeeper.data.io.JsonRepository;
-import fr.renblood.npcshopkeeper.data.trade.Trade;
-import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
+import fr.renblood.npcshopkeeper.manager.data.RuntimeDataCache;
 import fr.renblood.npcshopkeeper.procedures.route.RightClickNpcShopkeeperWandProcedure;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,7 +16,6 @@ import net.minecraft.world.InteractionHand;
 import java.util.Set;
 import java.util.Locale;
 import java.util.stream.Collectors;
-import java.nio.file.Paths;
 
 public class NpcShopkeerperWandItem extends Item {
 	public NpcShopkeerperWandItem() {
@@ -43,60 +39,23 @@ public class NpcShopkeerperWandItem extends Item {
 
 		// 2) Offhand check
 		ItemStack offhand = serverPlayer.getOffhandItem();
-		if (offhand.isEmpty()) {
-			serverPlayer.displayClientMessage(
-					Component.literal("Vous devez tenir un objet dans votre main secondaire."),
-					true
-			);
-			return InteractionResultHolder.pass(wand);
-		}
-
-		String itemId = offhand.getItem()
+		String itemId = offhand.isEmpty() ? "" : offhand.getItem()
 				.builtInRegistryHolder()
 				.key()
 				.location()
 				.toString();
 
-		// 3) Load valid categories **only once**, on the server
-		Set<String> validCategories;
-		try {
-			// Utilisation de OnServerStartedManager.PATH au lieu de JsonFileManager.path
-			String tradePath = OnServerStartedManager.PATH;
-			if (tradePath == null) {
-				Npcshopkeeper.LOGGER.error("Le chemin vers trades.json n'est pas initialisé !");
-				return InteractionResultHolder.fail(wand);
-			}
-			
-			validCategories = new JsonRepository<>(
-					Paths.get(tradePath),
-					"trades",
-					Trade::fromJson,
-					Trade::toJson
-			).loadAll().stream()
-					.map(Trade::getCategory)
-					.collect(Collectors.toSet());
-		} catch (Exception e) {
-			// Log to server console — the client needn't see this
-			Npcshopkeeper.LOGGER.error("Impossible de charger trades.json pour récupérer les catégories", e);
-			serverPlayer.displayClientMessage(
-					Component.literal("Erreur interne lors du chargement des catégories."),
-					true
-			);
-			return InteractionResultHolder.fail(wand);
-		}
+		Set<String> validCategories = RuntimeDataCache.getTrades().stream()
+				.map(trade -> trade.getCategory())
+				.filter(category -> category != null && !category.isBlank())
+				.collect(Collectors.toSet());
 
 		String matchedCategory = findMatchingCategory(validCategories, itemId);
-
-		// 4) Check category
-		if (matchedCategory == null) {
-			serverPlayer.displayClientMessage(
-					Component.literal("Cet objet n'est pas valide pour créer une route commerciale."),
-					true
-			);
-			return InteractionResultHolder.pass(wand);
+		if (matchedCategory == null && offhand.hasCustomHoverName()) {
+			matchedCategory = findMatchingCategory(validCategories, offhand.getHoverName().getString());
 		}
+		if (matchedCategory == null) matchedCategory = itemId;
 
-		// 5) Finally do your normal route-creation logic
 		RightClickNpcShopkeeperWandProcedure.executeWithCategory(
 				world,
 				serverPlayer.getX(),
@@ -106,7 +65,7 @@ public class NpcShopkeerperWandItem extends Item {
 				matchedCategory
 		);
 		serverPlayer.displayClientMessage(
-				Component.literal("Début de la création de la route commerciale."),
+				Component.literal("Configurez une route de commerce ou une route menu d'auberge."),
 				true
 		);
 

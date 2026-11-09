@@ -102,8 +102,8 @@ public class SpawnDecorNpcCommand {
     );
 
     private static String resolveNpcName(String requestedName) {
-        if (GlobalNpcManager.getNpcData(requestedName) != null) return requestedName;
-        return requestedName.replace('_', ' ');
+        String resolved = GlobalNpcManager.resolveNpcName(requestedName);
+        return resolved != null ? resolved : requestedName.replace('_', ' ');
     }
 
     private static String resolveNpcId(String npcName, Map<String, Object> npcData) {

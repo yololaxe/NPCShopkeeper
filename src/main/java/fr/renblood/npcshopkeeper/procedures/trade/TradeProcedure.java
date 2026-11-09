@@ -38,34 +38,16 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class TradeProcedure {
-	private static boolean isProcessingTrade = false;
 	private static final Logger LOGGER = LogManager.getLogger(TradeProcedure.class);
 
 	// ── Helpers ─────────────────────────────────────────────────────────
 
-	private static Trade getTradeByName(String name) {
-		JsonRepository<Trade> repo = new JsonRepository<>(
-				Paths.get(OnServerStartedManager.PATH),
-				"trades",
-				Trade::fromJson,
-				Trade::toJson
-		);
-		return repo.loadAll().stream()
-				.filter(t -> t.getName().equals(name))
-				.findFirst().orElse(null);
-	}
-
-	private static TradeHistory getTradeHistoryById(String id) {
-		JsonRepository<TradeHistory> repo = new JsonRepository<>(
-				Paths.get(OnServerStartedManager.PATH_HISTORY),
-				"history",
-				TradeHistory::fromJson,
-				TradeHistory::toJson
-		);
-		return repo.loadAll().stream()
-				.filter(h -> h.getId().equals(id))
-				.findFirst().orElse(null);
-	}
+    private static Trade getTradeByName(String name) {
+        return fr.renblood.npcshopkeeper.manager.data.RuntimeDataCache.getTrade(name);
+    }
+    private static TradeHistory getTradeHistoryById(String id) {
+        return fr.renblood.npcshopkeeper.manager.data.RuntimeDataCache.getHistory(id);
+    }
 
 	private static void markTradeAsFinished(ServerPlayer player, String id) {
 		JsonRepository<TradeHistory> repo = new JsonRepository<>(
@@ -88,8 +70,13 @@ public class TradeProcedure {
 
 	@SuppressWarnings("unchecked")
 	public static void execute(Entity entity) {
-		if (entity == null || isProcessingTrade) return;
-		isProcessingTrade = true;
+        if (!(entity instanceof ServerPlayer actor)
+                || !(actor.containerMenu instanceof fr.renblood.npcshopkeeper.world.inventory.TradeMenu requestedMenu)) return;
+        if (requestedMenu.isSettlementPending()) {
+            actor.displayClientMessage(Component.literal("Un règlement est déjà en cours pour ce contrat.")
+                    .withStyle(net.minecraft.ChatFormatting.YELLOW), true);
+            return;
+        }
 
 		try {
 			if (entity instanceof ServerPlayer player
@@ -139,9 +126,30 @@ public class TradeProcedure {
 
 					Npcshopkeeper.debugLog(LOGGER, "Conditions remplies, exécution du trade...");
 
+                    final String resolvedTradeId=tradeId;
+                    final var expectedMenu=player.containerMenu;
+                    long amount=th.getTotalPrice();
+                    if(amount<=0){player.sendSystemMessage(Component.literal("Offre sans prix confirmé : contactez un administrateur."));return;}
+                    Trade definition = getTradeByName(tradeName);
+                    if (definition == null) return;
+                    TradeResult bonus = definition.getResult();
+                    ItemStack bonusStack = ItemStack.EMPTY;
+                    if (bonus != null && bonus.getQuantity() > 0) {
+                        ResourceLocation bonusId = ResourceLocation.tryParse(bonus.getItem());
+                        if (bonusId == null || !BuiltInRegistries.ITEM.containsKey(bonusId)) return;
+                        bonusStack = new ItemStack(BuiltInRegistries.ITEM.get(bonusId), bonus.getQuantity());
+                    }
+                    requestedMenu.beginSettlement();
+                    fr.renblood.npcshopkeeper.manager.integration.CommerceAdapter.cashContract(player,
+                        "npc-trade:" + resolvedTradeId, "contract:" + resolvedTradeId, amount, bonusStack, () -> {
+                            TradeHistory current = getTradeHistoryById(resolvedTradeId);
+                            return player.containerMenu == expectedMenu && current != null && !current.isFinished()
+                                    && isValidSlotPair(slots, 0, 1, player) && isValidSlotPair(slots, 2, 3, player)
+                                    && isValidSlotPair(slots, 4, 5, player) && isValidSlotPair(slots, 6, 7, player);
+                        }, () -> {
 					clearAndRemoveSlots(player, slots);
-					giveRewards(player, slots, tradeId, tradeName);
-					markTradeAsFinished(player, tradeId);
+					giveTradeExperience(player, resolvedTradeId);
+					markTradeAsFinished(player, resolvedTradeId);
 					
 					// Nettoyage de la session
 					TradeSessionManager.clearTradeId(player.getUUID());
@@ -149,7 +157,7 @@ public class TradeProcedure {
 					player.containerMenu.broadcastChanges();
 
 					// ── SUPPRESSION DU PNJ À LA FIN DU TRADE ───────────────────────
-					TradeHistory finishedTh = getTradeHistoryById(tradeId);
+					TradeHistory finishedTh = getTradeHistoryById(resolvedTradeId);
 					if (finishedTh != null) {
 						// … après markTradeAsFinished + broadcastChanges …
 
@@ -235,14 +243,34 @@ public class TradeProcedure {
 							LOGGER.warn("PNJ {} introuvable pour suppression (même après recherche locale)", npcUuid);
 						}
 					}
+                        }).whenComplete((receipt,failure)->player.getServer().execute(()->{
+                            requestedMenu.endSettlement();
+                            if (player.hasDisconnected()) return;
+                            if (failure != null) {
+                                Throwable cause = failure;
+                                while (cause.getCause() != null) cause = cause.getCause();
+                                String message = String.valueOf(cause.getMessage()).contains("INSUFFICIENT_FUNDS")
+                                        ? "Le budget du marchand est insuffisant. Contacte l’équipe pour vérifier son financement."
+                                        : "Échange interrompu. Garde le reçu et vérifie son état avant de réessayer.";
+                                player.sendSystemMessage(Component.literal(message).withStyle(net.minecraft.ChatFormatting.RED));
+                            } else if (receipt != null && "CONFIRMED".equals(receipt.get("state").getAsString())) {
+                                player.sendSystemMessage(Component.literal("Échange terminé. Le paiement a été remis en pièces.")
+                                        .withStyle(net.minecraft.ChatFormatting.GREEN));
+                            } else if (receipt != null && "CANCELLED".equals(receipt.get("state").getAsString())) {
+                                player.sendSystemMessage(Component.literal("Échange annulé. Vérifie les objets déposés et la place pour recevoir les pièces.")
+                                        .withStyle(net.minecraft.ChatFormatting.RED));
+                            } else {
+                                player.sendSystemMessage(Component.literal("Ce règlement doit être vérifié. Transmets la référence du reçu à l’équipe.")
+                                        .withStyle(net.minecraft.ChatFormatting.YELLOW));
+                            }
+                        }));
 				} else {
 					Npcshopkeeper.debugLog(LOGGER, "Conditions non remplies pour le trade (items manquants ou slots de récompense pleins).");
 				}
 			}
 		} catch (Exception e) {
+            requestedMenu.endSettlement();
 			LOGGER.error("Erreur lors de l'exécution du trade", e);
-		} finally {
-			isProcessingTrade = false;
 		}
 	}
 	private static boolean isServerPlayerWithMenu(Entity entity) {
@@ -268,7 +296,7 @@ public class TradeProcedure {
 						getItem(_slots, 9).getItem() == Items.AIR &&
 						getItem(_slots, 10).getItem() == Items.AIR &&
 						getItem(_slots, 11).getItem() == Items.AIR &&
-						getItem(_slots, slotId1).getItem() == getItem(_slots, slotId2).getItem() &&
+						ItemStack.isSameItemSameTags(getItem(_slots, slotId1), getItem(_slots, slotId2)) &&
 						getAmount(_slots, slotId1) <= getAmount(_slots, slotId2));
 	}
 
@@ -286,7 +314,7 @@ public class TradeProcedure {
 	}
 
 	// Méthode utilitaire pour donner les récompenses
-	private static void giveRewards(ServerPlayer player, Map _slots, String tradeId, String tradeName) {
+	private static void giveTradeExperience(ServerPlayer player, String tradeId) {
 		// Récupérer l'historique du trade
 		Npcshopkeeper.debugLog(LOGGER, "On est dans give reward");
 		TradeHistory tradeHistory = getTradeHistoryById(tradeId);
@@ -297,50 +325,6 @@ public class TradeProcedure {
 		Npcshopkeeper.debugLog(LOGGER, "Historique de trade trouvé pour le joueur : " + tradeHistory.getPlayer());
 
 
-		// Calculer le total d'argent à partir des tradeItems
-		int totalMoneyInCopper = tradeHistory.getTotalPrice();
-		Npcshopkeeper.debugLog(LOGGER, "Total d'argent calculé (en cuivre) : " + totalMoneyInCopper);
-
-		// Convertir le total en pièces (Gold, Silver, Bronze, Copper)
-		int[] coins = MoneyCalculator.getIntInCoins(totalMoneyInCopper);
-		Npcshopkeeper.debugLog(LOGGER, "Conversion des pièces : Or = " + coins[0] + ", Argent = " + coins[1] + ", Bronze = " + coins[2] + ", Cuivre = " + coins[3]);
-
-		// Définir les items correspondants aux pièces
-		Item goldCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:gold_coin"));
-		Item silverCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:silver_coin"));
-		Item bronzeCoin = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:bronze_coin"));
-		Item ironCoin   = BuiltInRegistries.ITEM.get(new ResourceLocation("medieval_coins:iron_coin"));
-
-		// Tableau contenant les pièces et leur quantité
-		ItemStack[] coinStacks = {
-				new ItemStack(goldCoin, coins[0]),    // Or
-				new ItemStack(silverCoin, coins[1]),  // Argent
-				new ItemStack(bronzeCoin, coins[2]),  // Bronze
-				new ItemStack(ironCoin, coins[3])   // Cuivre
-		};
-
-		// Trouver les deux types de pièces les plus hautes avec au moins une pièce
-		int slotIndex = 8;
-		for (int i = 0; i < coinStacks.length && slotIndex <= 9; i++) {
-			if (coinStacks[i].getCount() > 0) {
-				Npcshopkeeper.debugLog(LOGGER, "Ajout de " + coins[i] + " pièce(s) dans le slot " + slotIndex);
-				setSlot(_slots, slotIndex, coinStacks[i], coins[i]);
-				slotIndex++;
-			}
-		}
-
-		// Récupérer le résultat du trade et placer l'item dans le slot 10
-		TradeResult result = getTradeByName(tradeName).getResult();
-		if (result == null) {
-			// LOGGER.error("Aucun résultat trouvé pour le trade : " + tradeName);
-			// return; // <-- SUPPRIMÉ : On continue même si pas de résultat bonus
-		} else {
-			ResourceLocation itemResource = new ResourceLocation(result.getItem());
-			Item item = BuiltInRegistries.ITEM.get(itemResource);
-			Npcshopkeeper.debugLog(LOGGER, "Ajout de " + result.getQuantity() + " de " + result.getItem() + " dans le slot 10.");
-			setSlot(_slots, 10, new ItemStack(item), result.getQuantity());
-		}
-		
 		// ── CALCUL ET DISTRIBUTION DE L'XP ───────────────────────────────────
 		Map<String, Float> xpGains = new HashMap<>(); // Job -> Total XP
 		

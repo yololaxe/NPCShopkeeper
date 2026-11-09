@@ -25,6 +25,8 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.config.Configurator;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -43,7 +45,11 @@ public class Npcshopkeeper {
     public static final Logger LOGGER = LogManager.getLogger(MODID);
     
     // Mode Debug : Mettre à true pour activer les logs détaillés
-    public static boolean DEBUG_MODE = true;
+    public static boolean DEBUG_MODE = false;
+
+    static {
+        applyLogLevel();
+    }
 
     public static final DeferredRegister<MenuType<?>> MENUS =
             DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
@@ -74,7 +80,7 @@ public class Npcshopkeeper {
     }
 
     // Network channel setup
-    private static final String PROTOCOL_VERSION = "1";
+    private static final String PROTOCOL_VERSION = "2";
     public static final SimpleChannel PACKET_HANDLER =
             NetworkRegistry.newSimpleChannel(
                     new ResourceLocation(MODID, "network"),
@@ -130,5 +136,16 @@ public class Npcshopkeeper {
         if (DEBUG_MODE) {
             logger.info(message, params);
         }
+    }
+
+    public static void setDebugMode(boolean enabled) {
+        DEBUG_MODE = enabled;
+        applyLogLevel();
+    }
+
+    private static void applyLogLevel() {
+        Level level = DEBUG_MODE ? Level.INFO : Level.WARN;
+        Configurator.setLevel("fr.renblood.npcshopkeeper", level);
+        Configurator.setLevel(MODID, level);
     }
 }

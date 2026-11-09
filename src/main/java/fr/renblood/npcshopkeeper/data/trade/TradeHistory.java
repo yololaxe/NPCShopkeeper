@@ -16,18 +16,18 @@ public class TradeHistory {
     private boolean isAbandoned; // Nouveau champ
     private String id;
     private List<TradeItemInfo> tradeItems;
-    private int totalPrice;
+    private long totalPrice;
     private String npcId;
     private String npcName;
 
 
     // Constructeur principal
-    public TradeHistory(List<String> player, String tradeName, boolean isFinished, String ID, List<TradeItemInfo> tradeItems, int totalPrice, String npcId, String npcName) {
+    public TradeHistory(List<String> player, String tradeName, boolean isFinished, String ID, List<TradeItemInfo> tradeItems, long totalPrice, String npcId, String npcName) {
         this(player, tradeName, isFinished, false, ID, tradeItems, totalPrice, npcId, npcName);
     }
 
     // Constructeur complet avec isAbandoned
-    public TradeHistory(List<String> player, String tradeName, boolean isFinished, boolean isAbandoned, String ID, List<TradeItemInfo> tradeItems, int totalPrice, String npcId, String npcName) {
+    public TradeHistory(List<String> player, String tradeName, boolean isFinished, boolean isAbandoned, String ID, List<TradeItemInfo> tradeItems, long totalPrice, String npcId, String npcName) {
         this.player = player;
         this.tradeName = tradeName;
         this.isFinished = isFinished;
@@ -86,11 +86,11 @@ public class TradeHistory {
     public void setTradeItems(List<TradeItemInfo> tradeItems) {
         this.tradeItems = tradeItems;
     }
-    public int getTotalPrice() {
+    public long getTotalPrice() {
         return totalPrice;
     }
 
-    public void setTotalPrice(int totalPrice) {
+    public void setTotalPrice(long totalPrice) {
         this.totalPrice = totalPrice;
     }
 
@@ -142,7 +142,7 @@ public class TradeHistory {
         }
         o.add("tradeItems", itemsArr);
 
-        o.addProperty("totalPrice", totalPrice);
+        o.addProperty("totalPrice", Long.toString(totalPrice));
         o.addProperty("npcId",      npcId);
         o.addProperty("npcName",    npcName);
 
@@ -168,7 +168,7 @@ public class TradeHistory {
             items.add(TradeItemInfo.fromJson(e.getAsJsonObject()));
         }
 
-        int totalPrice   = o.get("totalPrice").getAsInt();
+        long totalPrice   = new java.math.BigDecimal(o.get("totalPrice").getAsString()).longValueExact();
         String npcId     = o.get("npcId").getAsString();
         String npcName   = o.get("npcName").getAsString();
 

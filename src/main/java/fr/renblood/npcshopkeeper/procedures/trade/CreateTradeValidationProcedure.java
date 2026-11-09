@@ -92,17 +92,11 @@ public class CreateTradeValidationProcedure {
 						MinecraftServer server = _player.getServer();
 						if (server != null) {
 							String worldSavePath = server.getWorldPath(LevelResource.ROOT).resolve("npcshopkeeper/trade.json").toString();
-							boolean isNameValid = checkTradeName(worldSavePath, tradeName);
-
-							if (isNameValid) {
-								// Si le nom est valide, écrire dans le fichier
-								writeNewTradeToFile(worldSavePath, newTrade, _player);
-								_player.displayClientMessage(Component.literal("Nouveau trade enregistré !"), true);
-								_player.closeContainer(); // Fermer l'inventaire seulement si tout est correct
-							} else {
-								// Sinon, ne pas fermer et afficher un message d'erreur
-								_player.displayClientMessage(Component.literal("Erreur : Un trade avec ce nom existe déjà."), false);
-							}
+                            if (writeNewTradeToFile(worldSavePath, newTrade, _player)) {
+                                _player.displayClientMessage(Component.literal("Nouvelle offre enregistrée.")
+                                        .withStyle(net.minecraft.ChatFormatting.GREEN), true);
+                                _player.closeContainer();
+                            }
 						}
 					} else {
 						if (!_player.level().isClientSide())
@@ -157,52 +151,29 @@ public class CreateTradeValidationProcedure {
 		return true;  // Nom valide si non trouvé
 	}
 
-	public static void writeNewTradeToFile(String filePath, JsonObject newTrade, Player player) {
-		try {
-			FileReader reader = new FileReader(filePath);
-			BufferedReader bufferedReader = new BufferedReader(reader);
-			StringBuilder content = new StringBuilder();
-			String line;
-
-			// Lire le fichier ligne par ligne et vérifier s'il est vide
-			while ((line = bufferedReader.readLine()) != null) {
-				content.append(line);
-			}
-			reader.close();
-
-			JsonObject fileObject;
-			if (content.length() == 0) {
-				// Si le fichier est vide, créer une nouvelle structure JSON
-				fileObject = new JsonObject();
-				fileObject.add("trades", new JsonArray()); // Ajouter un tableau "trades" vide
-			} else {
-				// Si le fichier n'est pas vide, parser son contenu
-				JsonElement fileElement = JsonParser.parseString(content.toString());
-
-				// Si le contenu n'est pas un objet JSON valide, créer une nouvelle structure
-				if (!fileElement.isJsonObject()) {
-					fileObject = new JsonObject();
-					fileObject.add("trades", new JsonArray()); // Ajouter un tableau "trades" vide
-				} else {
-					fileObject = fileElement.getAsJsonObject();
-				}
-			}
-
-			// Ajouter le nouveau trade au fichier JSON
-			JsonArray tradeArray = fileObject.getAsJsonArray("trades");
-			tradeArray.add(newTrade);
-
-			// Écrire le fichier JSON mis à jour dans le fichier
-			FileWriter writer = new FileWriter(filePath);
-			writer.write(fileObject.toString());
-			writer.close();
-
-			// Informer le joueur de la réussite
-			player.displayClientMessage(Component.literal("Nouveau trade enregistré !"), false);
-
-		} catch (IOException e) {
-			player.displayClientMessage(Component.literal("Erreur lors de la lecture ou de l'écriture du fichier JSON: " + e.getMessage()), false);
-			e.printStackTrace();
-		}
-	}
+    public static boolean writeNewTradeToFile(String filePath, JsonObject newTrade, Player player) {
+        try {
+            fr.renblood.npcshopkeeper.data.io.JsonFileManager.updateJsonFile(filePath, root -> {
+                if (!root.has("trades")) root.add("trades", new JsonArray());
+                if (!root.get("trades").isJsonArray()) throw new IllegalArgumentException("Le catalogue doit être vérifié par l’équipe.");
+                JsonArray trades = root.getAsJsonArray("trades");
+                for (JsonElement row : trades) {
+                    if (row.isJsonObject() && row.getAsJsonObject().has("Name")
+                            && row.getAsJsonObject().get("Name").getAsString().equalsIgnoreCase(newTrade.get("Name").getAsString()))
+                        throw new IllegalArgumentException("Une offre porte déjà ce nom.");
+                }
+                trades.add(newTrade.deepCopy());
+            });
+            return true;
+        } catch (IOException failure) {
+            org.apache.logging.log4j.LogManager.getLogger(CreateTradeValidationProcedure.class).error("Offre non sauvegardée", failure);
+            player.displayClientMessage(Component.literal("Enregistrement impossible. Le catalogue doit être vérifié par l’équipe.")
+                    .withStyle(net.minecraft.ChatFormatting.RED), false);
+        } catch (RuntimeException failure) {
+            player.displayClientMessage(Component.literal(failure instanceof IllegalArgumentException ? failure.getMessage()
+                    : "Enregistrement non confirmé. Demande à l’équipe de vérifier le catalogue.")
+                    .withStyle(net.minecraft.ChatFormatting.RED), false);
+        }
+        return false;
+    }
 }

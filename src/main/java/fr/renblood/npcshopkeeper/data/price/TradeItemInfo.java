@@ -6,9 +6,9 @@ import net.minecraft.world.item.Item;
 public class TradeItemInfo {
     private String item;
     private int quantity;
-    private int price;
+    private long price;
 
-    public TradeItemInfo(String item, int quantity, int price) {
+    public TradeItemInfo(String item, int quantity, long price) {
         this.item = item;
         this.quantity = quantity;
         this.price = price;
@@ -23,7 +23,7 @@ public class TradeItemInfo {
         return quantity;
     }
 
-    public int getPrice() {
+    public long getPrice() {
         return price;
     }
 
@@ -40,14 +40,14 @@ public class TradeItemInfo {
         JsonObject o = new JsonObject();
         o.addProperty("item",     item);
         o.addProperty("quantity", quantity);
-        o.addProperty("price",    price);
+        o.addProperty("price",    Long.toString(price));
         return o;
     }
 
     public static TradeItemInfo fromJson(JsonObject o) {
         String item     = o.get("item").getAsString();
         int quantity    = o.get("quantity").getAsInt();
-        int price       = o.get("price").getAsInt();
+        long price       = new java.math.BigDecimal(o.get("price").getAsString()).longValueExact();
         return new TradeItemInfo(item, quantity, price);
     }
 }

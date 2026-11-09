@@ -1,6 +1,5 @@
 package fr.renblood.npcshopkeeper.manager.integration;
 
-import com.google.gson.JsonObject;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
 import fr.renblood.npcshopkeeper.data.api.NpcSpawn;
 import fr.renblood.npcshopkeeper.data.api.NpcTemplate;
@@ -27,6 +26,7 @@ public class MedievalCoinsIntegration {
     private static Method getNpcSpawnsByWorldMethod;
     private static Method getNpcChangesSinceMethod;
     private static Method getNpcRevisionMethod;
+    private static Method isNpcDifferentialSyncAvailableMethod;
     private static Method createNpcMethod;
     private static Method createNpcSpawnMethod;
     private static Method deleteNpcSpawnMethod;
@@ -36,14 +36,12 @@ public class MedievalCoinsIntegration {
     private static Method openNpcQuestInteractionsMethod;
     private static Method getQuestDetailsMethod;
     private static Method getActiveQuestsMethod;
-    private static Method completeQuestMethod;
-    private static Method getPlayerMethod;
+    private static Method startQuestMethod;
     private static Method getReferencePriceMethod;
+    private static Method upsertPriceReferenceMethod;
+    private static Method formatMoneyMethod;
     private static Method getReferenceXpJobItemMethod;
     private static Method getReferenceXpActionJobItemMethod;
-    private static Method loadConfigMethod;
-    private static Method sendPostRequestMethod;
-    private static Class<?> configClass;
     
     private static Class<?> npcModelClass;
     private static Class<?> npcSpawnModelClass;
@@ -53,7 +51,13 @@ public class MedievalCoinsIntegration {
     }
 
     public static boolean supportsDifferentialSync() {
-        return isMedievalCoinsLoaded && getNpcChangesSinceMethod != null && getNpcRevisionMethod != null;
+        if (!isMedievalCoinsLoaded || getNpcChangesSinceMethod == null || getNpcRevisionMethod == null) return false;
+        if (isNpcDifferentialSyncAvailableMethod == null) return true;
+        try {
+            return Boolean.TRUE.equals(isNpcDifferentialSyncAvailableMethod.invoke(null));
+        } catch (Exception exception) {
+            return false;
+        }
     }
 
     public static boolean hasNpcChangesSince(long revision) {
@@ -109,6 +113,7 @@ public class MedievalCoinsIntegration {
                         "showNpcDialogue", ServerPlayer.class, String.class, String.class, String.class);
                 openNpcQuestInteractionsMethod = apiClass.getMethod(
                         "openNpcQuestInteractions", ServerPlayer.class, String.class, String.class, String.class);
+                startQuestMethod = apiClass.getMethod("startQuest", ServerPlayer.class, String.class);
                 getNpcsMethod = apiClass.getMethod("getNpcs");
                 getNpcSpawnsMethod = apiClass.getMethod("getNpcSpawns");
                 try {
@@ -119,6 +124,7 @@ public class MedievalCoinsIntegration {
                 try {
                     getNpcChangesSinceMethod = apiClass.getMethod("getNpcChangesSince", long.class);
                     getNpcRevisionMethod = apiClass.getMethod("getNpcRevision");
+                    isNpcDifferentialSyncAvailableMethod = apiClass.getMethod("isNpcDifferentialSyncAvailable");
                 } catch (NoSuchMethodException e) {
                     LOGGER.info("Synchronisation differentielle Medieval Coins indisponible.");
                 }
@@ -141,16 +147,12 @@ public class MedievalCoinsIntegration {
                 Class<?> apiClientClass = Class.forName("fr.renblood.medievalcoins.network.ApiClient");
                 getQuestDetailsMethod = apiClientClass.getMethod("getQuestDetails", String.class);
                 getActiveQuestsMethod = apiClientClass.getMethod("getActiveQuests", String.class, String.class);
-                completeQuestMethod = apiClientClass.getMethod("completeQuest", String.class, String.class);
-                getPlayerMethod = apiClientClass.getMethod("getPlayer", String.class);
-                sendPostRequestMethod = apiClientClass.getDeclaredMethod(
-                        "sendPostRequest", String.class, String.class, JsonObject.class);
-                sendPostRequestMethod.setAccessible(true);
-                configClass = Class.forName("fr.renblood.medievalcoins.config.ModConfig");
-                loadConfigMethod = configClass.getMethod("load");
 
                 try {
                     getReferencePriceMethod = apiClass.getMethod("getReferencePrice", String.class);
+                    upsertPriceReferenceMethod = apiClass.getMethod("upsertPriceReference", String.class, String.class,
+                            String.class, long.class, long.class, long.class);
+                    formatMoneyMethod = apiClass.getMethod("formatMoney", long.class);
                     getReferenceXpJobItemMethod = apiClass.getMethod("getReferenceXp", String.class, String.class);
                     getReferenceXpActionJobItemMethod = apiClass.getMethod(
                             "getReferenceXp", String.class, String.class, String.class);
@@ -185,17 +187,58 @@ public class MedievalCoinsIntegration {
         }
     }
 
+    public static Optional<Long> getReferencePriceLong(String itemId){
+        if(!isMedievalCoinsLoaded||getReferencePriceMethod==null||itemId==null||itemId.isBlank())return Optional.empty();
+        try{
+            Object raw=unwrapOptional(getReferencePriceMethod.invoke(null,itemId));
+            if(!(raw instanceof Number number))return Optional.empty();
+            long value=new java.math.BigDecimal(number.toString()).longValueExact();
+            return value>0?Optional.of(value):Optional.empty();
+        }catch(Exception failure){return Optional.empty();}
+    }
     public static Optional<Integer> getReferencePrice(String itemId) {
         if (!isMedievalCoinsLoaded || getReferencePriceMethod == null || itemId == null || itemId.isBlank()) {
             return Optional.empty();
         }
         try {
-            return extractInteger(getReferencePriceMethod.invoke(null, itemId),
-                    "referencePrice", "calculatedPrice", "buyPrice", "sellPrice", "price");
+            Object raw=unwrapOptional(getReferencePriceMethod.invoke(null,itemId));
+            if(raw instanceof Number number){
+                int amount=new java.math.BigDecimal(number.toString()).intValueExact();
+                return amount>0?Optional.of(amount):Optional.empty();
+            }
+            return extractInteger(raw,"referencePrice","calculatedPrice","buyPrice","sellPrice","price").filter(amount->amount>0);
         } catch (Exception e) {
             LOGGER.error("Erreur getReferencePrice({})", itemId, e);
             return Optional.empty();
         }
+    }
+
+    public static java.util.concurrent.CompletableFuture<Boolean> upsertPriceReference(String itemId,
+            String displayName, String category, long referencePrice, long minPrice, long maxPrice) {
+        if (!isMedievalCoinsLoaded || upsertPriceReferenceMethod == null) {
+            return java.util.concurrent.CompletableFuture.completedFuture(false);
+        }
+        try {
+            Object result = upsertPriceReferenceMethod.invoke(null, itemId, displayName, category,
+                    referencePrice, minPrice, maxPrice);
+            if (result instanceof java.util.concurrent.CompletableFuture<?> future) {
+                return future.thenApply(Boolean.TRUE::equals);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Erreur upsertPriceReference({})", itemId, e);
+        }
+        return java.util.concurrent.CompletableFuture.completedFuture(false);
+    }
+
+    public static String formatMoney(long amount) {
+        if (formatMoneyMethod != null) {
+            try {
+                Object result = formatMoneyMethod.invoke(null, amount);
+                if (result instanceof String value) return value;
+            } catch (Exception ignored) {
+            }
+        }
+        return amount + " fer";
     }
 
     public static Optional<XpReferenceInfo> getReferenceXp(String job, String itemId) {
@@ -438,20 +481,9 @@ public class MedievalCoinsIntegration {
     }
 
     private static boolean updateQuestStatus(ServerPlayer player, String questId, String status) {
-        if (!isMedievalCoinsLoaded || sendPostRequestMethod == null || loadConfigMethod == null) return false;
+        if (!isMedievalCoinsLoaded || startQuestMethod == null || !"IN_PROGRESS".equals(status)) return false;
         try {
-            Object profile = getPlayerMethod.invoke(null, player.getGameProfile().getId().toString());
-            String playerId = getStringField(profile, profile.getClass(), "id");
-            Object config = loadConfigMethod.invoke(null);
-            String apiUrl = getStringField(config, configClass, "apiUrl");
-            String apiKey = getStringField(config, configClass, "apiKey");
-            if (apiUrl.endsWith("/")) apiUrl = apiUrl.substring(0, apiUrl.length() - 1);
-
-            JsonObject body = new JsonObject();
-            body.addProperty("quest_id", questId);
-            body.addProperty("status", status);
-            sendPostRequestMethod.invoke(null, apiUrl + "/quests/player/" + playerId + "/update/", apiKey, body);
-            return true;
+            return Boolean.TRUE.equals(startQuestMethod.invoke(null, player, questId));
         } catch (Exception e) {
             LOGGER.error("Erreur updateQuestStatus({}, {})", questId, status, e);
             return false;

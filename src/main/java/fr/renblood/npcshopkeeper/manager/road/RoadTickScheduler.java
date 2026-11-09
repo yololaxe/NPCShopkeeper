@@ -20,6 +20,8 @@ public final class RoadTickScheduler {
             new PriorityQueue<>(Comparator.comparingLong(ScheduledRoadSpawn::dueTick));
     private static final Map<String, ScheduledRoadSpawn> BY_ROAD_ID = new HashMap<>();
 
+    private static final Map<String, NpcSpawnerManager.SpawnResult> LAST_RESULTS = new HashMap<>();
+
     private RoadTickScheduler() {}
 
     @SubscribeEvent
@@ -27,22 +29,44 @@ public final class RoadTickScheduler {
         if (event.phase != TickEvent.Phase.END) return;
         ServerLevel level = event.getServer().overworld();
         long now = event.getServer().getTickCount();
-        while (!QUEUE.isEmpty() && QUEUE.peek().dueTick() <= now) {
+        int remaining = 2;
+        while (remaining > 0 && !QUEUE.isEmpty() && QUEUE.peek().dueTick() <= now) {
             ScheduledRoadSpawn scheduled = QUEUE.poll();
             if (BY_ROAD_ID.get(scheduled.road().getId()) != scheduled) continue;
+            remaining--;
             NpcSpawnerManager.SpawnResult result = NpcSpawnerManager.trySpawnNpcForRoad(level, scheduled.road());
+            LAST_RESULTS.put(scheduled.road().getId(), result);
             schedule(scheduled.road(), now, result);
         }
     }
 
     public static void registerRoad(CommercialRoad road) {
+        if (road == null || !road.isTradeRoute()) return;
         if (!BY_ROAD_ID.containsKey(road.getId())) schedule(road, 0L, NpcSpawnerManager.SpawnResult.SPAWNED);
     }
 
-    public static void unregisterRoad(CommercialRoad road) { BY_ROAD_ID.remove(road.getId()); }
+    public static void unregisterRoad(CommercialRoad road) {
+        BY_ROAD_ID.remove(road.getId());
+        LAST_RESULTS.remove(road.getId());
+    }
+
+    public static String status(CommercialRoad road, long now) {
+        var scheduled = BY_ROAD_ID.get(road.getId());
+        if (scheduled == null) return road.isInnMenuRoute() ? "Route d’auberge. Voir /ms auberge status." : "Route non planifiée.";
+        String result = switch (LAST_RESULTS.getOrDefault(road.getId(), NpcSpawnerManager.SpawnResult.SPAWNED)) {
+            case SPAWNED -> LAST_RESULTS.containsKey(road.getId()) ? "PNJ apparu" : "aucun essai";
+            case FULL -> "route pleine";
+            case NO_NPC_AVAILABLE -> "aucun modèle de PNJ disponible";
+            case NO_FREE_POINT -> "aucun point libre";
+            case NO_LOADED_POINT -> "les points de la route sont dans des chunks déchargés";
+        };
+        return "Prochain essai dans " + Math.max(0, (scheduled.dueTick() - now + 19) / 20)
+                + " s · Dernier résultat : " + result;
+    }
     public static void clear() {
         QUEUE.clear();
         BY_ROAD_ID.clear();
+        LAST_RESULTS.clear();
     }
     public static long getNextDueTick() { return QUEUE.isEmpty() ? -1L : QUEUE.peek().dueTick(); }
     public static int scheduledCount() { return BY_ROAD_ID.size(); }
@@ -50,7 +74,7 @@ public final class RoadTickScheduler {
     private static void schedule(CommercialRoad road, long now, NpcSpawnerManager.SpawnResult lastResult) {
         int seconds = lastResult == NpcSpawnerManager.SpawnResult.SPAWNED
                 ? NpcSpawnerManager.getRandomTime(road.getMinTimer(), road.getMaxTimer())
-                : FULL_ROUTE_RECHECK_SECONDS;
+                : lastResult == NpcSpawnerManager.SpawnResult.NO_LOADED_POINT ? 20 : FULL_ROUTE_RECHECK_SECONDS;
         ScheduledRoadSpawn scheduled = new ScheduledRoadSpawn(road, now + seconds * 20L);
         BY_ROAD_ID.put(road.getId(), scheduled);
         QUEUE.add(scheduled);

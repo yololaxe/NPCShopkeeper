@@ -1,12 +1,16 @@
 package fr.renblood.npcshopkeeper.world.inventory;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.network.SyncRoadsPacket;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
 import fr.renblood.npcshopkeeper.network.SeeRoadsButtonMessage;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -51,8 +55,10 @@ public class SeeRoadsMenu extends AbstractContainerMenu implements Supplier<Map<
 
     private void init() {
         // 1. Récupérer et trier les routes par catégorie
-        List<CommercialRoad> roads = new ArrayList<>(Npcshopkeeper.COMMERCIAL_ROADS);
-        roads.sort(Comparator.comparing(CommercialRoad::getCategory).thenComparing(CommercialRoad::getName));
+        List<CommercialRoad> roads = new ArrayList<>(entity.level().isClientSide ? SyncRoadsPacket.clientRoads() : Npcshopkeeper.COMMERCIAL_ROADS);
+        roads.sort(Comparator.comparing(CommercialRoad::getRoadType)
+                .thenComparing(road -> road.getCategory() == null ? "" : road.getCategory(), String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(CommercialRoad::getName, String.CASE_INSENSITIVE_ORDER));
 
         int start = page * ROADS_PER_PAGE;
         int end = Math.min(start + ROADS_PER_PAGE, roads.size());
@@ -62,7 +68,7 @@ public class SeeRoadsMenu extends AbstractContainerMenu implements Supplier<Map<
             displayedRoads.add(road);
             
             // 2. Récupérer l'item correspondant à la catégorie
-            Item categoryItem = Items.FILLED_MAP; // Fallback par défaut
+            Item categoryItem = road.isInnMenuRoute() ? Items.WRITABLE_BOOK : Items.FILLED_MAP;
             try {
                 if (road.getCategory() != null && !road.getCategory().isEmpty()) {
                     ResourceLocation res = new ResourceLocation(road.getCategory());
@@ -76,6 +82,18 @@ public class SeeRoadsMenu extends AbstractContainerMenu implements Supplier<Map<
 
             ItemStack stack = new ItemStack(categoryItem);
             stack.setHoverName(Component.literal(road.getName()));
+            ListTag lore = new ListTag();
+            String typeLabel = road.isInnMenuRoute() ? "Menu auberge" : "Commerce";
+            lore.add(StringTag.valueOf(Component.Serializer.toJson(Component.literal("Type: " + typeLabel)
+                    .withStyle(road.isInnMenuRoute() ? ChatFormatting.GOLD : ChatFormatting.AQUA))));
+            if (road.isTradeRoute()) {
+                lore.add(StringTag.valueOf(Component.Serializer.toJson(Component.literal("Categorie: " + road.getCategory())
+                        .withStyle(ChatFormatting.GRAY))));
+            }
+            lore.add(StringTag.valueOf(Component.Serializer.toJson(Component.literal("Points: " + road.getPositions().size()
+                    + " | delai: " + road.getMinTimer() + "-" + road.getMaxTimer() + "s")
+                    .withStyle(ChatFormatting.DARK_GRAY))));
+            stack.getOrCreateTagElement("display").put("Lore", lore);
             
             internal.setStackInSlot(i - start, stack);
         }

@@ -23,6 +23,8 @@ public class GlobalNpcManager {
     private static final Set<String> activeNpcs = new HashSet<>();
     private static final List<String> inactiveNpcs = new ArrayList<>();
     private static final Map<String, Map<String, Object>> npcDataMap = new HashMap<>();
+    private static final Map<String, Map<String, Object>> npcDataById = new HashMap<>();
+    private static final Map<String, String> npcNameById = new HashMap<>();
 
     public static int getDataSize() {
         return npcDataMap.size();
@@ -31,6 +33,8 @@ public class GlobalNpcManager {
     // Charger les données du fichier JSON au démarrage
     public static void loadNpcData() {
         npcDataMap.clear();
+        npcDataById.clear();
+        npcNameById.clear();
         inactiveNpcs.clear();
         activeNpcs.clear();
 
@@ -74,8 +78,11 @@ public class GlobalNpcManager {
             data.put("Texts", texts);
             data.put("IsShopkeeper", isShopkeeper);
             data.put("IsCreatedByPlayer", isCreatedByPlayer);
+            if (o.has("npc_id")) data.put("npcId", o.get("npc_id").getAsString());
+            else if (o.has("npcId")) data.put("npcId", o.get("npcId").getAsString());
 
             npcDataMap.put(name, data);
+            indexById(name, data);
             
             // Seuls les Shopkeepers sont ajoutés à la liste des PNJs disponibles pour les routes
             if (isShopkeeper) {
@@ -105,6 +112,7 @@ public class GlobalNpcManager {
         // On utilise le nom comme clé pour l'instant (compatibilité)
         // Idéalement, on devrait utiliser npc_id, mais le reste du code utilise le nom.
         npcDataMap.put(template.name, data);
+        indexById(template.name, data);
         
         if (isShopkeeper) {
             if (!activeNpcs.contains(template.name) && !inactiveNpcs.contains(template.name)) {
@@ -117,19 +125,12 @@ public class GlobalNpcManager {
     
     public static Map<String, Object> getNpcDataById(String npcId) {
         if (npcId == null) return null;
-        return npcDataMap.values().stream()
-                .filter(data -> npcId.equals(data.get("npcId")))
-                .findFirst()
-                .orElse(null);
+        return npcDataById.get(npcId);
     }
 
     public static String getNpcNameById(String npcId) {
         if (npcId == null) return null;
-        return npcDataMap.entrySet().stream()
-                .filter(entry -> npcId.equals(entry.getValue().get("npcId")))
-                .map(Map.Entry::getKey)
-                .findFirst()
-                .orElse(null);
+        return npcNameById.get(npcId);
     }
 
     public static boolean registerNewNpc(String name, String texture, boolean isShopkeeper, List<String> texts) {
@@ -146,6 +147,7 @@ public class GlobalNpcManager {
         data.put("IsCreatedByPlayer", true); // Marqué comme créé par le joueur
         
         npcDataMap.put(name, data);
+        indexById(name, data);
         if (isShopkeeper) {
             inactiveNpcs.add(name);
         }
@@ -228,7 +230,24 @@ public class GlobalNpcManager {
     }
 
     public static Map<String, Object> getNpcData(String npcName) {
-        return npcDataMap.getOrDefault(npcName, null);
+        if (npcName == null) return null;
+        String normalized = npcName.replace('_', ' ');
+        Map<String, Object> direct = npcDataMap.get(normalized);
+        if (direct != null) return direct;
+        return npcDataMap.entrySet().stream()
+            .filter(entry -> entry.getKey().equalsIgnoreCase(normalized))
+            .map(Map.Entry::getValue)
+            .findFirst()
+            .orElse(null);
+        }
+
+        public static String resolveNpcName(String requestedName) {
+        if (requestedName == null) return null;
+        String normalized = requestedName.replace('_', ' ');
+        return npcDataMap.keySet().stream()
+            .filter(name -> name.equalsIgnoreCase(normalized))
+            .findFirst()
+            .orElse(null);
     }
     
     // Méthode pour récupérer toutes les données (pour l'envoi au client)
@@ -239,8 +258,23 @@ public class GlobalNpcManager {
     // Méthode pour recevoir les données côté client
     public static void setClientData(Map<String, Map<String, Object>> data) {
         npcDataMap.clear();
+        npcDataById.clear();
+        npcNameById.clear();
         npcDataMap.putAll(data);
+        npcDataMap.forEach(GlobalNpcManager::indexById);
         Npcshopkeeper.debugLog(LOGGER, "Données globales des PNJs synchronisées côté client. Total : " + npcDataMap.size());
+    }
+
+    private static void indexById(String name, Map<String, Object> data) {
+        Object id = data.get("npcId");
+        if (id instanceof String npcId && !npcId.isBlank()) {
+            npcDataById.put(npcId, data);
+            npcNameById.put(npcId, name);
+        }
+    }
+
+    private static void indexById(Map.Entry<String, Map<String, Object>> entry) {
+        indexById(entry.getKey(), entry.getValue());
     }
 
     public static Set<String> getActiveNpcs() {

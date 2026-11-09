@@ -11,6 +11,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.Minecraft;
 
@@ -31,6 +32,10 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 	EditBox points;
 	EditBox minTimer;
 	EditBox maxTimer;
+	EditBox category;
+	private String roadType = "TRADE";
+	private String tradeCategory = "";
+	private Button roadTypeButton;
 	ImageButton imagebutton_check;
 
 	public NpcShopkeeperWandGuiScreen(NpcShopkeeperWandGuiMenu container, Inventory inventory, Component text) {
@@ -40,8 +45,8 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 		this.y = container.y;
 		this.z = container.z;
 		this.entity = container.entity;
-		this.imageWidth = 200;
-		this.imageHeight = 166;
+		this.imageWidth = 280;
+		this.imageHeight = 210;
 	}
 
 	private static final ResourceLocation texture = new ResourceLocation("npcshopkeeper:textures/screens/npc_shopkeeper_wand_gui.png");
@@ -54,16 +59,15 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 		points.render(guiGraphics, mouseX, mouseY, partialTicks);
 		minTimer.render(guiGraphics, mouseX, mouseY, partialTicks);
 		maxTimer.render(guiGraphics, mouseX, mouseY, partialTicks);
+		category.render(guiGraphics, mouseX, mouseY, partialTicks);
 		this.renderTooltip(guiGraphics, mouseX, mouseY);
 	}
 
 	@Override
 	protected void renderBg(GuiGraphics guiGraphics, float partialTicks, int gx, int gy) {
-		RenderSystem.setShaderColor(1, 1, 1, 1);
-		RenderSystem.enableBlend();
-		RenderSystem.defaultBlendFunc();
-		guiGraphics.blit(texture, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight, this.imageWidth, this.imageHeight);
-		RenderSystem.disableBlend();
+		guiGraphics.fill(this.leftPos, this.topPos, this.leftPos + imageWidth, this.topPos + imageHeight, 0xF0181D23);
+		guiGraphics.fill(this.leftPos + 4, this.topPos + 4, this.leftPos + imageWidth - 4, this.topPos + imageHeight - 4, 0xFF293640);
+		guiGraphics.fill(this.leftPos + 10, this.topPos + 38, this.leftPos + imageWidth - 10, this.topPos + imageHeight - 10, 0xFF1E282F);
 	}
 
 	@Override
@@ -80,6 +84,8 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 			return minTimer.keyPressed(key, b, c);
 		if (maxTimer.isFocused())
 			return maxTimer.keyPressed(key, b, c);
+		if (category.isFocused())
+			return category.keyPressed(key, b, c);
 		return super.keyPressed(key, b, c);
 	}
 
@@ -90,6 +96,7 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 		points.tick();
 		minTimer.tick();
 		maxTimer.tick();
+		category.tick();
 	}
 
 	@Override
@@ -98,17 +105,26 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 		String pointsValue = points.getValue();
 		String minTimerValue = minTimer.getValue();
 		String maxTimerValue = maxTimer.getValue();
+		String categoryValue = category.getValue();
+		String savedRoadType = roadType;
 		super.resize(minecraft, width, height);
 		name.setValue(nameValue);
 		points.setValue(pointsValue);
 		minTimer.setValue(minTimerValue);
 		maxTimer.setValue(maxTimerValue);
+		category.setValue(categoryValue);
+		roadType = savedRoadType;
+		updateRouteTypeControls();
 	}
 	@Override
 	protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-		guiGraphics.drawString(this.font, Component.translatable("gui.npcshopkeeper.npc_shopkeeper_wand_gui.label_time_in_minute"), 10, 88, -12829636, false);
-		guiGraphics.drawString(this.font, Component.translatable("gui.npcshopkeeper.npc_shopkeeper_wand_gui.label_max_points", getDataSize()), 136, 64, -12829636, false);
-		guiGraphics.drawString(this.font, Component.translatable("gui.npcshopkeeper.npc_shopkeeper_wand_gui.npc_number"), 10, 46, -12829636, false);
+		guiGraphics.drawCenteredString(this.font, "Creation d'une route PNJ", imageWidth / 2, 14, 0xFFF2D49B);
+		guiGraphics.drawString(this.font, "Nom", 16, 47, 0xFFE8E0CC, false);
+		guiGraphics.drawString(this.font, "Nombre de points (1-32)", 16, 79, 0xFFE8E0CC, false);
+		guiGraphics.drawString(this.font, "Delai minimum (secondes)", 16, 111, 0xFFE8E0CC, false);
+		guiGraphics.drawString(this.font, "Delai maximum (secondes)", 16, 143, 0xFFE8E0CC, false);
+		guiGraphics.drawString(this.font, "Type de route", 150, 79, 0xFFE8E0CC, false);
+		guiGraphics.drawString(this.font, roadType.equals("TRADE") ? "Categorie de trade" : "Categorie automatique", 150, 111, 0xFFE8E0CC, false);
 	}
 
 
@@ -116,7 +132,7 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 	@Override
 	public void init() {
 		super.init();
-		name = new EditBox(this.font, this.leftPos + 43, this.topPos + 17, 118, 18, Component.translatable("gui.npcshopkeeper.npc_shopkeeper_wand_gui.name")) {
+		name = new EditBox(this.font, this.leftPos + 16, this.topPos + 56, 118, 18, Component.literal("Nom")) {
 			@Override
 			public void insertText(String text) {
 				super.insertText(text);
@@ -139,7 +155,7 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 		name.setMaxLength(32767);
 		guistate.put("text:name", name);
 		this.addWidget(this.name);
-		points = new EditBox(this.font, this.leftPos + 11, this.topPos + 61, 118, 18, Component.translatable("gui.npcshopkeeper.npc_shopkeeper_wand_gui.points")) {
+		points = new EditBox(this.font, this.leftPos + 16, this.topPos + 88, 118, 18, Component.literal("Points")) {
 			@Override
 			public void insertText(String text) {
 				super.insertText(text);
@@ -162,7 +178,7 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 		points.setMaxLength(32767);
 		guistate.put("text:points", points);
 		this.addWidget(this.points);
-		minTimer = new EditBox(this.font, this.leftPos + 11, this.topPos + 104, 118, 18, Component.translatable("gui.npcshopkeeper.npc_shopkeeper_wand_gui.minTimer")) {
+		minTimer = new EditBox(this.font, this.leftPos + 16, this.topPos + 120, 118, 18, Component.literal("Minimum")) {
 			@Override
 			public void insertText(String text) {
 				super.insertText(text);
@@ -185,7 +201,7 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 		minTimer.setMaxLength(32767);
 		guistate.put("text:minTimer", minTimer);
 		this.addWidget(this.minTimer);
-		maxTimer = new EditBox(this.font, this.leftPos + 11, this.topPos + 131, 118, 18, Component.translatable("gui.npcshopkeeper.npc_shopkeeper_wand_gui.maxTimer")) {
+		maxTimer = new EditBox(this.font, this.leftPos + 16, this.topPos + 152, 118, 18, Component.literal("Maximum")) {
 			@Override
 			public void insertText(String text) {
 				super.insertText(text);
@@ -208,12 +224,29 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 		maxTimer.setMaxLength(32767);
 		guistate.put("text:maxTimer", maxTimer);
 		this.addWidget(this.maxTimer);
-		imagebutton_check = new ImageButton(this.leftPos + 208, this.topPos + 59, 51, 34, 0, 0, 34,
+		category = new EditBox(this.font, this.leftPos + 150, this.topPos + 120, 114, 18, Component.literal("Categorie"));
+		category.setValue(menu.getCategory());
+		tradeCategory = menu.getCategory();
+		category.setMaxLength(128);
+		this.addWidget(category);
+		roadTypeButton = Button.builder(Component.empty(), button -> {
+			if (roadType.equals("TRADE")) {
+				tradeCategory = category.getValue();
+				roadType = "INN_MENU";
+			} else {
+				roadType = "TRADE";
+				category.setValue(tradeCategory);
+			}
+			updateRouteTypeControls();
+		}).bounds(this.leftPos + 150, this.topPos + 88, 114, 20).build();
+		this.addRenderableWidget(roadTypeButton);
+		updateRouteTypeControls();
+		imagebutton_check = new ImageButton(this.leftPos + 213, this.topPos + 158, 51, 34, 0, 0, 34,
 				new ResourceLocation("npcshopkeeper:textures/screens/atlas/imagebutton_check.png"),
 				51, 68, e -> {
 			if (true) {
 				Npcshopkeeper.PACKET_HANDLER.sendToServer(
-						new NpcShopkeeperWandGuiButtonMessage(0, x, y, z, menu.getCategory(), name.getValue(), points.getValue(), minTimer.getValue(), maxTimer.getValue())
+						new NpcShopkeeperWandGuiButtonMessage(0, x, y, z, roadType, category.getValue(), name.getValue(), points.getValue(), minTimer.getValue(), maxTimer.getValue())
 				);
 			}
 		}
@@ -221,5 +254,15 @@ public class NpcShopkeeperWandGuiScreen extends AbstractContainerScreen<NpcShopk
 
 		guistate.put("button:imagebutton_check", imagebutton_check);
 		this.addRenderableWidget(imagebutton_check);
+	}
+
+	private void updateRouteTypeControls() {
+		if (roadTypeButton != null) {
+			roadTypeButton.setMessage(Component.literal(roadType.equals("TRADE") ? "Commerce" : "Menu auberge"));
+		}
+		if (category != null) {
+			category.setEditable(roadType.equals("TRADE"));
+			if (roadType.equals("INN_MENU")) category.setValue("inn_menu");
+		}
 	}
 }

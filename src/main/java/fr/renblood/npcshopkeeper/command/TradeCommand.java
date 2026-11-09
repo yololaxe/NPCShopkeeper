@@ -3,11 +3,10 @@ package fr.renblood.npcshopkeeper.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import com.mojang.brigadier.suggestion.Suggestions;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import fr.renblood.npcshopkeeper.data.io.JsonFileManager;
-import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.trade.Trade;
+import fr.renblood.npcshopkeeper.manager.data.RuntimeDataCache;
+import java.util.Locale;
+import java.util.Objects;
 import fr.renblood.npcshopkeeper.procedures.trade.TradeCommandProcedure;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -15,16 +14,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.common.util.FakePlayerFactory;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.CommandSourceStack;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
-import static com.mojang.text2speech.Narrator.LOGGER;
 
 public class TradeCommand {
 	public static void registerCommand(RegisterCommandsEvent event) {
@@ -35,7 +28,7 @@ public class TradeCommand {
 		dispatcher.register(
 				Commands.literal("trade")
 						.requires(CommandPermissions::isAdmin)
-						.then(Commands.argument("name", StringArgumentType.word())
+						.then(Commands.argument("name", StringArgumentType.string())
 								.suggests(TRADE_SUGGESTIONS)
 								.executes(ctx -> execute(ctx.getSource(), StringArgumentType.getString(ctx, "name")))
 						)
@@ -65,41 +58,12 @@ public class TradeCommand {
 		}
 	}
 
-	private static final SuggestionProvider<CommandSourceStack> TRADE_SUGGESTIONS =
-			(context, builder) -> {
-				List<String> tradeNames = getTradeNamesFromFile();
-				if (tradeNames.isEmpty()) {
-					LOGGER.warn("Aucun trade trouvé dans le JSON.");
-				} else {
-					LOGGER.info("Suggestions de trades : " + tradeNames);
-				}
-				return suggest(tradeNames, builder);
-			};
-
-	private static List<String> getTradeNamesFromFile() {
-		try {
-			JsonRepository<Trade> repo = new JsonRepository<>(
-					Paths.get(JsonFileManager.path), // chemin vers trades.json
-					"trades",                        // clé racine
-					Trade::fromJson,                 // désérialisation
-					Trade::toJson                    // sérialisation
-			);
-			return repo.loadAll()
-					.stream()
-					.map(Trade::getName)
-					.distinct()
-					.toList();
-		} catch (Exception e) {
-			LOGGER.error("Erreur lecture noms de trades :", e);
-			return List.of();
-		}
-	}
-
-	private static CompletableFuture<Suggestions> suggest(
-			List<String> suggestions, SuggestionsBuilder builder) {
-		for (String s : suggestions) {
-			builder.suggest(s);
-		}
-		return builder.buildFuture();
-	}
+    static final SuggestionProvider<CommandSourceStack> TRADE_SUGGESTIONS = (context, builder) -> {
+        String remaining = builder.getRemainingLowerCase();
+        String prefix = remaining.startsWith("\"") ? remaining.substring(1) : remaining;
+        RuntimeDataCache.getTrades().stream().map(Trade::getName).filter(Objects::nonNull).distinct()
+                .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(prefix)).limit(50)
+                .map(StringArgumentType::escapeIfRequired).forEach(builder::suggest);
+        return builder.buildFuture();
+    };
 }

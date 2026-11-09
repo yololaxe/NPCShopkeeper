@@ -1,6 +1,7 @@
 package fr.renblood.npcshopkeeper.world.inventory;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.network.SyncRoadsPacket;
 import fr.renblood.npcshopkeeper.data.commercial.CommercialRoad;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
 import fr.renblood.npcshopkeeper.init.NpcshopkeeperModMenus;
@@ -32,7 +33,7 @@ public class RoadDetailsMenu extends AbstractContainerMenu implements Supplier<M
         super(NpcshopkeeperModMenus.ROAD_DETAILS.get(), id);
         this.entity = inv.player;
         String roadId = extraData.readUtf();
-        this.road = Npcshopkeeper.COMMERCIAL_ROADS.stream()
+        this.road = (entity.level().isClientSide ? SyncRoadsPacket.clientRoads() : Npcshopkeeper.COMMERCIAL_ROADS).stream()
                 .filter(r -> r.getId().equals(roadId))
                 .findFirst()
                 .orElse(null);

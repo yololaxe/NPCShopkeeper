@@ -2,21 +2,20 @@
 package fr.renblood.npcshopkeeper.world;
 
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
-import fr.renblood.npcshopkeeper.manager.npc.NpcSpawnerManager;
 import fr.renblood.npcshopkeeper.manager.npc.GlobalNpcSpawnManager;
 import fr.renblood.npcshopkeeper.manager.npc.NpcEntityIndex;
-import fr.renblood.npcshopkeeper.data.io.JsonRepository;
 import fr.renblood.npcshopkeeper.data.npc.TradeNpc;
+import fr.renblood.npcshopkeeper.manager.data.RuntimeDataCache;
 import fr.renblood.npcshopkeeper.entity.TradeNpcEntity;
-import fr.renblood.npcshopkeeper.manager.server.OnServerStartedManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
-import net.minecraftforge.event.level.LevelEvent;
+import net.minecraftforge.event.level.ChunkEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -26,7 +25,6 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = Npcshopkeeper.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
@@ -48,13 +46,6 @@ public class WorldEventHandler {
     }
 
     @SubscribeEvent
-    public static void onWorldSave(LevelEvent.Save event) {
-        if (event.getLevel() instanceof ServerLevel serverLevel) {
-            NpcSpawnerManager.saveNpcData(serverLevel);
-        }
-    }
-
-    @SubscribeEvent
     public static void onEntityJoin(EntityJoinLevelEvent evt) {
         if (!(evt.getLevel() instanceof ServerLevel world)) return;
         Entity entity = evt.getEntity();
@@ -72,35 +63,21 @@ public class WorldEventHandler {
             return;
         }
 
-        // Les PNJ API sont configurés par GlobalNpcSpawnManager, pas par trades_npcs.json.
-        if (npcEnt.getPersistentData().contains("ApiNpcSpawnId")) {
+        // Les clients d'auberge portent leur propre texture dans la sauvegarde de l'entité.
+        if (npcEnt.isInnCustomer() || npcEnt.getPersistentData().contains("ApiNpcSpawnId")) {
             return;
         }
 
-        TradeNpc model = new JsonRepository<>(
-                Paths.get(OnServerStartedManager.PATH_NPCS),
-                "npcs",
-                TradeNpc::fromJson,
-                TradeNpc::toJson
-        ).loadAll().stream()
-                .filter(n -> n.getNpcId().equals(npcEnt.getUUID().toString()))
-                .findFirst().orElse(null);
+        if (npcEnt.getTradeNpc() != null) return;
+        TradeNpc model = RuntimeDataCache.getNpc(npcEnt.getUUID());
+        if (model != null) npcEnt.setTradeNpc(model);
+    }
 
-        if (model == null) {
-            LOGGER.warn("onEntityJoin: aucun modèle TradeNpc trouvé pour UUID {}", npcEnt.getUUID());
-        } else {
-            LOGGER.info("onEntityJoin: modèle trouvé pour {} → name='{}', texture='{}', routeNpc={}",
-                    npcEnt.getUUID(),
-                    model.getNpcName(),
-                    model.getTexture(),
-                    model.isRouteNpc()
-            );
-            npcEnt.setTradeNpc(model);
-            LOGGER.info("onEntityJoin: appliqué à l'entité {} → ent.getTradeNpc().getTexture()='{}'",
-                    npcEnt.getUUID(),
-                    npcEnt.getTradeNpc().getTexture()
-            );
-        }
+    @SubscribeEvent
+    public static void onChunkLoad(ChunkEvent.Load event) {
+      if (!(event.getLevel() instanceof ServerLevel level)) return;
+      if (!(event.getChunk() instanceof LevelChunk chunk)) return;
+      GlobalNpcSpawnManager.synchronizeLoadedChunk(level, chunk.getPos());
     }
 
     @SubscribeEvent

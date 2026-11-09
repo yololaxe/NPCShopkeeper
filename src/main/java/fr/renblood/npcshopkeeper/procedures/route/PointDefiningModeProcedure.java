@@ -29,11 +29,12 @@ public class PointDefiningModeProcedure {
     private final int maxPoints, minTimer, maxTimer;
     private final List<BlockPos> positions = new ArrayList<>();
     private final String category, name;
+    private final CommercialRoad.RoadType roadType;
 
     // Constructeur
     private PointDefiningModeProcedure(ServerPlayer player, Level world,
                                         int maxPoints, int minTimer, int maxTimer,
-                                        String category, String name) {
+                                        String category, String name, CommercialRoad.RoadType roadType) {
         this.player = player;
         this.world = world;
         this.maxPoints = maxPoints;
@@ -41,13 +42,16 @@ public class PointDefiningModeProcedure {
         this.maxTimer = maxTimer;
         this.category = category;
         this.name = name;
+        this.roadType = roadType;
     }
 
     // Démarrer le mode
-    public static void start(ServerPlayer player, Level world, int maxPoints, int minTimer, int maxTimer, String category, String name) {
-        PointDefiningModeProcedure mode = new PointDefiningModeProcedure(player, world, maxPoints, minTimer, maxTimer, category, name);
+    public static void start(ServerPlayer player, Level world, int maxPoints, int minTimer, int maxTimer, String category,
+                             String name, CommercialRoad.RoadType roadType) {
+        PointDefiningModeProcedure mode = new PointDefiningModeProcedure(player, world, maxPoints, minTimer, maxTimer,
+                category, name, roadType);
         activeModes.put(player, mode);
-        player.displayClientMessage(Component.literal("Vous êtes en mode définir des points. Placez vos points. (/define)"), false);
+        player.displayClientMessage(Component.literal("Definition active: cassez les blocs des points de spawn, puis /ns road define finish."), false);
     }
 
 
@@ -106,7 +110,7 @@ public class PointDefiningModeProcedure {
         var road = new CommercialRoad(id, name, category,
                 new ArrayList<>(positions),
                 new ArrayList<>(),
-                minTimer, maxTimer);
+                minTimer, maxTimer, roadType);
         Npcshopkeeper.COMMERCIAL_ROADS.add(road);
 
         // Sauvegarde
@@ -126,7 +130,7 @@ public class PointDefiningModeProcedure {
 
         repo.saveAll(Npcshopkeeper.COMMERCIAL_ROADS);
 
-        player.displayClientMessage(Component.literal("Route créée : "+name),false);
+        player.displayClientMessage(Component.literal("Route creee: " + name + " [" + roadType.name() + "] | id=" + id), false);
         stop(player);
     }
 

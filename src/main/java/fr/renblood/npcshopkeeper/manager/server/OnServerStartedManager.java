@@ -57,6 +57,8 @@ public class OnServerStartedManager {
         }
 
         initPaths(server);
+        JsonRepository.invalidateAll();
+        RuntimeDataCache.reset();
         PortManager.init(server); // Initialisation du PortManager
 
         ServerLevel world = server.overworld();

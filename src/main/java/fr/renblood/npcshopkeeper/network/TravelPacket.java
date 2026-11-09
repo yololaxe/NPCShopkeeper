@@ -49,6 +49,11 @@ public class TravelPacket {
             Port destPort = destPortOpt.get();
 
             // Calcul du coût réel
+            AABB captainCheckArea = new AABB(player.blockPosition()).inflate(10);
+            if (player.level().getEntitiesOfClass(TradeNpcEntity.class, captainCheckArea, entity -> entity.isCaptain()).isEmpty()) {
+                player.displayClientMessage(Component.literal("Capitaine introuvable pour valider le depart."), true);
+                return;
+            }
             double distance = Math.sqrt(player.blockPosition().distSqr(destPort.getPos()));
             int blocksPerIron = PortManager.getBlocksPerIron();
             int costInIron = (int) Math.ceil(distance / (double)blocksPerIron);

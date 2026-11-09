@@ -38,6 +38,10 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 	private ContainerLevelAccess access = ContainerLevelAccess.NULL;
 	private IItemHandler internal;
 	private final Map<Integer, Slot> customSlots = new HashMap<>();
+    private boolean settlementPending;
+    public boolean isSettlementPending() { return settlementPending; }
+    public void beginSettlement() { settlementPending = true; }
+    public void endSettlement() { settlementPending = false; }
 	private boolean bound = false;
 	private Supplier<Boolean> boundItemMatcher = null;
 	private Entity boundEntity = null;
@@ -48,11 +52,31 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
     public String npcId = "";
     public String npcName = "";
 
+    private static boolean isRealSlot(int slot){return slot==1||slot==3||slot==5||slot==7||slot==8||slot==9||slot==10||slot==11;}
+    private void persistEscrow(){
+        if(world==null||world.isClientSide||internal==null)return;
+        net.minecraft.nbt.ListTag escrow=new net.minecraft.nbt.ListTag();
+        for(int slot=0;slot<internal.getSlots();slot++)if(isRealSlot(slot)&&!internal.getStackInSlot(slot).isEmpty()){
+            net.minecraft.nbt.CompoundTag row=internal.getStackInSlot(slot).save(new net.minecraft.nbt.CompoundTag());row.putInt("Slot",slot);escrow.add(row);
+        }
+        entity.getPersistentData().put("RenbloodTradeEscrow",escrow);
+    }
+
 	public TradeMenu(int id, Inventory inv, FriendlyByteBuf extraData) {
 		super(NpcshopkeeperModMenus.TRADE.get(), id);
 		this.entity = inv.player;
 		this.world = inv.player.level();
-		this.internal = new ItemStackHandler(16); // Augmenté à 16 pour inclure le slot XP (index 15)
+		this.internal = new ItemStackHandler(16){
+            @Override protected void onContentsChanged(int slot){persistEscrow();}
+        };
+        if(!world.isClientSide){
+            net.minecraft.nbt.ListTag escrow=entity.getPersistentData().getList("RenbloodTradeEscrow",10).copy();
+            for(int i=0;i<escrow.size();i++){
+                net.minecraft.nbt.CompoundTag row=escrow.getCompound(i);int slot=row.getInt("Slot");
+                if(isRealSlot(slot))((ItemStackHandler)internal).setStackInSlot(slot,ItemStack.of(row));
+            }
+            persistEscrow();
+        } // Augmenté à 16 pour inclure le slot XP (index 15)
 		
 		BlockPos pos = null;
 		if (extraData != null) {
@@ -407,51 +431,18 @@ public class TradeMenu extends AbstractContainerMenu implements Supplier<Map<Int
 
 	@Override
 	public void removed(Player playerIn) {
-		super.removed(playerIn);
-		if (!bound && playerIn instanceof ServerPlayer serverPlayer) {
-			if (!serverPlayer.isAlive() || serverPlayer.hasDisconnected()) {
-				for (int j = 0; j < internal.getSlots(); ++j) {
-					if (j == 0)
-						continue;
-					if (j == 2)
-						continue;
-					if (j == 4)
-						continue;
-					if (j == 6)
-						continue;
-					if (j == 12)
-						continue;
-					if (j == 13)
-						continue;
-					if (j == 14)
-						continue;
-					if (j == 15) // Ne pas drop l'item d'XP
-						continue;
-					playerIn.drop(internal.extractItem(j, internal.getStackInSlot(j).getCount(), false), false);
-				}
-			} else {
-				for (int i = 0; i < internal.getSlots(); ++i) {
-					if (i == 0)
-						continue;
-					if (i == 2)
-						continue;
-					if (i == 4)
-						continue;
-					if (i == 6)
-						continue;
-					if (i == 12)
-						continue;
-					if (i == 13)
-						continue;
-					if (i == 14)
-						continue;
-					if (i == 15) // Ne pas rendre l'item d'XP
-						continue;
-					playerIn.getInventory().placeItemBackInInventory(internal.extractItem(i, internal.getStackInSlot(i).getCount(), false));
-				}
-			}
-		}
-	}
+        super.removed(playerIn);
+        if(!bound&&playerIn instanceof ServerPlayer serverPlayer){
+            if(serverPlayer.isAlive()&&!serverPlayer.hasDisconnected()){
+                for(int slot=0;slot<internal.getSlots();slot++)if(isRealSlot(slot)){
+                    ItemStack stack=internal.getStackInSlot(slot).copy();serverPlayer.getInventory().add(stack);
+                    ((ItemStackHandler)internal).setStackInSlot(slot,stack);
+                }
+            }
+            persistEscrow();
+            fr.renblood.npcshopkeeper.manager.integration.TradeEscrowRecovery.persist(serverPlayer);
+        }
+    }
 
 	private void slotChanged(int slotid, int ctype, int meta) {
 		if (this.world != null && this.world.isClientSide()) {
