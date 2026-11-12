@@ -4,6 +4,7 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.concurrent.*;
 import java.util.function.BooleanSupplier;
 public final class EconomyBridge {
+    public static double dayMultiplier(){try{return (double)Class.forName("fr.renblood.medievalcoins.api.MedievalCoinsAPI").getMethod("getDayLengthMultiplier").invoke(null);}catch(Exception unavailable){return 1.0;}}
     private static Class<?> api()throws Exception{return Class.forName("fr.renblood.medievalcoins.bank.NpcCommerceGateway");}
     public static JsonObject request(String uuid,String path,JsonObject body)throws Exception{
         try{return (JsonObject)api().getMethod("request",String.class,String.class,JsonObject.class).invoke(null,uuid,path,body);}

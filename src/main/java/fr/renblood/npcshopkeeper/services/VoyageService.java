@@ -23,7 +23,7 @@ import java.util.*;
 public final class VoyageService {
     private static final Set<UUID> PAYING=new HashSet<>();
     private static final Set<UUID> WARNED=new HashSet<>();
-    private static void countdown(ServerPlayer p,long time){fr.renblood.npcshopkeeper.network.PacketHandler.sendToPlayer(new fr.renblood.npcshopkeeper.network.SyncDepartureTimePacket(time),p);}
+    private static void countdown(ServerPlayer p,long time){fr.renblood.npcshopkeeper.network.PacketHandler.sendToPlayer(new fr.renblood.npcshopkeeper.network.SyncDepartureTimePacket(time,time<0?0:VoyageRules.secondsUntil(time,p.getServer().overworld().getDayTime(),EconomyBridge.dayMultiplier())),p);}
     public static void showTicket(ServerPlayer p){
         JsonObject ticket=VoyageData.get(p.getServer()).tickets.getAsJsonObject(p.getStringUUID());
         if(ticket==null){p.sendSystemMessage(Component.literal("Aucun billet actif."));return;}
@@ -47,7 +47,7 @@ public final class VoyageService {
         JsonObject data=snapshot(p,port);WorkshopServer.reply(p,edit?"HARBOR_EDIT":"VOYAGE",data);
     }
     private static JsonObject snapshot(ServerPlayer p,Port port){
-        JsonObject data=new JsonObject();data.add("origin",port.toJson());data.addProperty("now",p.serverLevel().getDayTime());data.addProperty("open",onDuty(port,p.serverLevel().getDayTime()));data.addProperty("departure",VoyageRules.next(p.serverLevel().getDayTime(),port.getCloses(),port.getDeparture()));
+        JsonObject data=new JsonObject();data.add("origin",port.toJson());data.addProperty("now",p.getServer().overworld().getDayTime());data.addProperty("open",onDuty(port,p.getServer().overworld().getDayTime()));data.addProperty("departure",VoyageRules.next(p.getServer().overworld().getDayTime(),port.getCloses(),port.getDeparture()));
         JsonArray dests=new JsonArray();for(Port dest:PortManager.getAllPorts()){if(dest.getName().equals(port.getName()))continue;JsonObject row=dest.toJson();boolean served=dest.isEnabled()&&port.serves(dest.getName())&&dest.getDimension().equals(port.getDimension());row.addProperty("served",served);row.addProperty("price",Long.toString(cost(port,dest)));row.addProperty("fixedFare",port.getFixedFare(dest.getName()));dests.add(row);}data.add("destinations",dests);
         JsonObject ticket=VoyageData.get(p.getServer()).tickets.getAsJsonObject(p.getStringUUID());if(ticket!=null)data.add("ticket",ticket.deepCopy());return data;
     }
@@ -67,33 +67,33 @@ public final class VoyageService {
                 updated.validate();updated.setRevision(port.getRevision()+1);PortManager.addPort(updated);open(p,origin,true);
             }
             case "VOYAGE_BOOK" -> {
-                if(!onDuty(port,p.serverLevel().getDayTime())){WorkshopServer.error(p,"La billetterie est fermée.");return;}
+                if(!onDuty(port,p.getServer().overworld().getDayTime())){WorkshopServer.error(p,"La billetterie est fermée.");return;}
                 if(existing!=null&&!Set.of("ARRIVED","REFUNDED").contains(existing.get("state").getAsString())){WorkshopServer.error(p,"Tu possèdes déjà un billet. Reprends-le ou annule-le.");return;}
                 Port destination=PortManager.getPort(body.get("destination").getAsString()).orElseThrow();
                 if(!connectionOpen(port,destination.getName())||destination.getName().equals(origin)){WorkshopServer.error(p,"Cette destination n’est pas desservie actuellement.");return;}
                 long price=cost(port,destination);
                 if(!Long.toString(price).equals(body.get("price").getAsString())){WorkshopServer.error(p,"Le tarif a changé. Actualise les destinations.");return;}
                 if(!PAYING.add(p.getUUID()))return;
-                String key=UUID.randomUUID().toString();JsonObject ticket=new JsonObject();ticket.addProperty("id",key);ticket.addProperty("origin",origin);ticket.addProperty("destination",destination.getName());ticket.add("arrival",destination.toJson());ticket.addProperty("price",Long.toString(price));ticket.addProperty("departure",VoyageRules.next(p.serverLevel().getDayTime(),port.getCloses(),port.getDeparture()));ticket.addProperty("state","PAID_PENDING");ticket.addProperty("close_at",ticket.get("departure").getAsLong()-(port.getDeparture()-port.getCloses()));
-                try { EconomyBridge.ticket(p,key,origin,price,()->near(p,origin)!=null&&onDuty(port,p.serverLevel().getDayTime())&&saved.tickets.getAsJsonObject(uuid)==existing,
+                String key=UUID.randomUUID().toString();JsonObject ticket=new JsonObject();ticket.addProperty("id",key);ticket.addProperty("origin",origin);ticket.addProperty("destination",destination.getName());ticket.add("arrival",destination.toJson());ticket.addProperty("price",Long.toString(price));ticket.addProperty("departure",VoyageRules.next(p.getServer().overworld().getDayTime(),port.getCloses(),port.getDeparture()));ticket.addProperty("state","PAID_PENDING");ticket.addProperty("close_at",ticket.get("departure").getAsLong()-(port.getDeparture()-port.getCloses()));
+                try { EconomyBridge.ticket(p,key,origin,price,()->near(p,origin)!=null&&onDuty(port,p.getServer().overworld().getDayTime())&&saved.tickets.getAsJsonObject(uuid)==existing,
                     ()->saved.tickets.add(uuid,ticket),()->saved.persist(p.getServer()),false,"").whenComplete((receipt,error)->p.getServer().execute(()->{
-                        PAYING.remove(p.getUUID());if(error==null&&receipt.get("state").getAsString().equals("CONFIRMED")){ticket.addProperty("state","BOOKED");ticket.addProperty("receipt",receipt.get("operation_id").getAsString());saved.persist(p.getServer());countdown(p,ticket.get("departure").getAsLong());open(p,origin,false);}else WorkshopServer.error(p,"Paiement non confirmé. Consulte le reçu avant de reprendre un billet.");
+                        PAYING.remove(p.getUUID());if(error==null&&receipt.get("state").getAsString().equals("CONFIRMED")){ticket.addProperty("state","BOOKED");ticket.addProperty("receipt",receipt.get("operation_id").getAsString());WARNED.remove(p.getUUID());saved.persist(p.getServer());countdown(p,ticket.get("departure").getAsLong());open(p,origin,false);}else WorkshopServer.error(p,"Paiement non confirmé. Consulte le reçu avant de reprendre un billet.");
                     })); } catch(Exception failure){PAYING.remove(p.getUUID());throw failure;}
             }
             case "VOYAGE_REBOOK" -> {
                 if(existing==null||!existing.get("state").getAsString().equals("MISSED")){WorkshopServer.error(p,"Ce billet ne peut pas être reporté dans son état actuel.");return;}
-                if(!existing.get("origin").getAsString().equals(origin)||!onDuty(port,p.serverLevel().getDayTime())){WorkshopServer.error(p,"Reviens au port d’origine pendant l’ouverture pour reporter ton billet.");return;}
+                if(!existing.get("origin").getAsString().equals(origin)||!onDuty(port,p.getServer().overworld().getDayTime())){WorkshopServer.error(p,"Reviens au port d’origine pendant l’ouverture pour reporter ton billet.");return;}
                 if(!connectionOpen(port,existing.get("destination").getAsString())){WorkshopServer.error(p,"Cette liaison est suspendue ; tu peux demander le remboursement.");return;}
-                existing.addProperty("departure",VoyageRules.next(p.serverLevel().getDayTime(),port.getCloses(),port.getDeparture()));existing.addProperty("state","BOOKED");existing.addProperty("close_at",existing.get("departure").getAsLong()-(port.getDeparture()-port.getCloses()));saved.persist(p.getServer());WARNED.remove(p.getUUID());countdown(p,existing.get("departure").getAsLong());open(p,origin,false);
+                existing.addProperty("departure",VoyageRules.next(p.getServer().overworld().getDayTime(),port.getCloses(),port.getDeparture()));existing.addProperty("state","BOOKED");existing.addProperty("close_at",existing.get("departure").getAsLong()-(port.getDeparture()-port.getCloses()));saved.persist(p.getServer());WARNED.remove(p.getUUID());countdown(p,existing.get("departure").getAsLong());open(p,origin,false);
             }
             case "VOYAGE_CANCEL" -> {
                 if(existing==null||!existing.get("origin").getAsString().equals(origin)||!Set.of("BOOKED","MISSED").contains(existing.get("state").getAsString())){WorkshopServer.error(p,"Ce billet ne peut pas être remboursé dans son état actuel. Consulte son reçu.");return;}
-                if(existing.get("state").getAsString().equals("BOOKED")&&p.serverLevel().getDayTime()>=(existing.has("close_at")?existing.get("close_at").getAsLong():existing.get("departure").getAsLong()-(port.getDeparture()-port.getCloses()))){WorkshopServer.error(p,"Embarquement clos. Le billet sera reportable après le départ.");return;}
+                if(existing.get("state").getAsString().equals("BOOKED")&&p.getServer().overworld().getDayTime()>=(existing.has("close_at")?existing.get("close_at").getAsLong():existing.get("departure").getAsLong()-(port.getDeparture()-port.getCloses()))){WorkshopServer.error(p,"Embarquement clos. Le billet sera reportable après le départ.");return;}
                 if(!PAYING.add(p.getUUID()))return;String previous=existing.get("state").getAsString();String key=UUID.nameUUIDFromBytes(("refund:"+existing.get("id").getAsString()).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
                 try { EconomyBridge.ticket(p,key,origin,existing.get("price").getAsLong(),()->saved.tickets.getAsJsonObject(uuid)==existing&&existing.get("state").getAsString().equals(previous),
                     ()->existing.addProperty("state","REFUND_PENDING"),()->saved.persist(p.getServer()),true,existing.get("id").getAsString()).whenComplete((receipt,error)->p.getServer().execute(()->{PAYING.remove(p.getUUID());if(error==null&&receipt.get("state").getAsString().equals("CONFIRMED")){existing.addProperty("state","REFUNDED");saved.persist(p.getServer());countdown(p,-1);open(p,origin,false);}else WorkshopServer.error(p,"Remboursement non confirmé : consulte le reçu.");})); } catch(Exception failure){PAYING.remove(p.getUUID());throw failure;}
             }
-            case "VOYAGE_TEST" -> {if(!WorkshopServer.admin(p))return;if(existing==null||!existing.get("state").getAsString().equals("BOOKED"))return;existing.addProperty("departure",p.serverLevel().getDayTime());saved.persist(p.getServer());}
+            case "VOYAGE_TEST" -> {if(!WorkshopServer.admin(p))return;if(existing==null||!existing.get("state").getAsString().equals("BOOKED"))return;existing.addProperty("departure",p.getServer().overworld().getDayTime());saved.persist(p.getServer());}
         }
     }
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent e){
@@ -105,11 +105,12 @@ public final class VoyageService {
             try{p=server.getPlayerList().getPlayer(UUID.fromString(entry.getKey()));}catch(Exception bad){continue;}
             if(state.equals("BOOKED")){
                 long until=ticket.get("departure").getAsLong()-now;
-                if(p!=null&&until>0&&until<=1200&&WARNED.add(p.getUUID()))p.sendSystemMessage(Component.literal("Ton bateau part bientôt. Rejoins le quai de "+ticket.get("origin").getAsString()+".").withStyle(net.minecraft.ChatFormatting.GOLD));
+                if(p!=null&&until>0&&server.getTickCount()%200==0)countdown(p,ticket.get("departure").getAsLong());
+                if(p!=null&&until>0&&VoyageRules.secondsUntil(ticket.get("departure").getAsLong(),now,EconomyBridge.dayMultiplier())<=60&&WARNED.add(p.getUUID()))p.sendSystemMessage(Component.literal("Ton bateau part bientôt. Rejoins le quai de "+ticket.get("origin").getAsString()+".").withStyle(net.minecraft.ChatFormatting.GOLD));
                 if(until>0)continue;
                 Port origin=PortManager.getPort(ticket.get("origin").getAsString()).orElse(null);
                 if(p==null||origin==null||!origin.isEnabled()||!connectionOpen(origin,ticket.get("destination").getAsString())||near(p,origin.getName())==null||p.isPassenger()||p.isSleeping()||!p.isAlive()){
-                    ticket.addProperty("state","MISSED");changed=true;if(p!=null)p.sendSystemMessage(Component.literal("Départ manqué : ton billet reste reportable gratuitement auprès du capitaine."));continue;
+                    ticket.addProperty("state","MISSED");changed=true;if(p!=null)countdown(p,-1);if(p!=null)p.sendSystemMessage(Component.literal("Départ manqué : ton billet reste reportable gratuitement auprès du capitaine."));continue;
                 }
                 ticket.addProperty("state","SAILING");ticket.addProperty("board_x",p.getX());ticket.addProperty("board_y",p.getY());ticket.addProperty("board_z",p.getZ());ticket.addProperty("arrival_tick",server.overworld().getGameTime()+200);ticket.addProperty("departure_yaw",p.getYRot());p.setDeltaMovement(0,0,0);p.closeContainer();countdown(p,-1);JsonObject scene=new JsonObject();scene.addProperty("destination",ticket.get("destination").getAsString());scene.addProperty("duration",200);WorkshopServer.reply(p,"SAILING",scene);changed=true;
             }else if((state.equals("SAILING")||state.equals("ARRIVAL_WAIT"))&&p!=null&&p.isAlive()&&remaining-->0&&server.overworld().getGameTime()>=ticket.get("arrival_tick").getAsLong()){

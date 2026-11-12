@@ -13,6 +13,24 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @PrefixGameTestTemplate(false)
 public final class ServicesGameTests {
     @GameTest(template="services_empty",timeoutTicks=30)
+    public static void countdownUsesRealClock(GameTestHelper h){
+        h.assertTrue(VoyageRules.secondsUntil(12000,10800,3)==180,"Slowed day gives three real minutes, not one");
+        h.assertTrue(VoyageRules.secondsUntil(36000,35600,3)==60,"Reminder starts in the last real minute on any day");
+        h.assertTrue(VoyageRules.secondsUntil(12000,12001,3)==0,"Expired departure never becomes tomorrow");
+        h.assertTrue(VoyageRules.secondsUntil(12000,11999,.1)==1,"Subsecond remainder rounds up");h.succeed();
+    }
+    @GameTest(template="services_empty",timeoutTicks=30)
+    public static void unpricedArticlesStayManual(GameTestHelper h){
+        JsonObject data=new JsonObject(),row=new JsonObject();row.addProperty("item_id","minecraft:candle");
+        h.assertTrue(!ShopPriceRules.automatic(data,row),"Unknown item cannot use automatic prices");
+        JsonArray refs=new JsonArray();JsonObject ref=new JsonObject();ref.addProperty("item_id","minecraft:candle");ref.add("price",JsonNull.INSTANCE);refs.add(ref);data.add("references",refs);
+        h.assertTrue(!ShopPriceRules.automatic(data,row),"City without quote stays manual");
+        ref.addProperty("price","67");h.assertTrue(ShopPriceRules.automatic(data,row),"Known local quote enables automatic pricing");
+        h.assertTrue(row.get("buy_price").getAsString().equals("67")&&row.get("sell_price").getAsString().equals("53"),"Manual fields receive current automatic amounts");
+        ref.add("price",JsonNull.INSTANCE);ShopPriceRules.automatic(data,row);h.assertTrue(row.get("buy_price").getAsLong()==0,"Lost automatic quote does not become a stale manual price");
+        row.addProperty("buy_price","42");ShopPriceRules.automatic(data,row);h.assertTrue(row.get("buy_price").getAsLong()==42,"Bulk mode preserves explicit manual prices without a quote");h.succeed();
+    }
+    @GameTest(template="services_empty",timeoutTicks=30)
     public static void passageClock(GameTestHelper h){
         h.assertTrue(VoyageRules.open(2000,2000,11500),"Opening boundary");
         h.assertTrue(!VoyageRules.open(11500,2000,11500),"Closed at boarding boundary");

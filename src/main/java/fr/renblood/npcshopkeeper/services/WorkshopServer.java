@@ -30,7 +30,7 @@ public final class WorkshopServer {
         catch(RejectedExecutionException full){BUSY.remove(p.getUUID());error(p,"Service occupé. Réessaie dans un instant.");}
     }
     private static String safe(Exception e){String m=e.getMessage();if(m==null)return "Vérifie la liaison et les droits administrateur.";return m.length()>180?"Vérifie le backend et les droits du personnage.":m;}
-    public static boolean admin(ServerPlayer p){return p.hasPermissions(2);}
+    public static boolean admin(ServerPlayer p){return p.hasPermissions(2)||p.getServer().isSingleplayerOwner(p.getGameProfile());}
     public static void openRoutes(ServerPlayer p){if(admin(p))metadata(p,routes(),"ROUTES");}
     public static void create(ServerPlayer p,BlockPos position){
         if(!admin(p)){error(p,"Administrateur requis.");return;}
@@ -39,24 +39,25 @@ public final class WorkshopServer {
         JsonObject data=new JsonObject();data.addProperty("id",UUID.randomUUID().toString());data.addProperty("revision",0);data.addProperty("name","Nouvelle boutique");data.addProperty("skin","textures/entity/banker.png");data.addProperty("active",true);data.add("offers",new JsonArray());
         metadata(p,data,"SHOP_EDIT");
     }
-    private static void metadata(ServerPlayer p,JsonObject shop,String action){async(p,()->{JsonObject meta=EconomyBridge.request(p.getStringUUID(),"npc/catalogue",null);shop.add("cities",meta.get("cities"));return shop;},r->{inventory(p,r);reply(p,action,r);});}
+    private static void metadata(ServerPlayer p,JsonObject shop,String action){async(p,()->{String city=shop.has("city_id")&&!shop.get("city_id").isJsonNull()?shop.get("city_id").getAsString():"";JsonObject meta=EconomyBridge.request(p.getStringUUID(),"npc/catalogue"+(city.isBlank()?"":"?city_id="+java.net.URLEncoder.encode(city,java.nio.charset.StandardCharsets.UTF_8)),null);shop.add("cities",meta.get("cities"));shop.add("references",meta.get("references"));if(shop.has("offers"))for(var entry:shop.getAsJsonArray("offers")){var item=entry.getAsJsonObject();if(item.has("automatic")&&item.get("automatic").getAsBoolean())ShopPriceRules.automatic(shop,item);}return shop;},r->{inventory(p,r);reply(p,action,r);});}
     public static void open(ServerPlayer p,TradeNpcEntity npc,boolean edit){
         String id=npc.getPersistentData().getString("RenbloodShopId");if(id.isBlank())return;
         if(edit&&!admin(p)){error(p,"Administrateur requis.");return;}
         async(p,()->EconomyBridge.request(p.getStringUUID(),"npc/shops/"+id,null),data->{if(!nearby(p,id)){error(p,"Approche-toi du marchand.");return;}configure(npc,data);data.addProperty("entity",npc.getStringUUID());inventory(p,data);reply(p,edit?"SHOP_EDIT":"SHOP_VIEW",data);});
     }
-    private static void inventory(ServerPlayer p,JsonObject data){JsonArray rows=new JsonArray();for(var stack:p.getInventory().items){if(stack.isEmpty())continue;JsonObject item=new JsonObject();var copy=stack.copy();copy.setCount(1);item.addProperty("nbt",copy.save(new CompoundTag()).toString());item.addProperty("item_id",net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem()).toString());item.addProperty("name",stack.getHoverName().getString());rows.add(item);}data.add("inventory",rows);JsonArray skins=new JsonArray();for(var value:fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.getAllNpcData().values()){Object texture=value.get("Texture");if(texture instanceof String s&&!s.isBlank())skins.add(s);}data.add("skins",skins);}
+    private static void inventory(ServerPlayer p,JsonObject data){data.addProperty("can_edit",admin(p));JsonArray rows=new JsonArray();for(var stack:p.getInventory().items){if(stack.isEmpty())continue;JsonObject item=new JsonObject();var copy=stack.copy();copy.setCount(1);item.addProperty("nbt",copy.save(new CompoundTag()).toString());item.addProperty("item_id",net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem()).toString());item.addProperty("name",stack.getHoverName().getString());rows.add(item);}data.add("inventory",rows);JsonArray skins=new JsonArray();for(var value:fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.getAllNpcData().values()){Object texture=value.get("Texture");if(texture instanceof String s&&!s.isBlank())skins.add(s);}data.add("skins",skins);}
     public static boolean nearby(ServerPlayer p,String id){return NpcEntityIndex.all().stream().anyMatch(n->n.level()==p.level()&&!n.isRemoved()&&id.equals(n.getPersistentData().getString("RenbloodShopId"))&&n.distanceToSqr(p)<100);}
     public static void handle(ServerPlayer p,String action,JsonObject data)throws Exception{
         switch(action){
             case "SHOP_CREATE" -> {HitResult hit=p.pick(6,0,false);create(p,hit instanceof BlockHitResult b?b.getBlockPos().above():p.blockPosition());}
+            case "SHOP_PRICES" -> {if(admin(p))metadata(p,data,"SHOP_EDIT");}
             case "SHOP_REFRESH" -> {String id=data.get("id").getAsString();if(!nearby(p,id)){error(p,"Approche-toi du marchand pour actualiser son catalogue.");return;}async(p,()->EconomyBridge.request(p.getStringUUID(),"npc/shops/"+id,null),r->{inventory(p,r);reply(p,admin(p)&&data.has("edit")&&data.get("edit").getAsBoolean()?"SHOP_EDIT":"SHOP_VIEW",r);});}
             case "SHOP_SAVE" -> {
                 if(!admin(p))return;
                 String id=UUID.fromString(data.get("id").getAsString()).toString();
                 boolean exists=nearby(p,id);Placement spot=PLACEMENT.get(p.getUUID());
                 if(!exists&&(spot==null||!spot.world.equals(p.serverLevel().dimension().location().toString())||p.distanceToSqr(spot.pos.getX(),spot.pos.getY(),spot.pos.getZ())>400)){error(p,"Recommence le placement près du point choisi.");return;}
-                data.remove("cities");data.remove("inventory");data.remove("entity");data.remove("skins");
+                data.remove("cities");data.remove("inventory");data.remove("entity");data.remove("skins");data.remove("references");data.remove("can_edit");
                 data.addProperty("world",p.serverLevel().dimension().location().toString());
                 async(p,()->EconomyBridge.request(p.getStringUUID(),"npc/shops",data),r->{
                     TradeNpcEntity npc=NpcEntityIndex.all().stream().filter(n->id.equals(n.getPersistentData().getString("RenbloodShopId"))&&n.level()==p.level()).findFirst().orElse(null);
@@ -80,7 +81,7 @@ public final class WorkshopServer {
                 });
             }
             case "CONTRACT_PICK", "CONTRACT_CITY" -> ContractService.handle(p,action,data);
-            case "SHOP_DUPLICATE" -> {if(!admin(p))return;data.addProperty("id",UUID.randomUUID().toString());data.addProperty("revision",0);PLACEMENT.put(p.getUUID(),new Placement(p.serverLevel().dimension().location().toString(),p.blockPosition()));inventory(p,data);reply(p,"SHOP_EDIT",data);}
+            case "SHOP_DUPLICATE" -> {if(!admin(p))return;data.addProperty("id",UUID.randomUUID().toString());data.addProperty("revision",0);PLACEMENT.put(p.getUUID(),new Placement(p.serverLevel().dimension().location().toString(),p.blockPosition()));metadata(p,data,"SHOP_EDIT");}
             default -> VoyageService.handle(p,action,data);
         }
     }

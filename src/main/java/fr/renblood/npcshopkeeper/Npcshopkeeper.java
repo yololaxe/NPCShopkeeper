@@ -80,7 +80,7 @@ public class Npcshopkeeper {
     }
 
     // Network channel setup
-    private static final String PROTOCOL_VERSION = "3";
+    private static final String PROTOCOL_VERSION = "4";
     public static final SimpleChannel PACKET_HANDLER =
             NetworkRegistry.newSimpleChannel(
                     new ResourceLocation(MODID, "network"),

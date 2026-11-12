@@ -53,3 +53,31 @@ Un départ manqué ou une déconnexion conserve un billet **à reporter gratuite
 Le protocole NPC Shopkeeper passe à **3** : installer le même nouveau JAR sur les clients et le serveur, avec la nouvelle passerelle Medieval Coins. Medieval Structures reste compatible et conserve ses auberges et clients.
 
 Voir [RECETTE_BOUTIQUES_TRAVERSEES.md](RECETTE_BOUTIQUES_TRAVERSEES.md). Les tests automatiques ne remplacent pas les essais visuels avec deux joueurs, la carte et les pièces de vos packs.
+
+
+## Prix absents et horloge (correctif du 12 novembre)
+
+Un article sans référence ou sans cours calculé pour la ville passe en **prix manuel**.
+L’atelier propose de saisir le montant en fer par objet. Un prix nul est un brouillon,
+jamais une gratuité : le côté non tarifé ne peut pas être échangé. Le prix automatique
+pour tous ne s’applique qu’aux articles possédant un cours. Un administrateur peut aussi
+ouvrir « Définir le prix » depuis un article indisponible du catalogue joueur.
+
+Pour automatiser un objet : créer/activer sa référence dans l’administration du site,
+relancer le calcul dans Marchés et économie, actualiser le marchand puis activer le prix
+automatique. Le recalcul n’invente pas de référence manquante et ne remplace pas un prix manuel.
+Il n’est pas nécessaire après une simple saisie de prix manuel.
+
+Les départs restent au crépuscule. Le HUD affiche uniquement la dernière minute,
+en petit dans l’angle supérieur droit, en dehors des menus. Un rappel invite à rejoindre
+le quai. Le calcul respecte le facteur de durée de Medieval Coins ; la synchronisation
+réseau s’effectue toutes les dix secondes, sans requête HTTP. `/ns harbor ticket` permet
+de consulter le billet pendant toute l’attente. Un cycle ralenti et le sommeil peuvent
+modifier le temps d’attente ; le serveur reste l’autorité pour le départ.
+
+`/mc admin config info` (ou `/mc admin config`) affiche la durée du cycle jour+nuit
+à 20 TPS, l’heure, les conditions de sommeil, l’adresse API et les délais/cache/synchronisation.
+Les clés ne sont jamais affichées. Les réglages d’horloge sont maintenant conservés **par monde** ;
+les anciennes commandes les perdaient au redémarrage. Sans réglage sauvegardé, le facteur est
+toujours x3 (60 minutes par cycle), avec 80 % des joueurs au lit pendant cinq secondes.
+`/mc admin config time day-length 1` donne un cycle de 20 minutes ; `3` donne 60 minutes.

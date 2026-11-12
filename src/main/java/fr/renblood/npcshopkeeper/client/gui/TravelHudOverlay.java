@@ -1,6 +1,5 @@
 package fr.renblood.npcshopkeeper.client.gui;
 
-import fr.renblood.npcshopkeeper.manager.harbor.PortManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -8,42 +7,31 @@ import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 
 public class TravelHudOverlay {
-    private static long departureTime = -1;
+    private static long departureTime = -1, secondsAtSync, gameTimeAtSync;
 
     public static final IGuiOverlay HUD_TRAVEL = (ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) -> {
         if (departureTime == -1) return;
 
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
+        if (mc.level == null || mc.player == null || mc.options.hideGui || mc.screen != null) return;
 
-        long currentTime = departureTime>=24000?mc.level.getDayTime():mc.level.getDayTime()%24000;
-        long timeRemainingTicks = departureTime - currentTime;
-
-        if (timeRemainingTicks <= 0) {
-            departureTime = -1; // Reset si le temps est écoulé
-            return;
-        }
-
-        // Calcul du temps réel restant
-        // Formule : SecondesRéelles = TicksJeuRestants * (dayLengthInMinutes / 400.0)
-        // Ex: Si jour = 20 min -> ratio = 20/400 = 0.05 (1 tick = 0.05s = 1/20s)
-        // Ex: Si jour = 30 min -> ratio = 30/400 = 0.075
-        
-        double dayLength = PortManager.getDayLengthInMinutes();
-        double secondsRemaining = timeRemainingTicks * (dayLength / 400.0);
-        
-        // Formatage en minutes:secondes
-        int minutes = (int) (secondsRemaining / 60);
-        int seconds = (int) (secondsRemaining % 60);
-        
-        String text = String.format("Départ dans : %02d:%02d", minutes, seconds);
-        int x = 10;
-        int y = screenHeight / 2;
-
-        guiGraphics.drawString(mc.font, Component.literal(text), x, y, 0xFFFFFF);
+        // Simulation time pauses with solo. The server resynchronizes every ten seconds.
+        long elapsed = Math.max(0, mc.level.getGameTime() - gameTimeAtSync);
+        long seconds = Math.max(0, secondsAtSync - elapsed / 20);
+        if (seconds <= 0 || seconds > 60) return;
+        String text = String.format("Embarquement · %02d:%02d", seconds / 60, seconds % 60);
+        float scale = .8f;
+        int x = (int)(screenWidth / scale) - mc.font.width(text) - 12;
+        guiGraphics.pose().pushPose(); guiGraphics.pose().scale(scale, scale, 1);
+        guiGraphics.fill(x - 5, 9, x + mc.font.width(text) + 5, 24, 0x99101D25);
+        guiGraphics.drawString(mc.font, text, x, 12, 0xFFE2BE77, false);
+        guiGraphics.pose().popPose();
     };
 
-    public static void setDepartureTime(long time) {
+    public static void setDepartureTime(long time, long seconds) {
         departureTime = time;
+        secondsAtSync = seconds;
+        var level = Minecraft.getInstance().level;
+        gameTimeAtSync = level == null ? 0 : level.getGameTime();
     }
 }
