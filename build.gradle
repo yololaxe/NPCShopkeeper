@@ -121,6 +121,7 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
+            workingDirectory project.file('run-services-tests')
             property 'forge.enabledGameTestNamespaces', mod_id
         }
 

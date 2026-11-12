@@ -24,7 +24,7 @@ public class NpcshopkeeperModTabs {
 			CreativeModeTab.builder()
 					.title(Component.translatable("itemGroup.tab_npc_shopkeeper"))
 					.icon(() -> NpcshopkeeperModItems.NPC_SHOPKEEPER_WAND.get().getDefaultInstance())
-					.displayItems((parameters, output) -> output.accept(NpcshopkeeperModItems.NPC_SHOPKEEPER_WAND.get()))
+					.displayItems((parameters, output) -> {output.accept(NpcshopkeeperModItems.NPC_SHOPKEEPER_WAND.get());output.accept(NpcshopkeeperModItems.NPC_SHOP_WAND.get());})
 					.build());
 
 }

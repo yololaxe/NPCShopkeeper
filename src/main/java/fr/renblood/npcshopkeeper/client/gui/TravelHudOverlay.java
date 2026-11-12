@@ -16,7 +16,7 @@ public class TravelHudOverlay {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
-        long currentTime = mc.level.getDayTime() % 24000;
+        long currentTime = departureTime>=24000?mc.level.getDayTime():mc.level.getDayTime()%24000;
         long timeRemainingTicks = departureTime - currentTime;
 
         if (timeRemainingTicks <= 0) {

@@ -92,5 +92,6 @@
   "gui.npcshopkeeper.trade.confirm_help": "Dépose les objets demandés dans les cases voisines, puis valide. Le paiement est remis en pièces.",
   "gui.npcshopkeeper.trade.abandon": "Abandonner le contrat",
   "gui.npcshopkeeper.trade.abandon_help": "Abandonne cette offre. Pour y revenir plus tard, ferme plutôt la fenêtre avec Échap.",
-  "gui.npcshopkeeper.trade.close_hint": "Échap : fermer"
+  "gui.npcshopkeeper.trade.close_hint": "Échap : fermer",
+  "item.npcshopkeeper.npc_shop_wand": "Baguette des boutiques"
 }

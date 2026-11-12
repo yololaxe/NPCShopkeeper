@@ -70,7 +70,7 @@ public class TradeNpcEntity extends Villager {
     private boolean initialized = false;
     private boolean created = false;
     
-    private boolean departureProcessed = false;
+
 
     public TradeNpcEntity(EntityType<? extends TradeNpcEntity> type, Level world) {
         super(type, world);
@@ -94,49 +94,10 @@ public class TradeNpcEntity extends Villager {
                 && (tickCount == 1 || tickCount % 100 == 0)) {
             restoreInnCustomer("");
         }
-        if (!this.level().isClientSide && this.isCaptain()) {
-            long time = this.level().getDayTime() % 24000;
-            long departureTime = 4000;
-            
-            if (time >= departureTime && time < departureTime + 20) {
-                if (!departureProcessed) {
-                    processDepartures();
-                    departureProcessed = true;
-                }
-            } else {
-                departureProcessed = false;
-            }
-        }
+
     }
     
-    private void processDepartures() {
-        String portName = this.getPortName();
-        if (portName == null || portName.isEmpty()) return;
-        
-        List<TravelManager.Passenger> passengers = TravelManager.getPassengers(portName);
-        if (passengers.isEmpty()) return;
-        
-        LOGGER.info("Départ du port {} avec {} passagers.", portName, passengers.size());
-        
-        for (TravelManager.Passenger p : passengers) {
-            ServerPlayer player = this.level().getServer().getPlayerList().getPlayer(p.playerUUID);
-            if (player != null) {
-                player.teleportTo(
-                        player.server.getLevel(player.level().dimension()),
-                        p.destination.getPos().getX() + 0.5,
-                        p.destination.getPos().getY(),
-                        p.destination.getPos().getZ() + 0.5,
-                        player.getYRot(),
-                        player.getXRot()
-                );
-                player.displayClientMessage(Component.translatable("gui.npcshopkeeper.travel.arrival", p.destination.getName()), true);
-                
-                PacketHandler.sendToPlayer(new SyncDepartureTimePacket(-1), player);
-            }
-        }
-        
-        TravelManager.clearPassengers(portName);
-    }
+
 
     @Override
     public SpawnGroupData finalizeSpawn(
@@ -164,7 +125,9 @@ public class TradeNpcEntity extends Villager {
         tag.putBoolean("IsCaptain", this.isCaptain());
         tag.putString("PortName", this.getPortName());
         
-        if (isInnCustomer()) {
+        if (getPersistentData().contains("RenbloodShopId")) {
+            tag.putString("RenbloodShopSkin",getTexture());
+        } else if (isInnCustomer()) {
             if (tradeNpc != null && !getTexture().isBlank()) {
                 tag.putString(INN_CUSTOMER_TEXTURE, getTexture());
             }
@@ -198,6 +161,10 @@ public class TradeNpcEntity extends Villager {
             return;
         }
 
+        if (getPersistentData().contains("RenbloodShopId")) {
+            fr.renblood.npcshopkeeper.services.WorkshopServer.restore(this);
+            return;
+        }
         // Les PNJ API sont reconstruits par GlobalNpcSpawnManager et n'existent pas dans trades_npcs.json.
         if (isApiManaged()) {
             return;
@@ -350,14 +317,12 @@ public class TradeNpcEntity extends Villager {
         if (hand != InteractionHand.MAIN_HAND) return InteractionResult.SUCCESS;
         if (!this.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
 
+            if (getPersistentData().contains("RenbloodShopId")) {
+                fr.renblood.npcshopkeeper.services.WorkshopServer.open(serverPlayer,this,serverPlayer.isShiftKeyDown());
+                return InteractionResult.SUCCESS;
+            }
             if (this.isCaptain()) {
-                long time = this.level().getDayTime() % 24000;
-                if (time >= 0 && time <= 4000) {
-                    serverPlayer.displayClientMessage(Component.translatable("gui.npcshopkeeper.travel.welcome", this.getPortName()), false);
-                    OpenTravelGuiCommand.openGui(serverPlayer, this.getPortName());
-                } else {
-                    serverPlayer.displayClientMessage(Component.translatable("gui.npcshopkeeper.travel.captain_break"), true);
-                }
+                fr.renblood.npcshopkeeper.services.VoyageService.open(serverPlayer,getPortName(),serverPlayer.isShiftKeyDown()&&serverPlayer.hasPermissions(2));
                 return InteractionResult.SUCCESS;
             }
 
@@ -378,6 +343,7 @@ public class TradeNpcEntity extends Villager {
                 return InteractionResult.SUCCESS;
             }
             
+            if (fr.renblood.npcshopkeeper.services.ContractService.open(serverPlayer,this)) return InteractionResult.SUCCESS;
             if (this.texts != null && !this.texts.isEmpty()) {
                 String randomText = this.texts.get(RandomSource.create().nextInt(this.texts.size()));
                 serverPlayer.displayClientMessage(Component.literal(randomText), false);

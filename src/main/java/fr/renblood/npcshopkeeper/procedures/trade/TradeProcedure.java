@@ -243,7 +243,7 @@ public class TradeProcedure {
 							LOGGER.warn("PNJ {} introuvable pour suppression (même après recherche locale)", npcUuid);
 						}
 					}
-                        }).whenComplete((receipt,failure)->player.getServer().execute(()->{
+                        }, fr.renblood.npcshopkeeper.services.ContractService.terms(th.getNpcId(),"contract:"+resolvedTradeId,th)).whenComplete((receipt,failure)->player.getServer().execute(()->{
                             requestedMenu.endSettlement();
                             if (player.hasDisconnected()) return;
                             if (failure != null) {

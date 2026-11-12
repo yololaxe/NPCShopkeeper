@@ -19,6 +19,9 @@ public class TradeHistory {
     private long totalPrice;
     private String npcId;
     private String npcName;
+    private String cityId = "";
+    public String getCityId(){return cityId==null?"":cityId;}
+    public void setCityId(String value){cityId=value;}
 
 
     // Constructeur principal
@@ -145,6 +148,7 @@ public class TradeHistory {
         o.addProperty("totalPrice", Long.toString(totalPrice));
         o.addProperty("npcId",      npcId);
         o.addProperty("npcName",    npcName);
+        o.addProperty("cityId",getCityId());
 
         return o;
     }
@@ -172,7 +176,7 @@ public class TradeHistory {
         String npcId     = o.get("npcId").getAsString();
         String npcName   = o.get("npcName").getAsString();
 
-        return new TradeHistory(players,
+        TradeHistory history = new TradeHistory(players,
                 tradeName,
                 isFinished,
                 isAbandoned,
@@ -181,5 +185,7 @@ public class TradeHistory {
                 totalPrice,
                 npcId,
                 npcName);
+        history.setCityId(o.has("cityId")?o.get("cityId").getAsString():"");
+        return history;
     }
 }

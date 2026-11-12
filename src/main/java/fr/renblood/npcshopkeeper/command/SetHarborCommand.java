@@ -47,7 +47,7 @@ public class SetHarborCommand {
             AABB checkArea = new AABB(pos).inflate(2);
             boolean alreadyExists = !world.getEntitiesOfClass(TradeNpcEntity.class, checkArea,
                     e -> e.isCaptain() && e.getPortName().equals(portName)).isEmpty();
-            if (alreadyExists) {
+            if (alreadyExists || PortManager.getPort(portName).isPresent()) {
                 source.sendFailure(Component.translatable("command.npcshopkeeper.set_harbor.already_exists", portName));
                 return 0;
             }
@@ -56,21 +56,13 @@ public class SetHarborCommand {
             npc.setPos(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
             npc.setCaptain(true);
             npc.setPortName(portName);
+            npc.setPersistenceRequired();
+            npc.setNoAi(true);
+            npc.setInvulnerable(true);
             world.addFreshEntity(npc);
 
             Port port = new Port(portName, pos, world.dimension().location().toString());
             PortManager.addPort(port);
-
-            NpcSpawn spawn = new NpcSpawn();
-            spawn.spawn_id = UUID.randomUUID().toString();
-            spawn.npc_id = "captain_" + portName;
-            spawn.world = world.dimension().location().toString();
-            spawn.x = pos.getX();
-            spawn.y = pos.getY();
-            spawn.z = pos.getZ();
-            spawn.spawn_rule = "STATIC";
-            spawn.active = true;
-            MedievalCoinsIntegration.createNpcSpawn(spawn);
 
             LOGGER.info("Port '{}' cree en {}", portName, pos);
             source.sendSuccess(() -> Component.translatable("command.npcshopkeeper.set_harbor.success", portName), true);

@@ -44,6 +44,9 @@ public class CommercialRoad {
     private String id;
     private String name;
     private String category;
+    private String cityId = "";
+    public String getCityId(){return cityId==null?"":cityId;}
+    public void setCityId(String id){cityId=id==null?"":id;for(var npc:npcEntities)npc.getPersistentData().putString("RenbloodCityId",getCityId());}
     private ArrayList<BlockPos> positions;
     private ArrayList<TradeNpcEntity> npcEntities;
     private int minTimer;
@@ -225,6 +228,7 @@ public class CommercialRoad {
         o.addProperty("id", id);
         o.addProperty("name", name);
         o.addProperty("category", category);
+        o.addProperty("cityId",getCityId());
         o.addProperty("minTimer", minTimer);
         o.addProperty("maxTimer", maxTimer);
         o.addProperty("roadType", getRoadType().name());
@@ -288,10 +292,9 @@ public class CommercialRoad {
             }
         }
 
-        return new CommercialRoad(id, name, category,
-                new ArrayList<>(positions),
-                new ArrayList<>(npcEntities),
-                minTimer, maxTimer, roadType);
+        CommercialRoad road = new CommercialRoad(id, name, category,new ArrayList<>(positions),new ArrayList<>(npcEntities),minTimer,maxTimer,roadType);
+        road.setCityId(o.has("cityId")?o.get("cityId").getAsString():"");
+        return road;
     }
 
 }

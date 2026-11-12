@@ -92,5 +92,6 @@
   "gui.npcshopkeeper.trade.confirm_help": "Place the requested items in the adjacent slots, then confirm. Payment is delivered as coins.",
   "gui.npcshopkeeper.trade.abandon": "Abandon contract",
   "gui.npcshopkeeper.trade.abandon_help": "Abandon this offer. To return to it later, close the screen with Escape instead.",
-  "gui.npcshopkeeper.trade.close_hint": "Esc: close"
+  "gui.npcshopkeeper.trade.close_hint": "Esc: close",
+  "item.npcshopkeeper.npc_shop_wand": "Shop placement wand"
 }

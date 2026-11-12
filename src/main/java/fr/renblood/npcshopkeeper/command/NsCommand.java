@@ -62,6 +62,8 @@ public final class NsCommand {
                 .then(Commands.literal("status")
                         .requires(CommandPermissions::isAdmin)
                         .executes(context -> showStatus(context.getSource())))
+                .then(Commands.literal("shop").requires(CommandPermissions::isAdmin)
+                    .then(Commands.literal("create").executes(c->{var p=c.getSource().getPlayerOrException();fr.renblood.npcshopkeeper.services.WorkshopServer.create(p,p.blockPosition());return 1;})))
                 .then(Commands.literal("npc")
                         .requires(CommandPermissions::isAdmin)
                         .then(Commands.literal("create")
@@ -99,6 +101,7 @@ public final class NsCommand {
                                         .executes(context -> TradeCommand.execute(context.getSource(),
                                                 StringArgumentType.getString(context, "name"))))))
                 .then(Commands.literal("road")
+                        .then(Commands.literal("economy").requires(CommandPermissions::isAdmin).executes(c->{fr.renblood.npcshopkeeper.services.WorkshopServer.openRoutes(c.getSource().getPlayerOrException());return 1;}))
                         .then(Commands.literal("define")
                                 .requires(source -> source.getEntity() instanceof ServerPlayer)
                                 .then(Commands.literal("remove")
@@ -128,12 +131,13 @@ public final class NsCommand {
                                 .requires(CommandPermissions::isAdmin)
                                 .executes(context -> reloadRoutes(context.getSource()))))
                 .then(Commands.literal("harbor")
-                        .requires(CommandPermissions::isAdmin)
-                        .then(Commands.literal("create")
+                        .then(Commands.literal("edit").requires(CommandPermissions::isAdmin).then(Commands.argument("port",StringArgumentType.string()).suggests((c,b)->SharedSuggestionProvider.suggest(PortManager.getAllPorts().stream().map(port->StringArgumentType.escapeIfRequired(port.getName())),b)).executes(c->{fr.renblood.npcshopkeeper.services.VoyageService.open(c.getSource().getPlayerOrException(),StringArgumentType.getString(c,"port"),true);return 1;})))
+                        .then(Commands.literal("ticket").executes(c->{fr.renblood.npcshopkeeper.services.VoyageService.showTicket(c.getSource().getPlayerOrException());return 1;}))
+                        .then(Commands.literal("create").requires(CommandPermissions::isAdmin)
                                 .then(Commands.argument("name", StringArgumentType.string())
                                         .executes(context -> SetHarborCommand.execute(context.getSource(),
                                                 StringArgumentType.getString(context, "name")))))
-                        .then(Commands.literal("config")
+                        .then(Commands.literal("config").requires(CommandPermissions::isAdmin)
                                 .then(Commands.literal("price")
                                         .then(Commands.argument("blocks_per_iron", IntegerArgumentType.integer(1))
                                                 .executes(context -> SetTravelPriceCommand.setPrice(context.getSource(),
@@ -209,12 +213,15 @@ public final class NsCommand {
 
         if (CommandPermissions.isAdmin(source)) {
             helpLine(source, "/ns status", "Show mod status.");
+            helpLine(source, "/ns shop create", "Place une boutique permanente ; Maj + clic droit pour la modifier.");
+            helpLine(source, "/ns road economy", "Associe une ville aux prix des contrats de route.");
             helpLine(source, "/ns npc create", "Open NPC creation.");
             helpLine(source, "/ns npc spawn decor <name>", "Place a decorative NPC.");
             helpLine(source, "/ns npc spawn merchant", "Place a merchant NPC.");
             helpLine(source, "/ns trade open <name>", "Open an existing trade.");
             helpLine(source, "/ns road list", "Ouvre les routes commerciales.");
             helpLine(source, "/ns road status <route>", "Affiche le prochain essai et le dernier résultat.");
+            helpLine(source, "/ns harbor edit <port>", "Configure carte, horaires, destinations et tarifs au quai, même hors service.");
             helpLine(source, "/ns harbor create <name>", "Create a harbor and captain.");
             helpLine(source, "/ns harbor config <price|day_length> <value>", "Configure travel.");
             helpLine(source, "/ns reference price <item> <min> <max> <sendToBackend>", "Configure une reference locale et optionnellement backend.");

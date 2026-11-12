@@ -1,0 +1,140 @@
+[
+  {
+    "name": "Triomphe",
+    "county": "Mofrage",
+    "x": 320,
+    "y": 970
+  },
+  {
+    "name": "Isvanore",
+    "county": "Mofrage",
+    "x": 660,
+    "y": 920
+  },
+  {
+    "name": "Lone",
+    "county": "Mofrage",
+    "x": 330,
+    "y": 535
+  },
+  {
+    "name": "Sylinore",
+    "county": "Mofrage",
+    "x": 630,
+    "y": 450
+  },
+  {
+    "name": "Ages",
+    "county": "Mofrage",
+    "x": 40,
+    "y": 960
+  },
+  {
+    "name": "Shaleton",
+    "county": "Mofrage",
+    "x": 435,
+    "y": 575
+  },
+  {
+    "name": "Bransby Horses",
+    "county": "Mofrage",
+    "x": 260,
+    "y": 535
+  },
+  {
+    "name": "Fyvelune",
+    "county": "Eldia",
+    "x": 690,
+    "y": 1040
+  },
+  {
+    "name": "Saint Troufion de Paumé",
+    "county": "Eldia",
+    "x": 550,
+    "y": 1280
+  },
+  {
+    "name": "Valentine",
+    "county": "Eldia",
+    "x": 990,
+    "y": 1120
+  },
+  {
+    "name": "Saint Aquillon",
+    "county": "Eldia",
+    "x": 900,
+    "y": 1400
+  },
+  {
+    "name": "Evonia",
+    "county": "Eldia",
+    "x": 605,
+    "y": 1440
+  },
+  {
+    "name": "Creed",
+    "county": "Eldia",
+    "x": 125,
+    "y": 1355
+  },
+  {
+    "name": "Altkirrch",
+    "county": "Eldia",
+    "x": 445,
+    "y": 1405
+  },
+  {
+    "name": "Circos",
+    "county": "Palam",
+    "x": 810,
+    "y": 480
+  },
+  {
+    "name": "Rozdru",
+    "county": "Palam",
+    "x": 860,
+    "y": 830
+  },
+  {
+    "name": "Lead Peaks",
+    "county": "Palam",
+    "x": 1080,
+    "y": 380
+  },
+  {
+    "name": "Mytiya",
+    "county": "Palam",
+    "x": 820,
+    "y": 310
+  },
+  {
+    "name": "Aasari",
+    "county": "Palam",
+    "x": 870,
+    "y": 670
+  },
+  {
+    "name": "Freezing Farm",
+    "county": "Cornwall",
+    "x": 500,
+    "y": 200
+  },
+  {
+    "name": "Kilkou",
+    "county": "Cornwall",
+    "x": 70,
+    "y": 220
+  },
+  {
+    "name": "The Verdict",
+    "county": "Cornwall",
+    "x": 310,
+    "y": 90
+  },
+  {
+    "name": "Moria",
+    "county": "Cornwall",
+    "x": 660,
+    "y": 110
+  }
+]

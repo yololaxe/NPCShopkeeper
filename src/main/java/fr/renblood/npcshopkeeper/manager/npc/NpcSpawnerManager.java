@@ -118,6 +118,7 @@ public class NpcSpawnerManager {
             TradeNpcEntity npcEnt = new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(), world);
             modelNpc.setNpcId(npcEnt.getStringUUID());
             npcEnt.setTradeNpc(modelNpc);
+            npcEnt.getPersistentData().putString("RenbloodCityId",road.getCityId());
             npcEnt.setPos(pt.getX() + 0.5D, pt.getY(), pt.getZ() + 0.5D);
             world.addFreshEntity(npcEnt);
 

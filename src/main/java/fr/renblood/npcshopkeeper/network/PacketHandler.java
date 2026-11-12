@@ -9,7 +9,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public class PacketHandler {
-    private static final String PROTOCOL_VERSION = "2";
+    private static final String PROTOCOL_VERSION = "3";
     public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Npcshopkeeper.MODID, "main"),
             () -> PROTOCOL_VERSION,
@@ -19,6 +19,8 @@ public class PacketHandler {
 
     public static void init() {
         int id = 0;
+        INSTANCE.messageBuilder(fr.renblood.npcshopkeeper.services.ServiceRequest.class,id++,NetworkDirection.PLAY_TO_SERVER).encoder(fr.renblood.npcshopkeeper.services.ServiceRequest::encode).decoder(fr.renblood.npcshopkeeper.services.ServiceRequest::new).consumerMainThread(fr.renblood.npcshopkeeper.services.ServiceRequest::handle).add();
+        INSTANCE.messageBuilder(fr.renblood.npcshopkeeper.services.ServiceResponse.class,id++,NetworkDirection.PLAY_TO_CLIENT).encoder(fr.renblood.npcshopkeeper.services.ServiceResponse::encode).decoder(fr.renblood.npcshopkeeper.services.ServiceResponse::new).consumerMainThread(fr.renblood.npcshopkeeper.services.ServiceResponse::handle).add();
         INSTANCE.registerMessage(id++, TravelPacket.class, TravelPacket::toBytes, TravelPacket::new, TravelPacket::handle);
         INSTANCE.registerMessage(id++, SyncPortsPacket.class, SyncPortsPacket::toBytes, SyncPortsPacket::new, SyncPortsPacket::handle);
         INSTANCE.registerMessage(id++, SyncGlobalNpcDataPacket.class, SyncGlobalNpcDataPacket::toBytes, SyncGlobalNpcDataPacket::new, SyncGlobalNpcDataPacket::handle);

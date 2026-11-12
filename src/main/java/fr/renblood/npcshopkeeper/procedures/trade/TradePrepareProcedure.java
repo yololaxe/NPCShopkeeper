@@ -131,9 +131,7 @@ public class TradePrepareProcedure {
                 }
             } else {
                 // compute fresh
-                Pair<Long,Long> minMax = PriceReferenceManager.findReferenceByItem(
-                        tItem.getItem(), _player
-                );
+                Pair<Long,Long> minMax = fr.renblood.npcshopkeeper.services.ContractService.price(npcId,tItem.getItem(),_player);
                 if(minMax.getLeft()<1||minMax.getRight()<minMax.getLeft()){
                     _player.sendSystemMessage(Component.literal("Prix inconnu pour "+tItem.getItem()+". Offre suspendue."));return;
                 }
@@ -242,6 +240,7 @@ public class TradePrepareProcedure {
                     npcId,
                     npcName
             );
+            for(var n:fr.renblood.npcshopkeeper.manager.npc.NpcEntityIndex.all())if(npcId.equals(n.getNpcId()))newHistory.setCityId(fr.renblood.npcshopkeeper.services.ContractService.city(n));
             try { historyRepo.add(newHistory); }
             catch (java.io.UncheckedIOException failure) {
                 TradeSessionManager.clearTradeId(_player.getUUID());

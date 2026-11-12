@@ -24,12 +24,12 @@ public final class CommerceAdapter {
     @SuppressWarnings("unchecked")
     public static CompletableFuture<JsonObject> cashContract(ServerPlayer player, String key,
             String offer, long amount, net.minecraft.world.item.ItemStack bonus,
-            BooleanSupplier valid, Runnable complete) {
+            BooleanSupplier valid, Runnable complete, JsonObject context) {
         try {
             Class<?> api = Class.forName("fr.renblood.medievalcoins.api.MedievalCoinsAPI");
             return (CompletableFuture<JsonObject>) api.getMethod("settleNpcCashContract", ServerPlayer.class,
                     String.class, String.class, long.class, net.minecraft.world.item.ItemStack.class,
-                    BooleanSupplier.class, Runnable.class).invoke(null, player, key, offer, amount, bonus, valid, complete);
+                    BooleanSupplier.class, Runnable.class, JsonObject.class).invoke(null, player, key, offer, amount, bonus, valid, complete, context);
         } catch (ReflectiveOperationException failure) {
             return CompletableFuture.failedFuture(failure);
         }
