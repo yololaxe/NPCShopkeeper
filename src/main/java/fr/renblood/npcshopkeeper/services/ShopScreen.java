@@ -9,11 +9,14 @@ import net.minecraftforge.registries.ForgeRegistries;
 import java.util.*;
 
 public final class ShopScreen extends ServiceScreen {
-    final boolean editor;private JsonObject data;private int selected=-1,page,searchPage;private boolean sell,addMode;private String search="";
+    final boolean editor;private JsonObject data;private int selected=-1,page,searchPage;private boolean sell,addMode,focusPriceRequested;private String focusSide="buy";private String search="";
     private EditBox name,skin,buy,sellPrice,lot,stock,restock,target,quantity,searchBox;
     private int left,right,listY,listH;private JsonArray results=new JsonArray();private final java.util.List<net.minecraft.client.gui.components.Button> rowButtons=new java.util.ArrayList<>();
-    public ShopScreen(JsonObject data,boolean editor){super(editor?"Atelier du marchand":"Le comptoir du marchand");this.data=data.deepCopy();this.editor=editor;}
-    public void accept(JsonObject value){busy=false;message="";data=value.deepCopy();selected=Math.min(selected,offers().size()-1);init();}
+    public ShopScreen(JsonObject data,boolean editor){super(editor?"Atelier du marchand":"Le comptoir du marchand");this.data=data.deepCopy();this.editor=editor;readFocus(data);}
+    public void accept(JsonObject value){busy=false;message="";data=value.deepCopy();selected=Math.min(selected,offers().size()-1);readFocus(value);init();}
+    private void readFocus(JsonObject value){if(!editor||!value.has("focus_offer"))return;String id=str(value,"focus_offer","");for(int i=0;i<offers().size();i++)if(id.equals(str(offers().get(i).getAsJsonObject(),"id",""))){selected=i;focusPriceRequested=true;focusSide=str(value,"focus_side","buy");break;}}
+    private boolean needsPrice(JsonObject row){return flag(row,"buy_enabled",true)&&str(row,"buy_price","0").equals("0")||flag(row,"sell_enabled",false)&&str(row,"sell_price","0").equals("0");}
+    private void focusPrice(){if(selected()==null)return;selected().addProperty("automatic",false);EditBox input=focusSide.equals("sell")?sellPrice:buy;if(input==null)return;input.setEditable(true);setFocused(input);input.setFocused(true);input.setCursorPosition(input.getValue().length());input.setHighlightPos(0);message="Saisis le prix par objet en fer, puis enregistre la boutique.";}
     private JsonArray offers(){return data.getAsJsonArray("offers");}
     private JsonObject selected(){return selected>=0&&selected<offers().size()?offers().get(selected).getAsJsonObject():null;}
     @Override protected void init(){clearWidgets();rowButtons.clear();buy=null;sellPrice=null;frame();left=x+12;right=x+w/2+8;int rw=w/2-20;listY=y+(editor?100:83);listH=h-(editor?180:158);
@@ -26,7 +29,7 @@ public final class ShopScreen extends ServiceScreen {
             button("Actualiser",right,y+36,rw,()->refresh());
         }
         if(addMode){searchBox=field("Rechercher un objet",search,left,listY,w/2-22,80);searchBox.setResponder(value->{search=value;page=0;findItems();});findItems();}
-        int rowCount=Math.max(1,(listH-(addMode?25:0))/29),count=addMode?results.size():offers().size();page=Math.min(page,Math.max(0,(count-1)/rowCount));
+        int rowCount=Math.max(1,(listH-(addMode?25:0))/29),count=addMode?results.size():offers().size();if(focusPriceRequested&&selected>=0)page=selected/rowCount;page=Math.min(page,Math.max(0,(count-1)/rowCount));
         for(int i=0;i<rowCount;i++){int index=page*rowCount+i;if(index>=count)break;final int slot=i;JsonObject row=(addMode?results:offers()).get(index).getAsJsonObject();String title=str(row,"name",str(row,"item_id","Objet"));
             rowButtons.add(button(font.plainSubstrByWidth(title,w/2-55),left+24,listY+(addMode?25:0)+i*29,w/2-46,()->{int at=page*rowCount+slot;if(addMode){if(at<results.size())add(results.get(at).getAsJsonObject());}else{flush();selected=at;init();}}));
         }
@@ -45,6 +48,7 @@ public final class ShopScreen extends ServiceScreen {
                 buy=field("Vente / fer",str(row,"buy_price","0"),right,listY+59,split,18);sellPrice=field("Rachat / fer",str(row,"sell_price","0"),right+split+6,listY+59,rw-split-6,18);buy.setEditable(!flag(row,"automatic",true));sellPrice.setEditable(!flag(row,"automatic",true));
                 lot=field("Lot",str(row,"lot","1"),right,listY+94,split,2);stock=field("Stock (-1 illimité)",str(row,"stock","-1"),right+split+6,listY+94,rw-split-6,7);
                 restock=field("Recharge / secondes",str(row,"restock_seconds","0"),right,listY+129,split,5);target=field("Plafond",str(row,"restock_target","0"),right+split+6,listY+129,rw-split-6,7);
+                if(needsPrice(row))button("Définir le prix",right,listY+197,Math.min(130,rw),()->{flush();focusSide=flag(row,"buy_enabled",true)&&str(row,"buy_price","0").equals("0")?"buy":"sell";focusPrice();});
                 button("Retirer cet article",right,Math.min(y+h-74,listY+158),rw,()->{offers().remove(selected);selected=-1;init();});
             }
             button("Enregistrer la boutique",right,y+h-48,rw,()->{try{flush();request("SHOP_SAVE",editBody());}catch(Exception invalid){error("Vérifie les montants, les quantités et le stock.");}});
@@ -54,10 +58,11 @@ public final class ShopScreen extends ServiceScreen {
             button(sell?"Confirmer la vente":"Confirmer l’achat",right,listY+108,rw,()->{
                 try{long lots=number(quantity.getValue(),1,64),items=Math.multiplyExact(lots,row.get("lot").getAsLong());JsonObject q=new JsonObject();q.addProperty("id",str(data,"id",""));q.addProperty("key",UUID.randomUUID().toString());q.addProperty("offer_id",str(row,"id",""));q.addProperty("price_version",str(row,"price_version",""));q.addProperty("action",sell?"SELL":"BUY");q.addProperty("quantity",items);request("SHOP_BUY",q);}catch(Exception e){error("Quantité invalide.");}
             }).active=allowed;
-            if(!allowed&&flag(data,"can_edit",false)){button("Définir le prix",right,listY+134,rw,()->{JsonObject q=new JsonObject();q.addProperty("id",str(data,"id",""));q.addProperty("edit",true);request("SHOP_REFRESH",q);});}
+            if(Long.parseLong(str(row,sell?"sell_price":"buy_price","0"))<=0&&flag(data,"can_edit",false)){button("Définir le prix",right,listY+134,rw,()->{JsonObject q=new JsonObject();q.addProperty("id",str(data,"id",""));q.addProperty("edit",true);q.addProperty("focus_offer",str(row,"id",""));q.addProperty("focus_side",sell?"sell":"buy");request("SHOP_REFRESH",q);});}
         }
+        if(editor&&focusPriceRequested&&buy!=null){focusPriceRequested=false;focusPrice();}
     }
-    private JsonObject editBody(){JsonObject body=data.deepCopy();for(String key:List.of("references","cities","inventory","skins","can_edit","entity"))body.remove(key);return body;}
+    private JsonObject editBody(){JsonObject body=data.deepCopy();for(String key:List.of("references","cities","inventory","skins","can_edit","entity","focus_offer","focus_side"))body.remove(key);return body;}
     private void refresh(){JsonObject q=new JsonObject();q.addProperty("id",str(data,"id",""));q.addProperty("edit",editor);request("SHOP_REFRESH",q);}
     private String cityLabel(){String id=str(data,"city_id","");if(data.has("cities"))for(var v:data.getAsJsonArray("cities")){var c=v.getAsJsonObject();if(id.equals(str(c,"id","")))return "Ville : "+str(c,"name","");}return "Aucune ville · cours commun";}
     private void flush(){if(!editor)return;if(name!=null)data.addProperty("name",name.getValue());if(skin!=null)data.addProperty("skin",skin.getValue());var row=selected();if(row==null||buy==null||addMode)return;

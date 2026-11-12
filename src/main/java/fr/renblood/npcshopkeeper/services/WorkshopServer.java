@@ -51,7 +51,7 @@ public final class WorkshopServer {
         switch(action){
             case "SHOP_CREATE" -> {HitResult hit=p.pick(6,0,false);create(p,hit instanceof BlockHitResult b?b.getBlockPos().above():p.blockPosition());}
             case "SHOP_PRICES" -> {if(admin(p))metadata(p,data,"SHOP_EDIT");}
-            case "SHOP_REFRESH" -> {String id=data.get("id").getAsString();if(!nearby(p,id)){error(p,"Approche-toi du marchand pour actualiser son catalogue.");return;}async(p,()->EconomyBridge.request(p.getStringUUID(),"npc/shops/"+id,null),r->{inventory(p,r);reply(p,admin(p)&&data.has("edit")&&data.get("edit").getAsBoolean()?"SHOP_EDIT":"SHOP_VIEW",r);});}
+            case "SHOP_REFRESH" -> {String id=data.get("id").getAsString();if(!nearby(p,id)){error(p,"Approche-toi du marchand pour actualiser son catalogue.");return;}async(p,()->EconomyBridge.request(p.getStringUUID(),"npc/shops/"+id,null),r->{inventory(p,r);boolean edit=admin(p)&&data.has("edit")&&data.get("edit").getAsBoolean();if(edit&&data.has("focus_offer")){r.addProperty("focus_offer",data.get("focus_offer").getAsString());r.addProperty("focus_side",data.has("focus_side")&&data.get("focus_side").getAsString().equals("sell")?"sell":"buy");}reply(p,edit?"SHOP_EDIT":"SHOP_VIEW",r);});}
             case "SHOP_SAVE" -> {
                 if(!admin(p))return;
                 String id=UUID.fromString(data.get("id").getAsString()).toString();

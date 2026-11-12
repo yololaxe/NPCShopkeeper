@@ -81,3 +81,5 @@ Les clés ne sont jamais affichées. Les réglages d’horloge sont maintenant c
 les anciennes commandes les perdaient au redémarrage. Sans réglage sauvegardé, le facteur est
 toujours x3 (60 minutes par cycle), avec 80 % des joueurs au lit pendant cinq secondes.
 `/mc admin config time day-length 1` donne un cycle de 20 minutes ; `3` donne 60 minutes.
+
+Le bouton **Définir le prix**, près du message dans l’atelier, place le curseur dans le montant manquant et sélectionne la valeur à remplacer. Depuis le catalogue joueur, le même bouton ouvre directement l’article et le côté vente/rachat concernés, même sur une autre page. Réservé aux administrateurs ; saisir le montant puis enregistrer la boutique.
