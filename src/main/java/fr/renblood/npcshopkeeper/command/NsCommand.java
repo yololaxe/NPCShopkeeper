@@ -260,8 +260,12 @@ public final class NsCommand {
         source.sendSuccess(() -> Component.literal("References de trade manquantes: " + missing.size())
                 .withStyle(missing.isEmpty() ? ChatFormatting.GREEN : ChatFormatting.GOLD), false);
         if (!missing.isEmpty()) {
-            source.sendSuccess(() -> Component.literal(missing.stream().limit(20).collect(Collectors.joining(", ")))
-                    .withStyle(ChatFormatting.GRAY), false);
+            missing.stream().limit(20).forEach(item -> source.sendSuccess(() -> Component.literal(item)
+                    .withStyle(style -> style.withColor(ChatFormatting.AQUA)
+                            .withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.SUGGEST_COMMAND,
+                                    "/ns reference price " + item + " "))
+                            .withHoverEvent(new net.minecraft.network.chat.HoverEvent(net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
+                                    Component.literal("Préparer la référence : complète les prix minimum, maximum et l’envoi au backend.")))), false));
             if (missing.size() > 20) {
                 source.sendSuccess(() -> Component.literal("... et " + (missing.size() - 20) + " autres."), false);
             }

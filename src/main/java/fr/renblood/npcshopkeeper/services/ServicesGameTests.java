@@ -13,6 +13,14 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @PrefixGameTestTemplate(false)
 public final class ServicesGameTests {
     @GameTest(template="services_empty",timeoutTicks=30)
+    public static void removedNpcIdentitySurvivesRestart(GameTestHelper h){
+        var id=java.util.UUID.randomUUID();var ids=new net.minecraft.nbt.ListTag();ids.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));var tag=new CompoundTag();tag.put("ids",ids);
+        var deleted=fr.renblood.npcshopkeeper.command.RoadNpcAdmin.Deleted.load(tag);
+        var restored=fr.renblood.npcshopkeeper.command.RoadNpcAdmin.Deleted.load(deleted.save(new CompoundTag()));
+        h.assertTrue(restored.contains(id),"Deleted UUID is suppressed after world reload");h.assertTrue(!restored.contains(java.util.UUID.randomUUID()),"Other NPC identities remain allowed");var root=h.getLevel().getServer().getCommands().getDispatcher().getRoot().getChild("ns");h.assertTrue(root.getChild("npc").getChild("info")!=null&&root.getChild("npc").getChild("remove")!=null,"New admin commands registered under /ns");h.succeed();
+    }
+
+    @GameTest(template="services_empty",timeoutTicks=30)
     public static void countdownUsesRealClock(GameTestHelper h){
         h.assertTrue(VoyageRules.secondsUntil(12000,10800,3)==180,"Slowed day gives three real minutes, not one");
         h.assertTrue(VoyageRules.secondsUntil(36000,35600,3)==60,"Reminder starts in the last real minute on any day");

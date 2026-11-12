@@ -105,8 +105,12 @@ public final class VoyageService {
             try{p=server.getPlayerList().getPlayer(UUID.fromString(entry.getKey()));}catch(Exception bad){continue;}
             if(state.equals("BOOKED")){
                 long until=ticket.get("departure").getAsLong()-now;
+                if(p!=null&&server.getTickCount()%40==0)PortManager.getPort(ticket.get("origin").getAsString()).ifPresent(port->{
+                    if(!port.getDimension().equals(p.level().dimension().location().toString())||p.distanceToSqr(port.getPos().getX(),port.getPos().getY(),port.getPos().getZ())>4096)return;
+                    for(int point=0;point<16;point++){double angle=point*Math.PI/8;p.serverLevel().sendParticles(p,net.minecraft.core.particles.ParticleTypes.HAPPY_VILLAGER,false,port.getPos().getX()+.5+4*Math.cos(angle),port.getPos().getY()+.25,port.getPos().getZ()+.5+4*Math.sin(angle),1,0,0,0,0);}
+                });
                 if(p!=null&&until>0&&server.getTickCount()%200==0)countdown(p,ticket.get("departure").getAsLong());
-                if(p!=null&&until>0&&VoyageRules.secondsUntil(ticket.get("departure").getAsLong(),now,EconomyBridge.dayMultiplier())<=60&&WARNED.add(p.getUUID()))p.sendSystemMessage(Component.literal("Ton bateau part bientôt. Rejoins le quai de "+ticket.get("origin").getAsString()+".").withStyle(net.minecraft.ChatFormatting.GOLD));
+                if(p!=null&&until>0&&VoyageRules.secondsUntil(ticket.get("departure").getAsLong(),now,EconomyBridge.dayMultiplier())<=60&&WARNED.add(p.getUUID()))p.sendSystemMessage(Component.literal("Ton bateau part bientôt. Rejoins le cercle au quai de "+ticket.get("origin").getAsString()+".").withStyle(net.minecraft.ChatFormatting.GOLD));
                 if(until>0)continue;
                 Port origin=PortManager.getPort(ticket.get("origin").getAsString()).orElse(null);
                 if(p==null||origin==null||!origin.isEnabled()||!connectionOpen(origin,ticket.get("destination").getAsString())||near(p,origin.getName())==null||p.isPassenger()||p.isSleeping()||!p.isAlive()){
