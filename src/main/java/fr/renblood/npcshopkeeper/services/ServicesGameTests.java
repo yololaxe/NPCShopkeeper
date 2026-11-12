@@ -13,6 +13,31 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @PrefixGameTestTemplate(false)
 public final class ServicesGameTests {
     @GameTest(template="services_empty",timeoutTicks=30)
+    public static void lotButtonsRespectStockAndTransactionLimit(GameTestHelper h){
+        h.assertTrue(ShopQuantityRules.limit(64,null)==36,"Large lots stay within the backend 2304-item limit");
+        h.assertTrue(ShopQuantityRules.limit(4,10)==2&&ShopQuantityRules.limit(4,0)==0,"Only complete stocked lots can be purchased");
+        h.assertTrue(ShopQuantityRules.adjust("1",-1,64)==1&&ShopQuantityRules.adjust("64",1,64)==64,"Buttons clamp at both bounds");
+        h.assertTrue(ShopQuantityRules.adjust("",1,64)==2,"A temporarily empty input recovers predictably");h.succeed();
+    }
+
+    @GameTest(template="services_empty",timeoutTicks=30)
+    public static void catalogueCacheIsShortLivedAndPrivate(GameTestHelper h){
+        var clock=new java.util.concurrent.atomic.AtomicLong();var cache=new ShopCatalogueCache(clock::get,100,2);var a=java.util.UUID.randomUUID();var b=java.util.UUID.randomUUID();var value=new JsonObject();value.addProperty("name","original");
+        cache.put(a,"shop",value,cache.generation());h.assertTrue(cache.get(b,"shop")==null,"Snapshots never cross players");
+        cache.get(a,"shop").addProperty("name","changed");h.assertTrue(cache.get(a,"shop").get("name").getAsString().equals("original"),"UI decorations do not corrupt cached data");
+        clock.set(100);h.assertTrue(cache.get(a,"shop")==null,"Snapshot expires exactly at TTL boundary");
+        long pending=cache.generation();cache.invalidate("shop");cache.put(a,"shop",value,pending);h.assertTrue(cache.get(a,"shop")==null,"An in-flight quote cannot repopulate the cache after a purchase");
+        cache.put(a,"first",value,cache.generation());cache.put(a,"second",value,cache.generation());cache.get(a,"first");cache.put(a,"third",value,cache.generation());h.assertTrue(cache.get(a,"second")==null,"Cache stays bounded and retains recently read entries");cache.clear();h.assertTrue(cache.get(a,"first")==null,"World stop clears cached data");h.succeed();
+    }
+    @GameTest(template="services_empty",timeoutTicks=30)
+    public static void stationaryGazeTurnsWithoutWalking(GameTestHelper h)throws Exception{
+        var npc=new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(),h.getLevel());npc.setNoAi(true);npc.setPos(0,64,0);npc.setYRot(0);
+        var player=new net.minecraft.server.level.ServerPlayer(h.getLevel().getServer(),h.getLevel(),new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(),"gaze-fixture"));player.setPos(3,64,0);
+        var turn=TradeNpcEntity.class.getDeclaredMethod("turnTowards",net.minecraft.world.entity.player.Player.class);turn.setAccessible(true);turn.invoke(npc,player);
+        h.assertTrue(npc.getYRot()<0&&npc.getYRot()>=-8,"Gaze turns smoothly toward the player");h.assertTrue(npc.isNoAi()&&npc.getX()==0&&npc.getZ()==0,"Facing a customer does not enable wandering");h.succeed();
+    }
+
+    @GameTest(template="services_empty",timeoutTicks=30)
     public static void removedNpcIdentitySurvivesRestart(GameTestHelper h){
         var id=java.util.UUID.randomUUID();var ids=new net.minecraft.nbt.ListTag();ids.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));var tag=new CompoundTag();tag.put("ids",ids);
         var deleted=fr.renblood.npcshopkeeper.command.RoadNpcAdmin.Deleted.load(tag);

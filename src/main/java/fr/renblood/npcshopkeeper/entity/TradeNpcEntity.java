@@ -67,6 +67,7 @@ public class TradeNpcEntity extends Villager {
     private String tradeCategory;
     private Trade trade;
     private TradeHistory tradeHistory;
+    private Player gazePlayer;
     private boolean initialized = false;
     private boolean created = false;
     
@@ -90,6 +91,17 @@ public class TradeNpcEntity extends Villager {
     @Override
     public void tick() {
         super.tick();
+        if (!level().isClientSide && isNoAi() && !isInvisible() && (isCaptain() || getPersistentData().contains("RenbloodShopId"))) {
+            if (gazePlayer != null && (!gazePlayer.isAlive() || gazePlayer.isRemoved() || gazePlayer.level() != level() || distanceToSqr(gazePlayer) > 64)) gazePlayer = null;
+            if (tickCount == 1 || tickCount % 10 == 0) {
+                gazePlayer = level().getNearestPlayer(this, 8);
+                if (gazePlayer != null && (gazePlayer.isSpectator() || !hasLineOfSight(gazePlayer))) gazePlayer = null;
+            }
+            if (gazePlayer != null) {
+                turnTowards(gazePlayer);
+            }
+        }
+
         if (!level().isClientSide && tradeNpc == null && isInnCustomer()
                 && (tickCount == 1 || tickCount % 100 == 0)) {
             restoreInnCustomer("");
@@ -98,6 +110,16 @@ public class TradeNpcEntity extends Villager {
     }
     
 
+
+    private void turnTowards(Player player) {
+                double dx = player.getX() - getX(), dz = player.getZ() - getZ();
+                double dy = player.getEyeY() - getEyeY();
+                float yaw = (float)(Math.atan2(dz, dx) * 180 / Math.PI) - 90;
+                float pitch = (float)(-Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)) * 180 / Math.PI);
+                setYRot(net.minecraft.util.Mth.approachDegrees(getYRot(), yaw, 8));
+                setYHeadRot(getYRot()); setYBodyRot(getYRot());
+                setXRot(net.minecraft.util.Mth.approachDegrees(getXRot(), net.minecraft.util.Mth.clamp(pitch, -40, 40), 6));
+    }
 
     @Override
     public SpawnGroupData finalizeSpawn(

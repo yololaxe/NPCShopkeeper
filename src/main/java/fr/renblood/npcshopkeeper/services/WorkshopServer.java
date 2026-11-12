@@ -17,8 +17,10 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
+@net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid="npcshopkeeper")
 public final class WorkshopServer {
-    private static final ExecutorService WORKER=new ThreadPoolExecutor(1,2,30,TimeUnit.SECONDS,new ArrayBlockingQueue<>(64),r->{Thread t=new Thread(r,"NpcServices");t.setDaemon(true);return t;},new ThreadPoolExecutor.AbortPolicy());
+    private static final ExecutorService WORKER=new ThreadPoolExecutor(2,2,30,TimeUnit.SECONDS,new ArrayBlockingQueue<>(64),r->{Thread t=new Thread(r,"NpcServices");t.setDaemon(true);return t;},new ThreadPoolExecutor.AbortPolicy());
+    private static final ShopCatalogueCache CATALOGUES=new ShopCatalogueCache(System::nanoTime,3_000_000_000L,256);
     private static final Set<UUID> BUSY=ConcurrentHashMap.newKeySet();
     private static final Map<UUID,Placement> PLACEMENT=new HashMap<>();
     public static void reply(ServerPlayer p,String action,JsonObject body){if(!p.hasDisconnected())PacketHandler.sendToPlayer(new ServiceResponse(action,body.toString()),p);}
@@ -43,33 +45,45 @@ public final class WorkshopServer {
     public static void open(ServerPlayer p,TradeNpcEntity npc,boolean edit){
         String id=npc.getPersistentData().getString("RenbloodShopId");if(id.isBlank())return;
         if(edit&&!admin(p)){error(p,"Administrateur requis.");return;}
-        async(p,()->EconomyBridge.request(p.getStringUUID(),"npc/shops/"+id,null),data->{if(!nearby(p,id)){error(p,"Approche-toi du marchand.");return;}configure(npc,data);data.addProperty("entity",npc.getStringUUID());inventory(p,data);reply(p,edit?"SHOP_EDIT":"SHOP_VIEW",data);});
+        if(BUSY.contains(p.getUUID())){error(p,"Une demande est déjà en cours.");return;}
+        JsonObject cached=edit?null:CATALOGUES.get(p.getUUID(),id);
+        if(cached!=null){view(p,cached,false);return;}
+        String request=UUID.randomUUID().toString();long generation=CATALOGUES.generation();
+        if(!edit){JsonObject loading=new JsonObject();loading.addProperty("id",id);loading.addProperty("name",npc.getNpcName());loading.addProperty("loading",true);loading.addProperty("open_request",request);loading.add("offers",new JsonArray());reply(p,"SHOP_VIEW",loading);}
+        async(p,()->EconomyBridge.request(p.getStringUUID(),"npc/shops/"+id,null),data->{if(!nearby(p,id)){error(p,"Approche-toi du marchand.");return;}configure(npc,data);CATALOGUES.put(p.getUUID(),id,data,generation);data.addProperty("entity",npc.getStringUUID());if(!edit)data.addProperty("open_request",request);view(p,data,edit);});
     }
+    private static void view(ServerPlayer p,JsonObject data,boolean edit){
+        data.addProperty("can_edit",admin(p));
+        if(edit)inventory(p,data);else for(String key:List.of("references","cities","inventory","skins"))data.remove(key);
+        reply(p,edit?"SHOP_EDIT":"SHOP_VIEW",data);
+    }
+    @net.minecraftforge.eventbus.api.SubscribeEvent public static void stop(net.minecraftforge.event.server.ServerStoppedEvent event){CATALOGUES.clear();PLACEMENT.clear();BUSY.clear();}
     private static void inventory(ServerPlayer p,JsonObject data){data.addProperty("can_edit",admin(p));JsonArray rows=new JsonArray();for(var stack:p.getInventory().items){if(stack.isEmpty())continue;JsonObject item=new JsonObject();var copy=stack.copy();copy.setCount(1);item.addProperty("nbt",copy.save(new CompoundTag()).toString());item.addProperty("item_id",net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem()).toString());item.addProperty("name",stack.getHoverName().getString());rows.add(item);}data.add("inventory",rows);JsonArray skins=new JsonArray();for(var value:fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.getAllNpcData().values()){Object texture=value.get("Texture");if(texture instanceof String s&&!s.isBlank())skins.add(s);}data.add("skins",skins);}
     public static boolean nearby(ServerPlayer p,String id){return NpcEntityIndex.all().stream().anyMatch(n->n.level()==p.level()&&!n.isRemoved()&&id.equals(n.getPersistentData().getString("RenbloodShopId"))&&n.distanceToSqr(p)<100);}
     public static void handle(ServerPlayer p,String action,JsonObject data)throws Exception{
         switch(action){
             case "SHOP_CREATE" -> {HitResult hit=p.pick(6,0,false);create(p,hit instanceof BlockHitResult b?b.getBlockPos().above():p.blockPosition());}
             case "SHOP_PRICES" -> {if(admin(p))metadata(p,data,"SHOP_EDIT");}
-            case "SHOP_REFRESH" -> {String id=data.get("id").getAsString();if(!nearby(p,id)){error(p,"Approche-toi du marchand pour actualiser son catalogue.");return;}async(p,()->EconomyBridge.request(p.getStringUUID(),"npc/shops/"+id,null),r->{inventory(p,r);boolean edit=admin(p)&&data.has("edit")&&data.get("edit").getAsBoolean();if(edit&&data.has("focus_offer")){r.addProperty("focus_offer",data.get("focus_offer").getAsString());r.addProperty("focus_side",data.has("focus_side")&&data.get("focus_side").getAsString().equals("sell")?"sell":"buy");}reply(p,edit?"SHOP_EDIT":"SHOP_VIEW",r);});}
+            case "SHOP_REFRESH" -> {String id=data.get("id").getAsString();CATALOGUES.invalidate(id);if(!nearby(p,id)){error(p,"Approche-toi du marchand pour actualiser son catalogue.");return;}async(p,()->EconomyBridge.request(p.getStringUUID(),"npc/shops/"+id,null),r->{boolean edit=admin(p)&&data.has("edit")&&data.get("edit").getAsBoolean();if(edit&&data.has("focus_offer")){r.addProperty("focus_offer",data.get("focus_offer").getAsString());r.addProperty("focus_side",data.has("focus_side")&&data.get("focus_side").getAsString().equals("sell")?"sell":"buy");}view(p,r,edit);});}
             case "SHOP_SAVE" -> {
                 if(!admin(p))return;
                 String id=UUID.fromString(data.get("id").getAsString()).toString();
                 boolean exists=nearby(p,id);Placement spot=PLACEMENT.get(p.getUUID());
                 if(!exists&&(spot==null||!spot.world.equals(p.serverLevel().dimension().location().toString())||p.distanceToSqr(spot.pos.getX(),spot.pos.getY(),spot.pos.getZ())>400)){error(p,"Recommence le placement près du point choisi.");return;}
+                CATALOGUES.invalidate(id);
                 data.remove("cities");data.remove("inventory");data.remove("entity");data.remove("skins");data.remove("references");data.remove("can_edit");
                 data.addProperty("world",p.serverLevel().dimension().location().toString());
                 async(p,()->EconomyBridge.request(p.getStringUUID(),"npc/shops",data),r->{
                     TradeNpcEntity npc=NpcEntityIndex.all().stream().filter(n->id.equals(n.getPersistentData().getString("RenbloodShopId"))&&n.level()==p.level()).findFirst().orElse(null);
                     if(npc==null){if(spot==null)return;npc=new TradeNpcEntity(EntityInit.TRADE_NPC_ENTITY.get(),p.level());npc.setPos(spot.pos.getX()+.5,spot.pos.getY(),spot.pos.getZ()+.5);npc.getPersistentData().putString("RenbloodShopId",id);configure(npc,r);p.serverLevel().addFreshEntity(npc);}else configure(npc,r);
-                    PLACEMENT.remove(p.getUUID());inventory(p,r);reply(p,"SHOP_EDIT",r);p.sendSystemMessage(Component.literal("Boutique enregistrée.").withStyle(net.minecraft.ChatFormatting.GREEN));
+                    CATALOGUES.invalidate(id);PLACEMENT.remove(p.getUUID());inventory(p,r);reply(p,"SHOP_EDIT",r);p.sendSystemMessage(Component.literal("Boutique enregistrée.").withStyle(net.minecraft.ChatFormatting.GREEN));
                 });
             }
             case "SHOP_BUY" -> {
-                String id=UUID.fromString(data.get("id").getAsString()).toString();if(!nearby(p,id)){error(p,"Approche-toi du marchand pour échanger.");return;}
+                String id=UUID.fromString(data.get("id").getAsString()).toString();CATALOGUES.invalidate(id);if(!nearby(p,id)){error(p,"Approche-toi du marchand pour échanger.");return;}
                 EconomyBridge.shop(p,id,data,()->nearby(p,id)).whenComplete((r,e)->p.getServer().execute(()->{
                     if(e!=null){error(p,"Échange non confirmé. Consulte le reçu ou recharge la boutique.");return;}
-                    async(p,()->EconomyBridge.request(p.getStringUUID(),"npc/shops/"+id,null),v->reply(p,"SHOP_VIEW",v));
+                    async(p,()->EconomyBridge.request(p.getStringUUID(),"npc/shops/"+id,null),v->{CATALOGUES.invalidate(id);view(p,v,false);});
                 }));
             }
             case "ROUTES" -> openRoutes(p);
