@@ -21,7 +21,7 @@ public final class ServicesGameTests {
         h.assertTrue(VoyageRules.next(35000,11500,12000)==36000,"Absolute world day preserved");
         h.assertTrue(VoyageRules.price(101,50,0)==3,"Fare rounds up");
         h.assertTrue(VoyageRules.price(101,50,20)==20,"Manual fare overrides distance");
-        h.assertTrue(VoyageRules.hour(18,0)==12000,"Dusk at 18:00");h.succeed();
+        h.assertTrue(VoyageRules.hour(18,0)==12000,"Dusk at 18:00");h.assertTrue(VoyageRules.clock(VoyageRules.hour(17,31)).equals("17:31"),"Minute precision roundtrips in schedule editor");h.succeed();
     }
     @GameTest(template="services_empty",timeoutTicks=30)
     public static void legacyAndConfiguredPorts(GameTestHelper h){

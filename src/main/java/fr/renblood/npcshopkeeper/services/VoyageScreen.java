@@ -41,7 +41,7 @@ public final class VoyageScreen extends ServiceScreen {
         for(var v:RealmAtlas.cities()){var c=v.getAsJsonObject();if(str(c,"name","").equalsIgnoreCase(city.getValue())){origin().addProperty("county",str(c,"county",""));origin().add("mapX",c.get("x"));origin().add("mapY",c.get("y"));break;}}
         if(selected!=null&&fare!=null){if(!origin().has("fares"))origin().add("fares",new JsonObject());long value=number(fare.getValue(),0,1000000000);origin().getAsJsonObject("fares").addProperty(str(selected,"name",""),value);selected.addProperty("fixedFare",value);}}
     private static int parseHour(String value){String[] p=value.split(":");int h=Integer.parseInt(p[0]),m=p.length>1?Integer.parseInt(p[1]):0;if(h<0||h>23||m<0||m>59)throw new IllegalArgumentException();return VoyageRules.hour(h,m);}
-    private static String hour(int tick){int minute=(tick*60/1000+360)%1440;return String.format("%02d:%02d",minute/60,minute%60);}
+    private static String hour(int tick){return VoyageRules.clock(tick);}
     private double sx(double px){return mapX+mapW/2.0+(px-cx)*scale;}private double sy(double py){return mapY+mapH/2.0+(py-cy)*scale;}
     @Override protected boolean canvasClick(double mx,double my,int button){if(button==0&&mx>=mapX&&mx<mapX+mapW&&my>=mapY&&my<mapY+mapH){
         if(!county.isBlank())for(var v:destinations()){var d=v.getAsJsonObject();if(d.get("mapX").getAsDouble()<0)continue;if(Math.hypot(mx-sx(d.get("mapX").getAsDouble()),my-sy(d.get("mapY").getAsDouble()))<9){select(d);return true;}}
