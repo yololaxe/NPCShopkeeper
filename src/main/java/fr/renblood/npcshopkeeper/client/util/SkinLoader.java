@@ -1,220 +1,74 @@
 package fr.renblood.npcshopkeeper.client.util;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.blaze3d.platform.NativeImage;
 import fr.renblood.npcshopkeeper.Npcshopkeeper;
+import fr.renblood.npcshopkeeper.skin.SkinLoadGate;
+import fr.renblood.npcshopkeeper.skin.SkinRepository;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.resources.DefaultPlayerSkin;
-import net.minecraft.client.resources.SkinManager;
 import net.minecraft.resources.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.Locale;
+import java.io.ByteArrayInputStream;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
-public class SkinLoader {
-    private static final Logger LOGGER = LogManager.getLogger(SkinLoader.class);
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
-    private static final Map<String, ResourceLocation> SKIN_CACHE = new HashMap<>();
-    private static final Map<String, Boolean> LOADING_STATUS = new HashMap<>();
-    private static final String TEXTURE_HASH_PATTERN = "^[0-9a-fA-F]{64}$";
-    private static final String TEXTURE_URL_PREFIX = "https://textures.minecraft.net/texture/";
+/** Rendering stays non-blocking; all HTTP and disk work is bounded/off-thread. */
+public final class SkinLoader {
+    private static final Logger LOGGER=LogManager.getLogger(SkinLoader.class);
+    private static final Map<String,ResourceLocation> CACHE=new ConcurrentHashMap<>();
+    private static final SkinLoadGate GATE=new SkinLoadGate();
+    private static final ThreadPoolExecutor EXECUTOR=new ThreadPoolExecutor(2,2,30,TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(32),task->{Thread thread=new Thread(task,"Renblood-Skins");thread.setDaemon(true);return thread;});
+    private static SkinRepository repository;
 
     public static ResourceLocation getSkin(String skin) {
-        if (skin == null || skin.isBlank()) {
-            return DefaultPlayerSkin.getDefaultSkin();
-        }
-
-        String key = normalizeSkinKey(skin);
-        if (SKIN_CACHE.containsKey(key)) {
-            return SKIN_CACHE.get(key);
-        }
-
-        if (LOADING_STATUS.getOrDefault(key, false)) {
-            return DefaultPlayerSkin.getDefaultSkin();
-        }
-
-        LOADING_STATUS.put(key, true);
-        if (isTextureHash(skin) || isTextureUrl(skin)) {
-            loadTextureUrlAsync(key, TEXTURE_URL_PREFIX + extractTextureHash(skin));
-        } else if (isImageUrl(skin)) {
-            loadTextureUrlAsync(key, skin.trim());
-        } else {
-            loadPlayerSkinAsync(key, skin.trim());
-        }
-
+        if(skin==null||skin.isBlank())return DefaultPlayerSkin.getDefaultSkin();
+        String key=skin.trim();
+        ResourceLocation cached=CACHE.get(key);
+        if(cached!=null)return cached;
+        if(!GATE.begin(key,System.currentTimeMillis()))return DefaultPlayerSkin.getDefaultSkin();
+        if(repository==null)repository=new SkinRepository(Minecraft.getInstance().gameDirectory.toPath().resolve("cache/npcshopkeeper/skins-v2"));
+        try{EXECUTOR.execute(()->load(key));}
+        catch(java.util.concurrent.RejectedExecutionException busy){GATE.failure(key,System.currentTimeMillis(),30_000);}
         return DefaultPlayerSkin.getDefaultSkin();
     }
 
-    private static void loadTextureUrlAsync(String key, String textureUrl) {
-        EXECUTOR.submit(() -> {
-            if (textureUrl == null || textureUrl.isBlank()) {
-                LOADING_STATUS.put(key, false);
-                return;
-            }
-
-            try {
-                URL url = new URL(textureUrl);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("User-Agent", "NpcShopkeeper-Mod");
-
-                if (connection.getResponseCode() != 200) {
-                    LOGGER.warn("Texture introuvable {} (code {}).", textureUrl, connection.getResponseCode());
-                    LOADING_STATUS.put(key, false);
-                    return;
-                }
-
-                try (InputStream stream = connection.getInputStream()) {
-                    NativeImage image = normalizePlayerSkin(NativeImage.read(stream));
-                    if (image == null) {
-                        LOGGER.warn("Texture ignoree: {} n'est pas un skin joueur 64x64 ou 64x32.", textureUrl);
-                        LOADING_STATUS.put(key, false);
-                        return;
-                    }
-                    ResourceLocation location = new ResourceLocation(
-                            Npcshopkeeper.MODID,
-                            "skins/" + Integer.toHexString(textureUrl.hashCode())
-                    );
-                    Minecraft.getInstance().execute(() -> {
-                        Minecraft.getInstance().getTextureManager().register(location, new DynamicTexture(image));
-                        SKIN_CACHE.put(key, location);
-                        LOADING_STATUS.put(key, false);
-                        LOGGER.info("Texture skin chargee depuis {}.", textureUrl);
-                    });
-                }
-            } catch (Exception e) {
-                LOGGER.error("Erreur lors du chargement de la texture {}.", textureUrl, e);
-                LOADING_STATUS.put(key, false);
-            }
-        });
-    }
-
-    private static void loadPlayerSkinAsync(String key, String username) {
-        EXECUTOR.submit(() -> {
-            try {
-                URL url = new URL("https://api.ashcon.app/mojang/v2/user/" + username);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("User-Agent", "NpcShopkeeper-Mod");
-
-                if (connection.getResponseCode() == 200) {
-                    InputStreamReader reader = new InputStreamReader(connection.getInputStream());
-                    JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
-
-                    String uuidStr = json.get("uuid").getAsString();
-                    String name = json.get("username").getAsString();
-                    UUID uuid = UUID.fromString(uuidStr);
-                    GameProfile profile = new GameProfile(uuid, name);
-
-                    Minecraft.getInstance().execute(() -> {
-                        SkinManager skinManager = Minecraft.getInstance().getSkinManager();
-                        skinManager.registerSkins(profile, (type, location, profileTexture) -> {
-                            if (type == MinecraftProfileTexture.Type.SKIN) {
-                                SKIN_CACHE.put(key, location);
-                                LOADING_STATUS.put(key, false);
-                                LOGGER.info("Skin charge pour {} via Ashcon.", username);
-                            }
-                        }, true);
-                    });
-                } else {
-                    LOGGER.warn("Ashcon API echouee ({}), tentative Mojang API pour {}.", connection.getResponseCode(), username);
-                    loadSkinFromMojang(key, username);
-                }
-            } catch (Exception e) {
-                LOGGER.error("Erreur lors du chargement du skin Ashcon pour {}.", username, e);
-                loadSkinFromMojang(key, username);
-            }
-        });
-    }
-
-    private static void loadSkinFromMojang(String key, String username) {
+    private static void load(String key) {
+        NativeImage image=null;
         try {
-            URL url = new URL("https://api.mojang.com/users/profiles/minecraft/" + username);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-
-            if (connection.getResponseCode() == 200) {
-                InputStreamReader reader = new InputStreamReader(connection.getInputStream());
-                JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
-                String uuidStr = json.get("id").getAsString();
-                String name = json.get("name").getAsString();
-
-                UUID uuid = UUID.fromString(uuidStr.replaceFirst(
-                        "(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})", "$1-$2-$3-$4-$5"));
-                GameProfile profile = new GameProfile(uuid, name);
-
-                Minecraft.getInstance().execute(() -> {
-                    SkinManager skinManager = Minecraft.getInstance().getSkinManager();
-                    skinManager.registerSkins(profile, (type, location, profileTexture) -> {
-                        if (type == MinecraftProfileTexture.Type.SKIN) {
-                            SKIN_CACHE.put(key, location);
-                            LOADING_STATUS.put(key, false);
-                            LOGGER.info("Skin charge pour {} via Mojang.", username);
-                        }
-                    }, true);
-                });
-            } else {
-                LOGGER.warn("Impossible de trouver le joueur {} (code {}).", username, connection.getResponseCode());
-                LOADING_STATUS.put(key, false);
+            var cached=repository.cached(key);
+            if(cached!=null){
+                image=normalizePlayerSkin(NativeImage.read(new ByteArrayInputStream(cached.bytes())));
+                if(image!=null){register(key,image,cached.fresh());image=null;if(cached.fresh())return;}
             }
-        } catch (Exception e) {
-            LOGGER.error("Erreur lors du chargement du skin Mojang pour {}.", username, e);
-            LOADING_STATUS.put(key, false);
+            byte[] bytes=repository.load(key);
+            image=normalizePlayerSkin(NativeImage.read(new ByteArrayInputStream(bytes)));
+            if(image==null)throw new java.io.IOException("Skin incompatible.");
+            register(key,image,true);image=null;
+
+        }catch(Exception error){
+            if(image!=null)image.close();
+            long delay=error instanceof SkinRepository.RateLimited limited?limited.retryMs:error instanceof SkinRepository.InvalidSource?600_000:30_000;
+            GATE.failure(key,System.currentTimeMillis(),delay);
+            // One message per attempt, never one request/log line per rendered frame.
+            LOGGER.warn("Skin indisponible pour {} : {} Nouvelle tentative différée.",key,error.getMessage());
         }
     }
 
-    private static boolean isTextureHash(String value) {
-        return value != null && value.trim().matches(TEXTURE_HASH_PATTERN);
-    }
-
-    private static boolean isTextureUrl(String value) {
-        return value != null && value.trim().startsWith(TEXTURE_URL_PREFIX)
-                && isTextureHash(extractTextureHash(value));
-    }
-
-    private static boolean isImageUrl(String value) {
-        if (value == null) return false;
-        String lower = value.trim().toLowerCase(Locale.ROOT);
-        return (lower.startsWith("http://") || lower.startsWith("https://"))
-                && (lower.endsWith(".png") || lower.contains(".png?"));
-    }
-
-    private static String extractTextureHash(String value) {
-        if (value == null) return "";
-        String trimmed = value.trim();
-        if (trimmed.startsWith(TEXTURE_URL_PREFIX)) {
-            trimmed = trimmed.substring(TEXTURE_URL_PREFIX.length());
-            int queryIndex = trimmed.indexOf('?');
-            if (queryIndex >= 0) trimmed = trimmed.substring(0, queryIndex);
-            int slashIndex = trimmed.indexOf('/');
-            if (slashIndex >= 0) trimmed = trimmed.substring(0, slashIndex);
-        }
-        return trimmed.toLowerCase(Locale.ROOT);
-    }
-
-    private static String normalizeSkinKey(String skin) {
-        String trimmed = skin.trim();
-        if (isTextureHash(trimmed) || isTextureUrl(trimmed)) {
-            return "texture:" + extractTextureHash(trimmed);
-        }
-        if (isImageUrl(trimmed)) {
-            return "url:" + trimmed;
-        }
-        return "player:" + trimmed.toLowerCase(Locale.ROOT);
+    private static void register(String key,NativeImage ready,boolean finished){
+        Minecraft.getInstance().execute(()->{
+            try {
+                ResourceLocation location=new ResourceLocation(Npcshopkeeper.MODID,"skins/"+java.util.UUID.nameUUIDFromBytes(key.getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString());
+                Minecraft.getInstance().getTextureManager().register(location,new DynamicTexture(ready));
+                if(CACHE.size()>=512&&!CACHE.containsKey(key)){String oldest=CACHE.keySet().iterator().next();ResourceLocation removed=CACHE.remove(oldest);if(removed!=null)Minecraft.getInstance().getTextureManager().release(removed);}
+                CACHE.put(key,location);if(finished)GATE.success(key);
+            }catch(Exception registration){ready.close();if(finished)GATE.failure(key,System.currentTimeMillis(),30_000);LOGGER.warn("Enregistrement du skin différé pour {}.",key,registration);}
+        });
     }
 
     private static NativeImage normalizePlayerSkin(NativeImage image) {

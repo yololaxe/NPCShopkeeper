@@ -267,3 +267,12 @@ tasks.register('pipelineAll') {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
+
+// Offline fixtures: no calls to Mojang/Ashcon and no Minecraft client/world.
+tasks.register('skinRepositoryTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'fr.renblood.npcshopkeeper.skin.SkinRepositoryTest'
+    jvmArgs '-Djava.awt.headless=true'
+    args layout.buildDirectory.dir('skin-tests').get().asFile.absolutePath
+}
