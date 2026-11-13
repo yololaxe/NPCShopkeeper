@@ -89,6 +89,9 @@ public class TradeNpcEntity extends Villager {
     }
     
     @Override
+    protected net.minecraft.sounds.SoundEvent getAmbientSound() { return null; }
+
+    @Override
     public void tick() {
         super.tick();
         if (!level().isClientSide && isNoAi() && !isInvisible() && (isCaptain() || getPersistentData().contains("RenbloodShopId"))) {
