@@ -106,6 +106,18 @@ public final class GlobalNpcSpawnManager {
         int spawned = 0;
         int updated = 0;
         int removed = 0;
+        Set<String> disabledIds=templates.stream().filter(t->!t.enabled).map(t->t.npc_id).collect(Collectors.toSet());
+        for(TradeNpcEntity entity:NpcEntityIndex.all()){
+            if(entity==null||entity.isRemoved())continue;
+            TradeNpc model=entity.getTradeNpc();
+            if(!entity.getPersistentData().contains(SPAWN_ID_TAG)&&(model==null||!model.isRouteNpc()))continue;
+            String profileId=entity.getPersistentData().getString("ApiNpcId");
+            if(profileId.isBlank()&&model!=null){
+                Map<String,Object> definition=GlobalNpcManager.getNpcData(model.getNpcName());
+                if(definition!=null)profileId=String.valueOf(definition.getOrDefault("npcId",""));
+            }
+            if(disabledIds.contains(profileId)){entity.discard();removed++;}
+        }
 
         for (ServerLevel level : server.getAllLevels()) {
             String worldId = level.dimension().location().toString();

@@ -99,6 +99,7 @@ public class GlobalNpcManager {
         
         Map<String, Object> data = new HashMap<>();
         data.put("npcId", template.npc_id);
+        data.put("Enabled",template.enabled);
         data.put("NpcType", template.type);
         data.put("Texture", template.texture);
         data.put("Texts", template.dialogue != null ? template.dialogue : new ArrayList<String>());
@@ -114,7 +115,8 @@ public class GlobalNpcManager {
         npcDataMap.put(template.name, data);
         indexById(template.name, data);
         
-        if (isShopkeeper) {
+        if (!template.enabled){inactiveNpcs.remove(template.name);activeNpcs.remove(template.name);}
+        if (isShopkeeper && template.enabled) {
             if (!activeNpcs.contains(template.name) && !inactiveNpcs.contains(template.name)) {
                 inactiveNpcs.add(template.name);
             }
@@ -209,7 +211,7 @@ public class GlobalNpcManager {
         boolean isShopkeeper = data != null && (boolean) data.getOrDefault("IsShopkeeper", true); // true par défaut pour compatibilité
 
         if (activeNpcs.remove(npcName)) {
-            if (isShopkeeper) {
+            if (isShopkeeper && !Boolean.FALSE.equals(data.get("Enabled"))) {
                 inactiveNpcs.add(npcName);
             }
             Npcshopkeeper.debugLog(LOGGER, "PNJ désactivé : " + npcName);

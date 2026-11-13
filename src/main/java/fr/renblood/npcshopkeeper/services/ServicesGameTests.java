@@ -93,4 +93,16 @@ public final class ServicesGameTests {
         VoyageData data=new VoyageData();JsonObject ticket=new JsonObject();ticket.addProperty("id","fixture-ticket");ticket.addProperty("state","MISSED");ticket.addProperty("price","12345678901234567");ticket.addProperty("departure",36000);data.tickets.add("player",ticket);
         VoyageData restored=VoyageData.load(data.save(new CompoundTag()));var got=restored.tickets.getAsJsonObject("player");h.assertTrue(got.get("state").getAsString().equals("MISSED"),"Missed ticket remains reportable after reload");h.assertTrue(got.get("price").getAsString().equals("12345678901234567"),"Fare is preserved exactly");h.succeed();
     }
+    @GameTest(template="services_empty",timeoutTicks=30)
+    public static void playerControlledProfilesCannotJoinTradeRoutes(GameTestHelper h){
+        var profile=new fr.renblood.npcshopkeeper.data.api.NpcTemplate();
+        profile.npc_id="fixture-controlled";profile.name="Recette profil joueur";profile.type="SHOPKEEPER";profile.enabled=true;
+        fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.addNpcFromTemplate(profile);
+        h.assertTrue(fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.getInactiveNpcs().contains(profile.name),"Enabled merchant is eligible");
+        profile.enabled=false;
+        fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.addNpcFromTemplate(profile);
+        h.assertTrue(!fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.getInactiveNpcs().contains(profile.name),"Controlled/archived merchant is not eligible");
+        fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.deactivateNpc(profile.name);
+        h.assertTrue(!fr.renblood.npcshopkeeper.manager.npc.GlobalNpcManager.getInactiveNpcs().contains(profile.name),"Deactivation cannot reintroduce a disabled profile");h.succeed();
+    }
 }
