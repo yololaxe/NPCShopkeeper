@@ -254,8 +254,7 @@ public class TradeProcedure {
                                         : "Échange interrompu. Garde le reçu et vérifie son état avant de réessayer.";
                                 player.sendSystemMessage(Component.literal(message).withStyle(net.minecraft.ChatFormatting.RED));
                             } else if (receipt != null && "CONFIRMED".equals(receipt.get("state").getAsString())) {
-                                player.sendSystemMessage(Component.literal("Échange terminé. Le paiement a été remis en pièces.")
-                                        .withStyle(net.minecraft.ChatFormatting.GREEN));
+                                // Coins displays the confirmed item/coin breakdown once, with the receipt on hover.
                             } else if (receipt != null && "CANCELLED".equals(receipt.get("state").getAsString())) {
                                 player.sendSystemMessage(Component.literal("Échange annulé. Vérifie les objets déposés et la place pour recevoir les pièces.")
                                         .withStyle(net.minecraft.ChatFormatting.RED));

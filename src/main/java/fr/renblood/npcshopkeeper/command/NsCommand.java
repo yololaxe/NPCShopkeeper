@@ -54,6 +54,7 @@ public final class NsCommand {
     @SubscribeEvent
     public static void register(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
+        NpcPlacementCommands.register(dispatcher);
 
         dispatcher.register(Commands.literal("ns")
                 .executes(context -> showHelp(context.getSource()))
@@ -394,11 +395,7 @@ public final class NsCommand {
     }
 
     private static int deleteNpcSpawn(CommandSourceStack source, String spawnId) {
-        GlobalNpcSpawnManager.DeleteResult result = GlobalNpcSpawnManager.deleteSpawn(source.getServer(), spawnId);
-        source.sendSuccess(() -> Component.literal("Spawn PNJ supprime: " + spawnId
-                + " | local=" + result.localRemoved()
-                + " | api=" + (result.apiUpdated() ? "ok" : "non confirme")), true);
-        return result.localRemoved() > 0 || result.apiUpdated() ? 1 : 0;
+        return NpcPlacementCommands.delete(source,spawnId);
     }
 
     private static int deleteNearestNpcSpawn(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {

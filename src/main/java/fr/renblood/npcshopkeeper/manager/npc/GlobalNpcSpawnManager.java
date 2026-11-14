@@ -100,6 +100,8 @@ public final class GlobalNpcSpawnManager {
             List<NpcTemplate> templates,
             Map<String, List<NpcSpawn>> spawnsByWorld,
             String targetSpawnId) {
+        spawnsByWorld = protectPlacements(server,spawnsByWorld);
+        lastSpawnsByWorld = spawnsByWorld;
         long startedAt = System.currentTimeMillis();
         templates.forEach(GlobalNpcManager::addNpcFromTemplate);
 
@@ -228,6 +230,9 @@ public final class GlobalNpcSpawnManager {
                 .map(entry -> savedSpawn(entry.getKey(), entry.getValue()))
                 .toList();
         }
+        var placements=fr.renblood.npcshopkeeper.manager.data.NpcPlacementSavedData.get(level.getServer());
+        if(worldSpawns.isEmpty())worldSpawns=placements.snapshot().stream().filter(s->level.dimension().location().toString().equals(s.world)).toList();
+        worldSpawns=worldSpawns.stream().map(placements::reconcile).filter(s->level.dimension().location().toString().equals(s.world)).toList();
         Set<String> expectedIds = worldSpawns.stream()
                 .filter(GlobalNpcSpawnManager::shouldSpawn)
                 .filter(spawn -> new ChunkPos(spawn.getPos()).equals(chunkPos))
@@ -262,24 +267,27 @@ public final class GlobalNpcSpawnManager {
         }
     }
 
-    public static DeleteResult deleteSpawn(MinecraftServer server, String spawnId) {
-        if (spawnId == null || spawnId.isBlank()) return new DeleteResult(false, 0);
-
-        NpcSpawn spawn = MedievalCoinsIntegration.findNpcSpawn(spawnId).orElseGet(() -> localSpawn(server, spawnId));
-        boolean apiUpdated = MedievalCoinsIntegration.deactivateNpcSpawn(spawn);
-
-        int removed = 0;
-        for (TradeNpcEntity entity : NpcEntityIndex.all()) {
-            if (entity == null || entity.isRemoved()) continue;
-            if (!spawnId.equals(entity.getPersistentData().getString(SPAWN_ID_TAG))) continue;
-            entity.discard();
-            removed++;
+    private static Map<String,List<NpcSpawn>> protectPlacements(MinecraftServer server,Map<String,List<NpcSpawn>> incoming) {
+        var log=fr.renblood.npcshopkeeper.manager.data.NpcPlacementSavedData.get(server);
+        Map<String,List<NpcSpawn>> result=new HashMap<>();
+        for(var entries:incoming.values())for(var raw:entries){
+            NpcSpawn spawn=log.reconcile(raw);
+            result.computeIfAbsent(spawn.world,ignored->new ArrayList<>()).add(spawn);
         }
-        for (ServerLevel level : server.getAllLevels()) {
-            NpcRuntimeSavedData.get(level).remove(spawnId);
-        }
+        return result;
+    }
 
-        return new DeleteResult(apiUpdated, removed);
+    /** Apply only an API-confirmed edit; profiles, quest IDs and skins are preserved. */
+    public static void applyAdminEdit(MinecraftServer server,NpcSpawn spawn) {
+        fr.renblood.npcshopkeeper.manager.data.NpcPlacementSavedData.get(server).record(spawn);
+        Map<String,List<NpcSpawn>> patched=new HashMap<>();
+        lastSpawnsByWorld.forEach((world,rows)->patched.put(world,new ArrayList<>(rows.stream().filter(s->!spawn.spawn_id.equals(s.spawn_id)).toList())));
+        patched.computeIfAbsent(spawn.world,ignored->new ArrayList<>()).add(spawn);
+        for(var entity:NpcEntityIndex.all())if(entity.level().getServer()==server&&spawn.spawn_id.equals(entity.getApiNpcSpawnId()))entity.discard();
+        for(ServerLevel level:server.getAllLevels())NpcRuntimeSavedData.get(level).remove(spawn.spawn_id);
+        var level=server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,new net.minecraft.resources.ResourceLocation(spawn.world)));
+        if(level!=null&&spawn.active)NpcRuntimeSavedData.get(level).upsert(spawn.spawn_id,spawn.npc_id,spawn.world,spawn.x,spawn.y,spawn.z,true);
+        applySynchronization(server,List.of(),patched,spawn.spawn_id);
     }
 
     public static void synchronizeDifferentialAsync(MinecraftServer server) {
@@ -306,9 +314,6 @@ public final class GlobalNpcSpawnManager {
     private record SynchronizationSnapshot(
             List<NpcTemplate> templates,
             Map<String, List<NpcSpawn>> spawnsByWorld) {
-    }
-
-    public record DeleteResult(boolean apiUpdated, int localRemoved) {
     }
 
     private static boolean shouldSpawn(NpcSpawn spawn) {
@@ -435,6 +440,9 @@ public final class GlobalNpcSpawnManager {
     public static boolean shouldRejectJoiningEntity(ServerLevel level, TradeNpcEntity joining) {
         String spawnId = joining.getPersistentData().getString(SPAWN_ID_TAG);
         if (spawnId.isBlank()) return false;
+        NpcSpawn placement=fr.renblood.npcshopkeeper.manager.data.NpcPlacementSavedData.get(level.getServer()).find(spawnId);
+        if(placement!=null&&(!placement.active||!level.dimension().location().toString().equals(placement.world)
+                ||joining.distanceToSqr(centerBlockCoordinate(placement.x),placement.y,centerBlockCoordinate(placement.z))>.01))return true;
 
         UUID stableUuid = stableEntityUuid(spawnId);
         AABB nearby = joining.getBoundingBox().inflate(2.0D);

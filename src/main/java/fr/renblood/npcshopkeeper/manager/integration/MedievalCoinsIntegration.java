@@ -438,24 +438,21 @@ public class MedievalCoinsIntegration {
         }
     }
 
-    public static boolean deactivateNpcSpawn(NpcSpawn spawn) {
-        if (spawn == null || spawn.spawn_id == null || spawn.spawn_id.isBlank()) return false;
-        if (!isMedievalCoinsLoaded) return false;
-
+    public static NpcSpawn editNpcSpawn(String actor,String spawnId,com.google.gson.JsonObject changes) {
         try {
-            if (deactivateNpcSpawnMethod != null) {
-                return (boolean) deactivateNpcSpawnMethod.invoke(null, spawn.spawn_id);
-            }
-            if (deleteNpcSpawnMethod != null) {
-                return (boolean) deleteNpcSpawnMethod.invoke(null, spawn.spawn_id);
-            }
-        } catch (Exception e) {
-            LOGGER.error("Erreur deactivate/deleteNpcSpawn({})", spawn.spawn_id, e);
+            Class<?> api=Class.forName("fr.renblood.medievalcoins.api.MedievalCoinsAPI");
+            Object response=api.getMethod("editNpcSpawn",String.class,String.class,com.google.gson.JsonObject.class)
+                    .invoke(null,actor,spawnId,changes);
+            NpcSpawn spawn=new com.google.gson.Gson().fromJson((com.google.gson.JsonObject)response,NpcSpawn.class);
+            if(spawn==null||!spawnId.equals(spawn.spawn_id))throw new IllegalStateException("Réponse de placement PNJ invalide.");
+            return spawn;
+        } catch(java.lang.reflect.InvocationTargetException failure) {
+            throw new java.util.concurrent.CompletionException(failure.getCause());
+        } catch(NoSuchMethodException failure) {
+            throw new IllegalStateException("Mets à jour Medieval Coins : API de placement indisponible.",failure);
+        } catch(Exception failure) {
+            throw new java.util.concurrent.CompletionException(failure);
         }
-
-        NpcSpawn inactive = copySpawn(spawn);
-        inactive.active = false;
-        return createNpcSpawn(inactive);
     }
 
     public static boolean showNpcDialogue(ServerPlayer player, String npcName, String text, String texture) {

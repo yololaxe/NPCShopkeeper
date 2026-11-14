@@ -46,7 +46,8 @@ public final class NpcEntityIndex {
             return customers.isEmpty() ? null : customers;
         });
         String spawnId = entity.getPersistentData().getString("ApiNpcSpawnId");
-        if (!spawnId.isBlank()) UUID_BY_SPAWN_ID.remove(spawnId, entity.getUUID());
+        // An old entity can leave after its replacement with the same stable UUID joined.
+        if (!spawnId.isBlank() && !ENTITIES.containsKey(entity.getUUID())) UUID_BY_SPAWN_ID.remove(spawnId, entity.getUUID());
     }
 
     public static TradeNpcEntity get(UUID uuid) {

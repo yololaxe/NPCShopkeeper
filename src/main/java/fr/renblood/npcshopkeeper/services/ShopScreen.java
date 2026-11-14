@@ -33,6 +33,7 @@ public final class ShopScreen extends ServiceScreen {
         for(int i=0;i<rowCount;i++){int index=page*rowCount+i;if(index>=count)break;final int slot=i;JsonObject row=(addMode?results:offers()).get(index).getAsJsonObject();String title=str(row,"name",str(row,"item_id","Objet"));
             rowButtons.add(button(font.plainSubstrByWidth(title,w/2-55),left+24,listY+(addMode?25:0)+i*29,w/2-46,()->{int at=page*rowCount+slot;if(addMode){if(at<results.size())add(results.get(at).getAsJsonObject());}else{flush();selected=at;init();}}));
         }
+        if(!editor)button("Carnet marchand",left,y+h-48,w/2-22,()->{if(minecraft.player!=null)minecraft.player.connection.sendCommand("mc marchand");});
         int pages=Math.max(1,(count+rowCount-1)/rowCount);button("‹",left,y+h-73,30,()->{flush();page=Math.max(0,page-1);init();});button((page+1)+" / "+pages,left+34,y+h-73,w/2-90,()->{});button("›",x+w/2-45,y+h-73,30,()->{flush();page=Math.min(pages-1,page+1);init();});
         if(editor){
             button(addMode?"Retour au catalogue":"+ Ajouter des articles",left,y+h-48,w/2-22,()->{flush();addMode=!addMode;page=0;init();});
