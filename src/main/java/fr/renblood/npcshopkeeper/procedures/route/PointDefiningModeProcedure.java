@@ -137,12 +137,16 @@ public class PointDefiningModeProcedure {
 
 
     // Mettre à jour les particules
+    public boolean isValid() { return !player.isRemoved() && player.level() == world; }
+
     public void updateParticles() {
-        if (!(world instanceof ServerLevel serverWorld)) return;
+        if (!isValid() || !(world instanceof ServerLevel serverWorld)) return;
 
         for (BlockPos pos : positions) {
-            serverWorld.sendParticles(
+            if(player.distanceToSqr(pos.getX()+.5,pos.getY()+.5,pos.getZ()+.5)>32D*32D)continue;
+            serverWorld.sendParticles(player,
                     ParticleTypes.HAPPY_VILLAGER,
+                    false,
                     pos.getX() + 0.5,
                     pos.getY() + 0.5,
                     pos.getZ() + 0.5,

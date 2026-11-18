@@ -239,8 +239,10 @@ public final class GlobalNpcSpawnManager {
                 .map(spawn -> spawn.spawn_id)
                 .collect(Collectors.toSet());
 
-        for (TradeNpcEntity entity : NpcEntityIndex.all()) {
-            if (entity.level() != level || !new ChunkPos(entity.blockPosition()).equals(chunkPos)) continue;
+        AABB chunkBounds = new AABB(chunkPos.getMinBlockX(), level.getMinBuildHeight(), chunkPos.getMinBlockZ(),
+                chunkPos.getMaxBlockX() + 1, level.getMaxBuildHeight(), chunkPos.getMaxBlockZ() + 1);
+        for (TradeNpcEntity entity : level.getEntitiesOfClass(TradeNpcEntity.class, chunkBounds)) {
+            if (!new ChunkPos(entity.blockPosition()).equals(chunkPos)) continue;
             String spawnId = entity.getPersistentData().getString(SPAWN_ID_TAG);
             if (!spawnId.isBlank() && !expectedIds.contains(spawnId)) entity.discard();
             if (!spawnId.isBlank() && !expectedIds.contains(spawnId)) {

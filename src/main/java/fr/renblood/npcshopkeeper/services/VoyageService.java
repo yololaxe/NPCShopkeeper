@@ -97,7 +97,9 @@ public final class VoyageService {
         }
     }
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent e){
-        if(e.phase!=TickEvent.Phase.END||e.getServer().getTickCount()%20!=0)return;var server=e.getServer();long now=server.overworld().getDayTime();
+        if(e.phase!=TickEvent.Phase.END)return;
+        VoyageArrivals.tick(e.getServer());
+        if(e.getServer().getTickCount()%20!=0)return;var server=e.getServer();long now=server.overworld().getDayTime();
         for(var npc:NpcEntityIndex.all()){if(!npc.isCaptain())continue;PortManager.getPort(npc.getPortName()).ifPresent(port->{npc.setInvisible(!onDuty(port,now));npc.setNoAi(true);});}
         VoyageData data=VoyageData.get(server);boolean changed=false;int remaining=4;
         for(var entry:new ArrayList<>(data.tickets.entrySet())){
@@ -116,15 +118,23 @@ public final class VoyageService {
                 if(p==null||origin==null||!origin.isEnabled()||!connectionOpen(origin,ticket.get("destination").getAsString())||near(p,origin.getName())==null||p.isPassenger()||p.isSleeping()||!p.isAlive()){
                     ticket.addProperty("state","MISSED");changed=true;if(p!=null)countdown(p,-1);if(p!=null)p.sendSystemMessage(Component.literal("Départ manqué : ton billet reste reportable gratuitement auprès du capitaine."));continue;
                 }
-                ticket.addProperty("state","SAILING");ticket.addProperty("board_x",p.getX());ticket.addProperty("board_y",p.getY());ticket.addProperty("board_z",p.getZ());ticket.addProperty("arrival_tick",server.overworld().getGameTime()+200);ticket.addProperty("departure_yaw",p.getYRot());p.setDeltaMovement(0,0,0);p.closeContainer();countdown(p,-1);JsonObject scene=new JsonObject();scene.addProperty("destination",ticket.get("destination").getAsString());scene.addProperty("duration",200);WorkshopServer.reply(p,"SAILING",scene);changed=true;
-            }else if((state.equals("SAILING")||state.equals("ARRIVAL_WAIT"))&&p!=null&&p.isAlive()&&remaining-->0&&server.overworld().getGameTime()>=ticket.get("arrival_tick").getAsLong()){
+                ticket.addProperty("state","SAILING");ticket.addProperty("board_x",p.getX());ticket.addProperty("board_y",p.getY());ticket.addProperty("board_z",p.getZ());ticket.addProperty("arrival_tick",server.overworld().getGameTime()+200);ticket.addProperty("departure_yaw",p.getYRot());p.setDeltaMovement(0,0,0);p.closeContainer();countdown(p,-1);JsonObject scene=new JsonObject();scene.addProperty("destination",ticket.get("destination").getAsString());scene.addProperty("duration",200);WorkshopServer.reply(p,"SAILING",scene);VoyageArrivals.prefetch(p,ticket);changed=true;
+            }else if((state.equals("SAILING")||state.equals("ARRIVAL_WAIT"))&&p!=null&&p.isAlive()&&server.overworld().getGameTime()>=ticket.get("arrival_tick").getAsLong()&&remaining-->0){
                 Port destination=Port.fromJson(ticket.getAsJsonObject("arrival"));ServerLevel level=server.getLevel(ResourceKey.create(Registries.DIMENSION,new ResourceLocation(destination.getDimension())));
-                if(level==null){ticket.addProperty("state","ARRIVAL_WAIT");ticket.addProperty("arrival_tick",server.overworld().getGameTime()+600);changed=true;continue;}
-                BlockPos at=destination.getPos();level.getChunk(at);
+                if(level==null){VoyageArrivals.release(p.getUUID());ticket.addProperty("state","ARRIVAL_WAIT");ticket.addProperty("arrival_tick",server.overworld().getGameTime()+600);changed=true;continue;}
+                BlockPos at=destination.getPos();
+                var preparation=VoyageArrivals.prepare(p,ticket,level,at);
+                if(preparation==VoyageArrivalPreparation.State.WORKING)continue;
+                if(preparation==VoyageArrivalPreparation.State.FAILED){
+                    VoyageArrivals.release(p.getUUID());ticket.addProperty("state","ARRIVAL_WAIT");ticket.addProperty("arrival_tick",server.overworld().getGameTime()+600);
+                    WorkshopServer.reply(p,"ARRIVED",new JsonObject());p.sendSystemMessage(Component.literal("Chargement du quai différé : ton passage reste conservé. Nouvelle tentative dans un instant."));changed=true;continue;
+                }
+                try {
                 if(!level.getBlockState(at).getCollisionShape(level,at).isEmpty()||!level.getBlockState(at.above()).getCollisionShape(level,at.above()).isEmpty()||!level.getFluidState(at).isEmpty()||level.getBlockState(at.below()).getCollisionShape(level,at.below()).isEmpty()){
                     ticket.addProperty("state","ARRIVAL_WAIT");ticket.addProperty("arrival_tick",server.overworld().getGameTime()+600);WorkshopServer.reply(p,"ARRIVED",new JsonObject());p.sendSystemMessage(Component.literal("Quai d’arrivée indisponible : ton passage est conservé. Contacte l’équipe."));changed=true;continue;
                 }
                 p.teleportTo(level,at.getX()+.5,at.getY(),at.getZ()+.5,p.getYRot(),p.getXRot());p.fallDistance=0;ticket.addProperty("state","ARRIVED");WorkshopServer.reply(p,"ARRIVED",new JsonObject());p.sendSystemMessage(Component.literal("Bienvenue à "+destination.getCityName()+".").withStyle(net.minecraft.ChatFormatting.GOLD));changed=true;
+                } finally {VoyageArrivals.release(p.getUUID());}
             }
         }
         if(changed)data.persist(server);
@@ -147,5 +157,7 @@ public final class VoyageService {
         JsonObject ticket=VoyageData.get(p.getServer()).tickets.getAsJsonObject(p.getStringUUID());
         if(ticket!=null&&"SAILING".equals(ticket.get("state").getAsString()))e.setCanceled(true);
     }
+    @SubscribeEvent public static void logout(PlayerEvent.PlayerLoggedOutEvent e){VoyageArrivals.release(e.getEntity().getUUID());}
+    @SubscribeEvent public static void stopping(net.minecraftforge.event.server.ServerStoppingEvent e){VoyageArrivals.clear();}
     @SubscribeEvent public static void stop(net.minecraftforge.event.server.ServerStoppedEvent e){PAYING.clear();WARNED.clear();}
 }

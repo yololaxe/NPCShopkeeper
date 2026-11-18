@@ -38,10 +38,7 @@ public final class NpcClientAmbience {
         NpcAmbientSettings settings=NpcAmbientSettings.get();
         if(!settings.enabled||settings.volume<=0||mc.screen!=null||mc.options.getSoundSourceVolume(SoundSource.AMBIENT)<=0){nextAmbient=now+100;return;}
         nextAmbient=now+settings.minDelaySeconds*20L+RANDOM.nextInt((settings.maxDelaySeconds-settings.minDelaySeconds)*20+1);
-        var nearby=new ArrayList<Mob>();
-        for(var entity:mc.level.entitiesForRendering())if(entity instanceof Mob mob&&audible(mob,settings)) {
-            nearby.add(mob);nearby.sort(Comparator.comparingDouble(npc->npc.distanceToSqr(mc.player)));if(nearby.size()>4)nearby.remove(nearby.size()-1);
-        }
+        var nearby=NpcAmbientSelection.nearest(mc.level,mc.player,settings.radius,mob->audible(mob,settings));
         Collections.shuffle(nearby,new Random(RANDOM.nextLong()));
         for(var npc:nearby)if(mc.player.hasLineOfSight(npc)) {
             if(npc.getId()==lastNpc&&nearby.size()>1)continue;
